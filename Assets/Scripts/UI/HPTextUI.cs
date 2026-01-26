@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-public class HPUI : MonoBehaviour
+public class HPTextUI : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private TMP_Text hpText;
@@ -17,12 +17,12 @@ public class HPUI : MonoBehaviour
             return;
         }
         player.OnHPChanged += UpdateHPUI;
-        UpdateHPUI(player.currentHP);
+        UpdateHPUI(player.currentHP,player.MaxHP);
     }
 
-    private void UpdateHPUI(int CurrentHP)
+    private void UpdateHPUI(int CurrentHP, int MaxHP)
     {
-        hpText.text = $"HP: {CurrentHP}/{player.MaxHP}";
+        hpText.text = $"HP: {CurrentHP}/{MaxHP}";
     }
 
     private void OnDestroy()

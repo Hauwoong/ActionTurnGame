@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class Player : MonoBehaviour
 {
@@ -7,6 +8,7 @@ public class Player : MonoBehaviour
     [SerializeField] private int maxHP = 100;
     [SerializeField] private int maxEnergy = 3;
 
+    // Public getters for max stats
     public int MaxHP => maxHP;
     public int MaxEnergy => maxEnergy;
 
@@ -15,31 +17,71 @@ public class Player : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private BattleManager battlemanager;
+    [SerializeField] private TurnManager turnManager;
 
-    public event Action<int> OnHPChanged;
+    // UI 업데이트를 위한 이벤트
+    public event Action<int, int> OnHPChanged;
+    public event Action<int, int> OnEnergyChanged;
+    public event Action OnHandChanged;
+
+    public List<CardData> hand = new List<CardData>();
 
     private void Awake()
     {
         currentHP = maxHP;
         currentEnergy = maxEnergy;
-        OnHPChanged?.Invoke(currentHP);
+    }
+
+    private void Start()
+    {
+        if (battlemanager == null || turnManager == null)
+        {
+            Debug.LogError("Player: Missing Reference to BattleManager or TurnManager.");
+        }
     }
 
     public void OnTurnStart()
     {
         currentEnergy = maxEnergy;
-
+        OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
         Debug.Log("Player's Turn Started");
         Debug.Log("Player Energy Refreshed to " + currentEnergy);
-        // 카드 드로우
-        // UI 활성화
+        
+        DrawCard();
+        DrawCard();
+        DrawCard();
+
+        Debug.Log("Draw 3 cards");
     }
 
-    public bool UseCard(int cost) 
+    public void UseCard(int index)
+    {
+        if (index < 0 || index >= hand.Count)
+        {
+            Debug.Log("Invalid card index.");
+            return;
+        }
+
+        CardData card = hand[index];
+
+        if (!UseEnergy(card.cost))
+        {
+            return;
+        }
+
+        card.Use(this, battlemanager.CurrentEnemy);
+
+        hand.RemoveAt(index);
+        OnHandChanged?.Invoke();
+    }
+    
+    public bool UseEnergy(int cost)
     {
         if (cost <= currentEnergy)
         {
             currentEnergy -= cost;
+            Debug.Log("Card used with cost " + cost + ". Remaining energy: " + currentEnergy);
+            OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
             return true;
         }
         else
@@ -53,7 +95,7 @@ public class Player : MonoBehaviour
     {
         currentHP = Mathf.Max(currentHP - damage, 0);
 
-        OnHPChanged?.Invoke(currentHP);
+        OnHPChanged?.Invoke(currentHP, MaxHP);
 
         Debug.Log("Player took " + damage + " damage. Current HP: " + currentHP);
 
@@ -66,16 +108,36 @@ public class Player : MonoBehaviour
     private void Die()
     {
         Debug.Log("Player has died.");
-
-        if (battlemanager != null)
-        {
-            battlemanager.EndBattle(false);
-        }
-        else
-        {
-            Debug.Log("battlemanager not assigned");
-        }
+        battlemanager.EndBattle(false);
+       
     }
 
+    public void RequestTurnEnd()
+    {
+        turnManager.PlayerEndTurn();
+    }
 
+    void DrawCard()
+    {
+        CardData card = new CardData(); // 카드 생성 로직 필요
+        card.cardName = "Attack";
+        card.cost = 1;
+        card.damage = 10;
+
+        hand.Add(card);
+        OnHandChanged?.Invoke();
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            UseCard(0);
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            UseCard(1);
+        }
+    }
 }

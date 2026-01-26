@@ -17,6 +17,8 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private Enemy enemy;
     [SerializeField] private TurnManager turnManager;
 
+    public Enemy CurrentEnemy => enemy;
+
     public void Awake()
     {
         if (player == null || enemy == null || turnManager == null)

@@ -60,3 +60,42 @@
 -UI는 좌표보다 Anchor 구조가 더 중요하다
 -기능별 UI 분리는 확장성을 크게 높인다
 -구조 설계를 먼저 하면 디버깅 시간이 줄어든다
+
+---
+
+## 2026-01-27
+
+###오늘 한 것
+-TurnManager에 TurnState(enum) 기반 턴 시스템 구조 완성
+-턴 변경 이벤트(OnTurnChanged) 구현 및 UI 연동
+-TurnUI / HPUI 스크립트 분리 및 역할 분담
+-Player HP / Energy 캡슐화 적용 (Getter + Private Setter)
+-이벤트 기반 UI 자동 갱신 시스템 설계 및 테스트
+-RectTransform Anchor / Pivot 기반 UI 배치 방식 학습
+
+###문제
+-TurnManager 이벤트 미구현으로 CS1061 오류 발생
+-UI 위치 이동 시 좌표값이 정상적으로 반영되지 않음
+-HP / Energy UI 갱신 타이밍 구조에 대한 혼란
+-UI 통합 관리 vs 개별 관리 구조 설계 고민 발생
+-Awake / Start 실행 순서로 인한 초기 UI 동기화 문제
+
+###해결
+-TurnManager에 Action<TurnState> 이벤트 직접 선언 및 연결
+-RectTransform Anchor Preset(Shift + Alt) 방식으로 UI 재배치
+-이벤트 기반 UI 갱신 구조로 전환하여 Update() 의존 제거
+-HPUI / EnergyUI / TurnUI 기능별 스크립트 분리
+-Start()에서 초기 UI 강제 갱신으로 동기화 안정화
+
+###배운 점
+-이벤트 패턴을 사용하면 Update() 남용을 줄일 수 있다
+-캡슐화를 적용하면 데이터 보호와 유지보수가 쉬워진다
+-UI 배치는 좌표보다 Anchor 구조가 훨씬 중요하다
+-UI를 기능별로 분리하면 확장성과 가독성이 크게 좋아진다
+-실행 순서(Awake → Start → Event)는 구조 설계에 매우 중요하다
+
+###다음 목표
+-카드 데이터 구조 설계 및 ScriptableObject 도입 검토
+-카드 UI 자동 생성 시스템 구현
+-덱 / 핸드 / 드로우 구조 설계
+-BattleManager ↔ 카드 시스템 연동 완성

@@ -6,7 +6,6 @@ public class TurnUI : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private TMP_Text turnText;
-    [SerializeField] private TMP_Text energyText;
     [SerializeField] private Button endTurnButton;
 
     [Header("Reference")]
@@ -42,12 +41,10 @@ public class TurnUI : MonoBehaviour
             turnText.text = "Enemy's Turn";
             endTurnButton.interactable = false;
         }
-
-        energyText.text = $"Energy: {player.currentEnergy}/{player.MaxEnergy}";
     }
 
     public void onClickEndButton()
     {
-        turnManager.PlayerEndTurn();
+        player.RequestTurnEnd();
     }
 }
