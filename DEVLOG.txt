@@ -99,3 +99,42 @@
 -카드 UI 자동 생성 시스템 구현
 -덱 / 핸드 / 드로우 구조 설계
 -BattleManager ↔ 카드 시스템 연동 완성
+
+## 2026-01-28
+
+### 오늘 한 것
+- ScriptableObject 기반 카드 데이터(CardData) 구조 설계
+- 카드 비용 / 데미지 / 설명 / 이미지 데이터 분리
+- Card UI 프리팹 제작 및 자동 생성 시스템 구현
+- Horizontal Layout Group 기반 카드 정렬 구조 완성
+- CardUIManager를 통한 카드 관리 구조 설계
+- 카드 클릭 → BattleManager → 전투 처리 흐름 연동
+- TextMeshPro 한글 폰트 적용 및 UI 텍스트 정상 출력 처리
+
+### 문제
+- CardUI 프리팹 Missing 오류로 카드가 생성되지 않음
+- 카드 클릭 시 Player / Enemy 참조 구조 혼란 발생
+- 이벤트(Player.OnHandChanged) 직접 호출 시 컴파일 오류 발생
+- TextMeshPro 기본 폰트에서 한글 출력 불가 문제 발생
+- UI Layout 적용 후 카드 위치가 예상과 다르게 배치됨
+
+### 해결
+- CardUI 프리팹 재연결 및 Inspector 구조 정리
+- 카드 사용 로직을 BattleManager 중심 구조로 재설계
+- 이벤트 구조 수정(Invoke → 내부 호출 방식으로 변경)
+- 한글 지원 폰트(SDF) 적용으로 텍스트 깨짐 해결
+- Layout Group + RectTransform 설정 재조정
+
+### 배운 점
+- ScriptableObject는 데이터와 로직 분리에 매우 효과적이다
+- 카드 시스템은 중앙 관리자(BattleManager) 중심 구조가 안정적이다
+- 이벤트는 외부에서 직접 호출하면 구조가 깨질 수 있다
+- UI 자동 배치는 Layout 시스템 이해가 필수이다
+- 폰트 세팅도 UI 품질에 큰 영향을 준다
+
+### 다음 목표
+- 공격/방어/버프 카드 상속 구조 설계
+- 카드 사용 가능 여부(에너지 부족) UI 표시
+- 덱 셔플 / 드로우 시스템 구현
+- 카드 사용 애니메이션 추가
+- 적 AI 카드 패턴 설계

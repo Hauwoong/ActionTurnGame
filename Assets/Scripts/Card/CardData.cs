@@ -1,18 +1,26 @@
 using UnityEngine;
 
-[System.Serializable]
-public class CardData
+[CreateAssetMenu(fileName = "New card", menuName = "Card Game/Card")]
+public class CardData : ScriptableObject
 {
+    [Header("Card Info")]
     public string cardName;
     public int cost;
     public int damage;
 
-    public void Use(Player player, Enemy enemy)
+    [Header("Visual")]
+    public Sprite artwork;
+
+    [TextArea(3, 5)]
+    public string description;
+
+    public virtual bool Use(Player player, Enemy enemy)
     {
-        if (player.UseEnergy(cost))
+        if (!player.UseEnergy(cost))
         {
-            enemy.TakeDamage(damage);
-            Debug.Log(cardName+"»ç¿ë");
+            return false;
         }
+        enemy.TakeDamage(damage);
+        return true;
     }
 }

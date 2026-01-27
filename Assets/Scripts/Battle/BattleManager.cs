@@ -61,5 +61,23 @@ public class BattleManager : MonoBehaviour
         }
     }
 
+    public void UseCard(CardData card)
+    {
+        if (state != BattleState.Fighting)
+        {
+            Debug.LogWarning("BattleManager: Cannot use cards when not in fighting state.");
+            return;
+        }
+
+        bool success = card.Use(player, enemy);
+
+        if (!success)
+        {
+            Debug.LogWarning($"BattleManager: Card {card.cardName} could not be used.");
+            return;
+        }
+
+        player.RemoveCard(card);
+    }
     
 }

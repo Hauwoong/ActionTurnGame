@@ -8,29 +8,45 @@ public class CardUI : MonoBehaviour
     [SerializeField] TMP_Text cardNameText;
     [SerializeField] TMP_Text cardCostText;
     [SerializeField] TMP_Text cardDamageText;
+    [SerializeField] Image artworkImage;
     [SerializeField] Button button;
 
     [Header("Reference")]
-    private CardData card;
-    private Player player;  
-    private Enemy enemy;
+    private CardData cardData;
+    private BattleManager battleManager;
 
-    public void Setup(CardData data, Player p, Enemy e)
+    public void Setup(CardData data, BattleManager bm)
     {
-        card = data;
-        player = p;
-        enemy = e;
+        cardData = data;
+        battleManager = bm;
 
-        cardNameText.text = card.cardName;
-        cardCostText.text = card.cost.ToString();
-        cardDamageText.text = card.damage.ToString();
+        UpdateUI();
 
-        button.onClick.AddListener(UseCard);
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(OnClick);
     }
 
-    void UseCard()
+    private void UpdateUI()
     {
-        card.Use(player, enemy);
-        Destroy(gameObject);
+        if (cardData == null) return;
+
+        cardNameText.text = cardData.cardName;
+        cardCostText.text = cardData.cost.ToString();
+        cardDamageText.text = cardData.damage.ToString();
+        
+        if (artworkImage != null && cardData.artwork != null)
+        {
+            artworkImage.sprite = cardData.artwork;
+        }
+    }
+
+    private void OnClick()
+    {
+        battleManager.UseCard(cardData);
+    }
+
+    private void OnDestroy()
+    {
+        button.onClick.RemoveAllListeners();
     }
 }

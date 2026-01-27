@@ -15,6 +15,9 @@ public class Player : MonoBehaviour
     public int currentHP { get; private set; }
     public int currentEnergy { get; private set; }
 
+    [Header("Starting Deck")]
+    [SerializeField] private List<CardData> Deck;
+
     [Header("References")]
     [SerializeField] private BattleManager battlemanager;
     [SerializeField] private TurnManager turnManager;
@@ -38,6 +41,12 @@ public class Player : MonoBehaviour
         {
             Debug.LogError("Player: Missing Reference to BattleManager or TurnManager.");
         }
+
+        foreach (var card in Deck)
+        {
+            hand.Add(card);
+        }
+        OnHandChanged?.Invoke();
     }
 
     public void OnTurnStart()
@@ -49,32 +58,10 @@ public class Player : MonoBehaviour
         
         DrawCard();
         DrawCard();
-        DrawCard();
 
-        Debug.Log("Draw 3 cards");
+        Debug.Log("Draw 2 cards");
     }
-
-    public void UseCard(int index)
-    {
-        if (index < 0 || index >= hand.Count)
-        {
-            Debug.Log("Invalid card index.");
-            return;
-        }
-
-        CardData card = hand[index];
-
-        if (!UseEnergy(card.cost))
-        {
-            return;
-        }
-
-        card.Use(this, battlemanager.CurrentEnemy);
-
-        hand.RemoveAt(index);
-        OnHandChanged?.Invoke();
-    }
-    
+ 
     public bool UseEnergy(int cost)
     {
         if (cost <= currentEnergy)
@@ -119,25 +106,28 @@ public class Player : MonoBehaviour
 
     void DrawCard()
     {
-        CardData card = new CardData(); // 카드 생성 로직 필요
-        card.cardName = "Attack";
-        card.cost = 1;
-        card.damage = 10;
+        if(Deck.Count == 0)
+        {
+            Debug.Log("No cards left to draw.");
+            return;
+        }
 
+        CardData card = Deck[0];
+        Deck.RemoveAt(0);
+
+        AddCard(card);
+    }
+
+    public void RemoveCard(CardData card)
+    {
+        hand.Remove(card);
+        OnHandChanged?.Invoke();
+    }
+
+    public void AddCard(CardData card)
+    {
         hand.Add(card);
         OnHandChanged?.Invoke();
     }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            UseCard(0);
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            UseCard(1);
-        }
-    }
 }
