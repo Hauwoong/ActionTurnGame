@@ -1390,8 +1390,8 @@ MonoBehaviour:
   maxHP: 100
   maxEnergy: 3
   Deck:
-  - {fileID: 11400000, guid: 5dd4be66a3113fc4981598d7ec56a671, type: 2}
-  - {fileID: 11400000, guid: 5dd4be66a3113fc4981598d7ec56a671, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
   battlemanager: {fileID: 1354636381}
   turnManager: {fileID: 1066554955}
   hand: []

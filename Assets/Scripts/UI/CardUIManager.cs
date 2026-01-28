@@ -37,7 +37,7 @@ public class CardUIManager : MonoBehaviour
         DisplayCards();
     }
 
-    private void ClearCards()
+    private void ClearCards() // 카드 UI 초기화
     {
         foreach (Transform child in cardParent)
         {
@@ -45,7 +45,7 @@ public class CardUIManager : MonoBehaviour
         }
     }
 
-    private void DisplayCards()
+    private void DisplayCards() // 초기화된 카드 패널에 카드 UI 다시 생성
     {
         if (player == null || player.hand == null) return;
 
@@ -55,10 +55,10 @@ public class CardUIManager : MonoBehaviour
         }
     }
 
-    private void CreateCardUI(CardData card)
+    private void CreateCardUI(CardData card) // 카드 UI 정보 설정 요청 -----> CardUI.cs의 Setup() 호출
     {
-        GameObject cardObj = Instantiate(cardPrefab, cardParent);
-        CardUI cardUI = cardObj.GetComponent<CardUI>();
+        GameObject cardObj = Instantiate(cardPrefab, cardParent); // cardParent 아래에 카드 프리팹 복제 생성
+        CardUI cardUI = cardObj.GetComponent<CardUI>(); // 카드 프리팹에 붙어있는 CardUI 컴포넌트 가져오기
 
         if (cardUI != null)
         {

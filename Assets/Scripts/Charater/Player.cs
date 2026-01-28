@@ -62,20 +62,11 @@ public class Player : MonoBehaviour
         Debug.Log("Draw 2 cards");
     }
  
-    public bool UseEnergy(int cost)
+    public void UseEnergy(int amount)
     {
-        if (cost <= currentEnergy)
-        {
-            currentEnergy -= cost;
-            Debug.Log("Card used with cost " + cost + ". Remaining energy: " + currentEnergy);
-            OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
-            return true;
-        }
-        else
-        {
-            Debug.Log("Not enough energy to use the card.");
-            return false;
-        }
+        currentEnergy = Mathf.Max(currentEnergy - amount, 0);
+        OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
+        Debug.Log("Player used " + amount + " energy. Current Energy: " + currentEnergy);
     }
 
     public void TakeDamage(int damage)
@@ -92,6 +83,14 @@ public class Player : MonoBehaviour
         }
     }
 
+    public void Heal(int amount)
+    {
+        currentHP = Mathf.Min(currentHP + amount, maxHP);
+
+        OnHPChanged?.Invoke(currentHP, MaxHP);
+
+        Debug.Log("Player healed " + amount + " HP. Current HP: " + currentHP);
+    }
     private void Die()
     {
         Debug.Log("Player has died.");

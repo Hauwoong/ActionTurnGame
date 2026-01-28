@@ -32,8 +32,10 @@ public class CardUI : MonoBehaviour
 
         cardNameText.text = cardData.cardName;
         cardCostText.text = cardData.cost.ToString();
-        cardDamageText.text = cardData.damage.ToString();
-        
+
+        cardDamageText.gameObject.SetActive(false); // 기본값으로 비활성화
+
+
         if (artworkImage != null && cardData.artwork != null)
         {
             artworkImage.sprite = cardData.artwork;

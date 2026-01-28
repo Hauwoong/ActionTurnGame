@@ -69,13 +69,15 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
-        bool success = card.Use(player, enemy);
+        if (card == null) return;
 
-        if (!success)
+        BattleContext ctx = new BattleContext
         {
-            Debug.LogWarning($"BattleManager: Card {card.cardName} could not be used.");
-            return;
-        }
+            user = player,
+            target = enemy,
+        };
+
+        card.Use(ctx);
 
         player.RemoveCard(card);
     }
