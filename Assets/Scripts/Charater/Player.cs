@@ -5,10 +5,12 @@ using System.Collections.Generic;
 public class Player : MonoBehaviour
 {
     [Header("Stats")]
+    [SerializeField] private string playerName = "Hero";
     [SerializeField] private int maxHP = 100;
     [SerializeField] private int maxEnergy = 3;
 
     // Public getters for max stats
+    public string PlayerName => playerName;
     public int MaxHP => maxHP;
     public int MaxEnergy => maxEnergy;
 
@@ -57,9 +59,8 @@ public class Player : MonoBehaviour
         Debug.Log("Player Energy Refreshed to " + currentEnergy);
         
         DrawCard();
-        DrawCard();
 
-        Debug.Log("Draw 2 cards");
+        Debug.Log("Draw 1 cards");
     }
  
     public void UseEnergy(int amount)

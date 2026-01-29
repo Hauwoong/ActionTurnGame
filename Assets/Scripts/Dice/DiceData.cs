@@ -1,25 +1,16 @@
 using UnityEngine;
-
-[System.Serializable]
-
 public enum DiceType
 {
     Attack,
-    Block,
-    Counter,
-    Evade,
-    Support
+    Block
 }
 
 public enum DiceEffect
 {
-    None,
-    Burn,
-    Bleed,
-    Stagger,
-    Draw,
-    Heal
+   
 }
+
+[System.Serializable]
 public class DiceData
 {
     public DiceType type;

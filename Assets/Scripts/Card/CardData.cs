@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Card Game/Card")]
-public abstract class CardData : ScriptableObject
+public class CardData : ScriptableObject
 {
     
     [Header("Card Info")]
@@ -18,14 +18,30 @@ public abstract class CardData : ScriptableObject
     [TextArea]
     public string description;
 
-    public bool CanUse(Player player)
+    public virtual bool CanUse(BattleContext ctx)
     {
-        return player.currentEnergy >= cost;
+        return ctx.user.currentEnergy >= cost;
     }
 
-    public virtual void Use(BattleContext ctx)
+    public virtual void PayCost(BattleContext ctx)
     {
+        ctx.user.UseEnergy(cost);
+    }
+
+    public virtual bool Use(BattleContext ctx)
+    {
+        if (!CanUse(ctx))
+        {
+            Debug.Log("Not enough energy to use this card.");
+            return false;
+        }
+        PayCost(ctx);
+
         ResolveCard(ctx);
+
+        ApplyResult(ctx);
+
+        return true;
     }
 
     protected virtual void ResolveCard(BattleContext ctx)
@@ -34,6 +50,8 @@ public abstract class CardData : ScriptableObject
         {
             ctx.currentDice = dice;
             ctx.rolledValue = dice.Roll();
+
+            Debug.Log($"{ctx.user.PlayerName} rolled a {ctx.rolledValue} on a {dice.type} dice.");
 
             ResolveDice(ctx);
         }
@@ -44,10 +62,29 @@ public abstract class CardData : ScriptableObject
         switch (ctx.currentDice.type)
         {
             case DiceType.Attack:
-                ctx.target.TakeDamage(ctx.rolledValue);
+                ctx.pendingDamage += ctx.rolledValue;
                 break;
 
-            
+            case DiceType.Block:
+                ctx.pendingDamage += ctx.rolledValue;
+                break;
+        }
+    }
+
+    protected virtual void ApplyResult(BattleContext ctx)
+    {
+        int finalDamage = ctx.pendingDamage - ctx.pendingGuard;
+
+        if (finalDamage > 0)
+        {
+            ctx.target.TakeDamage(finalDamage);
+
+            Debug.Log($"Damage Applied: {finalDamage}");
+        }
+
+        else
+        {
+            Debug.Log("All damage blocked!");
         }
     }
 }

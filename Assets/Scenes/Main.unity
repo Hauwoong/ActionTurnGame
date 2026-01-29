@@ -1387,11 +1387,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fe5b103e4aea394a9ae7704ba033dee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerName: Hero
   maxHP: 100
   maxEnergy: 3
   Deck:
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 028b47a64aa263a4b899c3f816fe2996, type: 2}
   battlemanager: {fileID: 1354636381}
   turnManager: {fileID: 1066554955}
   hand: []
@@ -1516,7 +1516,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 1464710258}
   enemy: {fileID: 980967296}
-  cardPrefab: {fileID: 6984608457088630669, guid: 4967789c2f594a74bbb8a278abf3e2fa, type: 3}
+  cardPrefab: {fileID: 6984608457088630669, guid: 6506dce8e4761104aac7df19b3e18e80, type: 3}
   cardParent: {fileID: 1469546228}
   battleManager: {fileID: 1354636381}
 --- !u!114 &1469546230

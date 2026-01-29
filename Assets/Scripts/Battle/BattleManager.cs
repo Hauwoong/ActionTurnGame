@@ -17,8 +17,6 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private Enemy enemy;
     [SerializeField] private TurnManager turnManager;
 
-    public Enemy CurrentEnemy => enemy;
-
     public void Awake()
     {
         if (player == null || enemy == null || turnManager == null)
@@ -71,15 +69,14 @@ public class BattleManager : MonoBehaviour
 
         if (card == null) return;
 
-        BattleContext ctx = new BattleContext
+        var ctx = new BattleContext(player, enemy);
+
+        bool success = card.Use(ctx);
+
+        if (success)
         {
-            user = player,
-            target = enemy,
-        };
-
-        card.Use(ctx);
-
-        player.RemoveCard(card);
+            player.RemoveCard(card);
+        }
     }
     
 }
