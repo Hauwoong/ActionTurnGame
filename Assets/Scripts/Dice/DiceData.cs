@@ -24,3 +24,9 @@ public class DiceData
     }
 }
 
+public class DiceResult
+{
+    public DiceType type;
+    public int value;
+    public Player owner;
+}

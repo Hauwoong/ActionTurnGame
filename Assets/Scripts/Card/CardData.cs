@@ -39,8 +39,6 @@ public class CardData : ScriptableObject
 
         ResolveCard(ctx);
 
-        ApplyResult(ctx);
-
         return true;
     }
 
@@ -48,12 +46,14 @@ public class CardData : ScriptableObject
     {
         foreach (var dice in dices)
         {
-            ctx.currentDice = dice;
-            ctx.rolledValue = dice.Roll();
+            var result = new DiceResult
+            {
+                type = dice.type,
+                value = dice.Roll(),
+                owner = ctx.user
+            };
 
-            Debug.Log($"{ctx.user.PlayerName} rolled a {ctx.rolledValue} on a {dice.type} dice.");
-
-            ResolveDice(ctx);
+            ctx.playerDice.Add(result);
         }
     }
 
@@ -66,9 +66,10 @@ public class CardData : ScriptableObject
                 break;
 
             case DiceType.Block:
-                ctx.pendingDamage += ctx.rolledValue;
+                ctx.pendingGuard += ctx.rolledValue;
                 break;
         }
+
     }
 
     protected virtual void ApplyResult(BattleContext ctx)
@@ -86,5 +87,8 @@ public class CardData : ScriptableObject
         {
             Debug.Log("All damage blocked!");
         }
+
+        ctx.pendingDamage = 0;
+        ctx.pendingGuard = 0;
     }
 }
