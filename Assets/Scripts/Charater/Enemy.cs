@@ -1,20 +1,33 @@
 using Unity.VisualScripting;
 using UnityEngine;
+using System.Collections.Generic;
 
-public class Enemy : MonoBehaviour
+public class Enemy : Character
 {
-    [Header("ÀûÀÇ ½ºÅÝ")]
+    [Header("Stats")]
     [SerializeField] private int maxHP = 50;
     [SerializeField] private int maxEnergy = 3;
 
     public int currentHP { get; private set; }
     public int currentEnergy { get; private set; }
 
+    [Header("Deck")]
+    [SerializeField] private List<CardData> deck = new();
+    public List<CardData> hand = new();
+
     [SerializeField] private BattleManager battlemanager;
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+        Debug.Log("Enemy Ready");
+
         currentHP = maxHP;
+
+        foreach (var card in deck)
+        {
+            hand.Add(card);
+        }
     }
 
     public void OnTurnStart()
@@ -29,11 +42,13 @@ public class Enemy : MonoBehaviour
     public void TakeDamage(int damage)
     {
         currentHP -= damage;
+
+        Debug.Log("Player took " + damage + " damage. Current HP: " + currentHP);
+
         if (currentHP <= 0)
         {
             Die();
         }
-        Debug.Log("Player took " + damage + " damage. Current HP: " + currentHP);
     }
 
     private void Die()
@@ -48,5 +63,15 @@ public class Enemy : MonoBehaviour
         {
             Debug.Log("battlemanager not assigned");
         }
+    }
+
+    public CardData GetRandomCard()
+    {
+        if (deck.Count == 0)
+        {
+            return null;
+        }
+        int r = Random.Range(0,hand.Count);
+        return hand[r];
     }
 }

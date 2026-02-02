@@ -1,5 +1,6 @@
-using System.Runtime.Serialization;
+
 using UnityEngine;
+using System.Collections.Generic;
 
 public class BattleManager : MonoBehaviour
 {
@@ -12,10 +13,10 @@ public class BattleManager : MonoBehaviour
     }
 
     private BattleState state = BattleState.Ready;
-
     [SerializeField] private Player player;
     [SerializeField] private Enemy enemy;
     [SerializeField] private TurnManager turnManager;
+    private BattleContext ctx;
 
     public void Awake()
     {
@@ -35,8 +36,14 @@ public class BattleManager : MonoBehaviour
             return;
         }
         state = BattleState.Fighting;
+
         turnManager.enabled = true;
         Debug.Log("BattleManager: Battle has started!");
+
+        ctx = new BattleContext(player, enemy);
+
+        RollSpeed();
+        SortSpeed();
     }
 
     public void EndBattle(bool playerWon)
@@ -59,42 +66,58 @@ public class BattleManager : MonoBehaviour
         }
     }
 
-    public void UseCard(CardData card)
+    void RollSpeed()
     {
-        if (state != BattleState.Fighting)
+        ctx.speedResults.Clear();
+
+        foreach (var v in player.rolledSpeeds)
         {
-            Debug.LogWarning("BattleManager: Cannot use cards when not in fighting state.");
-            return;
+            ctx.speedResults.Add(new SpeedDiceResult()
+            {
+                owner = player,
+                speed = v
+            });
         }
 
-        if (card == null) return;
-
-        var ctx = new BattleContext(player, enemy);
-
-        bool success = card.Use(ctx); // 아마 수정 해야 함
-
-        // 적 카드 사용 굴림
-
-        if (success)
+        foreach (var v in enemy.rolledSpeeds)
         {
-            ResolveBattle(ctx);
-            player.RemoveCard(card);
+            ctx.speedResults.Add(new SpeedDiceResult()
+            {
+                owner = enemy,
+                speed = v
+            });
         }
+    }
+
+    void SortSpeed()
+    {
+        ctx.speedResults.Sort((a, b) => b.speed.CompareTo(a.speed));
+    }
+
+    void ProcessTurn() // 이건 턴 진행 버튼 만들거임 
+    {
+        foreach (var r in ctx.speedResults)
+        {
+            if (!r.IsReady) { continue; }
+
+            r.card.Use(ctx);
+        }
+
+        ResolveBattle(ctx);
     }
 
     void ResolveBattle(BattleContext ctx)
     {
-        int count = Mathf.Min(
-            ctx.playerDice.Count,
-            ctx.enemyDice.Count
-        );
-
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i + 1 < ctx.allDice.Count; i += 2)
         {
-            ResolveDiceClash(ctx.playerDice[i], ctx.enemyDice[i]);
+            DiceResult a = ctx.allDice[i];
+            DiceResult b = ctx.allDice[i + 1];
+
+            ResolveDiceClash(a, b);
         }
     }
 
+    // character 수정해야함 
     void ResolveDiceClash(DiceResult P, DiceResult E)
     {
         if (P.type == DiceType.Attack && E.type == DiceType.Attack)

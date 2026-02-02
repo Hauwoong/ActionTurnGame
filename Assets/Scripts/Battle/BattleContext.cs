@@ -7,14 +7,11 @@ public class BattleContext
     public Player user;
     public Enemy target;
 
-    public int rolledValue;
-    public DiceData currentDice;
+    public Character currentActor;
 
-    public int pendingDamage;
-    public int pendingGuard;
+    public List<DiceResult> allDice = new();
 
-    public List<DiceResult> playerDice = new();
-    public List<DiceResult> enemyDice = new();
+    public List<SpeedDiceResult> speedResults = new();
 
     // 생성자 추가
     public BattleContext(Player user, Enemy target)
@@ -23,3 +20,12 @@ public class BattleContext
         this.target = target;
     }
 }
+public class SpeedDiceResult
+{
+    public Character owner;
+    public int speed;
+    public CardData card;
+
+    public bool IsReady => card != null;
+}
+

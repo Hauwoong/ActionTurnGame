@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 
-public class Player : MonoBehaviour
+public class Player : Character
 {
     [Header("Stats")]
     [SerializeField] private string playerName = "Hero";
@@ -19,6 +19,7 @@ public class Player : MonoBehaviour
 
     [Header("Starting Deck")]
     [SerializeField] private List<CardData> Deck;
+    public List<CardData> hand = new List<CardData>();
 
     [Header("References")]
     [SerializeField] private BattleManager battlemanager;
@@ -29,10 +30,11 @@ public class Player : MonoBehaviour
     public event Action<int, int> OnEnergyChanged;
     public event Action OnHandChanged;
 
-    public List<CardData> hand = new List<CardData>();
-
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+        Debug.Log("Player Ready");
+
         currentHP = maxHP;
         currentEnergy = maxEnergy;
     }
@@ -130,4 +132,11 @@ public class Player : MonoBehaviour
         OnHandChanged?.Invoke();
     }
 
+    public void GetSelectedCard()
+    {
+        for (int i = 0; i < speedDices.Count; i++)
+        {
+
+        }
+    }
 }

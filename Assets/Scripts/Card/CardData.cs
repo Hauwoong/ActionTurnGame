@@ -49,46 +49,11 @@ public class CardData : ScriptableObject
             var result = new DiceResult
             {
                 type = dice.type,
-                value = dice.Roll(),
-                owner = ctx.user
+                value = dice.CardDiceRoll(),
+                owner = ctx.currentActor
             };
 
-            ctx.playerDice.Add(result);
+            ctx.allDice.Add(result);
         }
-    }
-
-    protected virtual void ResolveDice(BattleContext ctx)
-    {
-        switch (ctx.currentDice.type)
-        {
-            case DiceType.Attack:
-                ctx.pendingDamage += ctx.rolledValue;
-                break;
-
-            case DiceType.Block:
-                ctx.pendingGuard += ctx.rolledValue;
-                break;
-        }
-
-    }
-
-    protected virtual void ApplyResult(BattleContext ctx)
-    {
-        int finalDamage = ctx.pendingDamage - ctx.pendingGuard;
-
-        if (finalDamage > 0)
-        {
-            ctx.target.TakeDamage(finalDamage);
-
-            Debug.Log($"Damage Applied: {finalDamage}");
-        }
-
-        else
-        {
-            Debug.Log("All damage blocked!");
-        }
-
-        ctx.pendingDamage = 0;
-        ctx.pendingGuard = 0;
     }
 }

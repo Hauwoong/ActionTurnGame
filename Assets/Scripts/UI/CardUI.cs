@@ -14,6 +14,7 @@ public class CardUI : MonoBehaviour
     [Header("Reference")]
     private CardData cardData;
     private BattleManager battleManager;
+    private Player player;
 
     public void Setup(CardData data, BattleManager bm)
     {
@@ -44,7 +45,7 @@ public class CardUI : MonoBehaviour
 
     private void OnClick()
     {
-        battleManager.UseCard(cardData);
+        player.GetSelectedCard();
     }
 
     private void OnDestroy()

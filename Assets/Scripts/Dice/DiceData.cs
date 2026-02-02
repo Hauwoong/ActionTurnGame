@@ -18,7 +18,7 @@ public class DiceData
     public int max;
     public DiceEffect effect;
 
-    public int Roll()
+    public int CardDiceRoll()
     {
         return Random.Range(min, max+1);
     }
@@ -28,5 +28,19 @@ public class DiceResult
 {
     public DiceType type;
     public int value;
-    public Player owner;
+    public Character owner;
+}
+
+[System.Serializable]
+public class SpeedDice
+{
+    public int min = 1;
+    public int max = 6;
+    public int value;
+
+    public int Roll()
+    {
+        value = Random.Range(min, max + 1);
+        return value;
+    }
 }

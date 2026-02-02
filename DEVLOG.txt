@@ -192,3 +192,90 @@
 -BattleContext 구조는 시스템 결합도를 크게 낮춰준다
 -Unity 직렬화 구조 이해는 필수이다
 -초기 구조 설계가 콘텐츠 확장 속도를 결정한다
+
+##2026-02-01
+
+###오늘 한 것
+
+-BattleContext 구조 확장 (주사위 결과 / 가드 / 데미지 정보 관리)
+-DiceData / DiceResult 기반 전투 판정 구조 구현
+-카드 → 주사위 굴림 → 결과 저장 구조 설계
+-플레이어 / 적 주사위 충돌(Clash) 로직 구현
+-BattleManager 전투 해석(ResolveBattle) 구조 설계
+-적 카드 사용 구조 기초 설계 시작
+-속도 주사위 시스템 구조 설계 착수
+-전투 흐름 다이어그램 기반 구조 정리
+
+###문제
+
+-카드 사용 시 주사위 결과 처리 타이밍 혼란 발생
+-공격 / 방어 주사위 결과 누적 방식 설계 어려움
+-플레이어 / 적 주사위 리스트 관리 구조 혼동
+-BattleContext 책임 범위에 대한 구조적 고민 발생
+-List.Clear 오타(Claer)로 인한 컴파일 에러 발생
+-상속 구조(Character → Enemy)에서 Awake 경고 발생
+
+###해결
+
+-DiceResult 리스트를 BattleContext에 통합 관리하도록 구조 수정
+-주사위 결과 저장 → 충돌 판정 → 데미지 적용 단계 분리
+-플레이어 / 적 주사위 결과 분리 저장 방식 확정
+-전투 판정 로직을 BattleManager 중심으로 재정렬
+-List.Clear() 정확한 메서드명으로 수정
+-Character.Awake → virtual / Enemy.Awake → override 구조로 개선
+
+###배운 점
+
+-전투 시스템은 “결과 저장 → 비교 → 처리” 구조가 가장 안정적이다
+-BattleContext는 데이터 전달용 컨테이너로 유지하는 것이 유지보수에 유리하다
+-주사위 기반 시스템은 순서 관리가 핵심 설계 요소이다
+-상속 구조에서 virtual / override 패턴은 필수이다
+-사소한 오타 하나도 구조 개발에서는 큰 시간 손실로 이어진다
+
+##2026-02-03
+
+###오늘 한 것
+
+-전투 시스템에서 속도 주사위 → 행동 순서 처리 구조 고민 및 설계
+-SpeedDice / SpeedDiceResult 구조 개선 시도
+-BattleContext 구조 재정리 (속도 결과 / 주사위 관리)
+-카드 사용 → DiceResult 생성 → BattleContext에 저장 구조 구현
+-Use / CanUse / PayCost / ResolveCard 흐름 정리
+-주사위 충돌(ResolveBattle / ResolveDiceClash) 로직 점검
+-owner / TakeDamage / 타입 오류 디버깅
+-List 기반 충돌 구조의 문제점 분석
+
+###문제
+
+-DiceResult에 owner 필드가 없어 참조 오류 발생
+-Character 클래스에 TakeDamage 미구현으로 컴파일 에러
+-allDice를 2개씩 묶어서 충돌시키는 방식의 구조적 문제 발견
+-옆에 있는 주사위가 같은 소유자일 수 있는 구조적 위험
+-BattleContext 재생성 시점에 대한 혼란
+-SpeedDiceResult를 어디서 관리할지 방향성 불명확
+
+###해결
+
+-전투 흐름 구조를 속도 → 행동 → 주사위 → 충돌 단계로 재정리
+-DiceResult에 owner 참조 구조 추가 방향 검토
+-Character에 TakeDamage 구현 필요성 인식 및 구조 수정 계획 수립
+-List 기반 충돌 방식 대신 Stack(LIFO) 구조 적용 방향 설정
+-BattleContext 생명주기 관리 방식 재검토
+-SpeedDiceResult 관리 책임을 BattleManager 중심으로 재설계 검토
+
+###배운 점
+
+-단순 List / 배열 기반 충돌 구조는 안정성이 낮다
+-전투 시스템은 데이터 구조 설계가 핵심이다
+-속도 → 행동 → 주사위 → 충돌 흐름이 명확해야 한다
+-LIFO(Stack) 구조는 충돌 처리에 더 논리적이다
+-“보장이 없는 구조”는 결국 버그로 이어진다
+
+###다음 목표
+
+-Stack 기반 주사위 충돌 시스템 구현
+-SpeedDiceResult 관리 구조 확정
+-BattleContext 생명주기 명확화
+-속도 기반 행동 우선권 시스템 완성
+-전투 흐름 전체 리팩토링
+-버그 최소화를 위한 구조 테스트 강화
