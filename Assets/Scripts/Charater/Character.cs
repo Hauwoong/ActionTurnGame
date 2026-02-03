@@ -1,17 +1,35 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 
 public class Character : MonoBehaviour
 {
+    [Header("Info")]
+    [SerializeField] protected string charsetName;
+    public string Name => charsetName;
+
+    [Header("Stats")]
+    [SerializeField] protected int maxHP;
+    [SerializeField] protected int maxEnergy;
+    public int MaxHP => maxHP;
+    public int MaxEnergy => maxEnergy;
+
+    public int currentHP { get; protected set; }
+    public int currentEnergy { get ; protected set; }
+
     [Header("Speed Dice")]
     public int diceCount = 1;
-
     public List<SpeedDice> speedDices = new();
-
     public List<int> rolledSpeeds = new();
 
+    [Header("주사위 스택")]
+    protected Stack<DiceResult> diceStack = new();
+
+    public bool HasDice => diceStack.Count > 0;
     protected virtual void Awake()
     {
+        currentHP = maxHP;
+        currentEnergy = maxEnergy;
         InitSpeedDice();
     }
 
@@ -34,5 +52,44 @@ public class Character : MonoBehaviour
             dice.Roll();
             rolledSpeeds.Add(dice.value);
         }
+    }
+
+    public void PushDice(DiceResult dice)
+    {
+        diceStack.Push(dice);
+    }
+
+    public DiceResult PopDice()
+    {
+        if (diceStack.Count == 0) return null;
+        return diceStack.Pop();
+    }
+
+    public void ClearDiceStack()
+    {
+        diceStack.Clear();
+    }
+
+    public virtual void TakeDamage(int dmg)
+    {
+        currentHP = Mathf.Max(currentHP - dmg, 0);
+
+        Debug.Log($"{Name} took {dmg} damage. HP: {currentHP}");
+
+        if (currentHP <= 0)
+        {
+            Die();
+        }
+    }
+
+    public virtual void UseEnergy(int amount)
+    {
+        currentEnergy -= amount;
+        Debug.Log($"{Name} used {amount} Energy. Current Energy: {currentEnergy}");
+    }
+
+    public virtual void Die()
+    {
+        Debug.Log($"{Name} died");
     }
 }

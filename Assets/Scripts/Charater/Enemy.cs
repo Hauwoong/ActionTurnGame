@@ -4,13 +4,6 @@ using System.Collections.Generic;
 
 public class Enemy : Character
 {
-    [Header("Stats")]
-    [SerializeField] private int maxHP = 50;
-    [SerializeField] private int maxEnergy = 3;
-
-    public int currentHP { get; private set; }
-    public int currentEnergy { get; private set; }
-
     [Header("Deck")]
     [SerializeField] private List<CardData> deck = new();
     public List<CardData> hand = new();
@@ -39,30 +32,17 @@ public class Enemy : Character
         // 적의 행동 로직
     }
 
-    public void TakeDamage(int damage)
+    public override void TakeDamage(int damage)
     {
-        currentHP -= damage;
-
-        Debug.Log("Player took " + damage + " damage. Current HP: " + currentHP);
-
-        if (currentHP <= 0)
-        {
-            Die();
-        }
+        base.TakeDamage(damage);
     }
 
-    private void Die()
+    public override void Die()
     {
-        Debug.Log("Enemy has died.");
+        base.Die();
 
-        if (battlemanager != null)
-        {
-            battlemanager.EndBattle(true);
-        }
-        else
-        {
-            Debug.Log("battlemanager not assigned");
-        }
+        battlemanager.EndBattle(true);
+       
     }
 
     public CardData GetRandomCard()

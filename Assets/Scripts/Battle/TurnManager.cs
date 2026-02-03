@@ -46,31 +46,9 @@ public class TurnManager : MonoBehaviour
         }
     }
     
-    public void PlayerEndTurn()
+    public void EndTurn()
     {
-        if (State != TurnState.PlayerTurn)
-        {
-            Debug.Log("It's not the player's turn!");
-            return;
-        }
-
-        ChangeTurn(TurnState.EnemyTurn);
-    }
-
-    public void EnemyEndTurn()
-    {
-        if (State != TurnState.EnemyTurn)
-        {
-            Debug.Log("It's not the enemy's turn!");
-            return;
-        }
-
-        ChangeTurn(TurnState.PlayerTurn);
-    }
-
-    public void ChangeTurn(TurnState newState)
-    {
-        State = newState;
-        BeginTurn();
+        player.ClearDiceStack();
+        enemy.ClearDiceStack();
     }
 }

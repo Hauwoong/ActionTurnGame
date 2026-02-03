@@ -18,7 +18,7 @@ public class DiceData
     public int max;
     public DiceEffect effect;
 
-    public int CardDiceRoll()
+    public int Roll()
     {
         return Random.Range(min, max+1);
     }

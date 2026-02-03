@@ -4,19 +4,6 @@ using System.Collections.Generic;
 
 public class Player : Character
 {
-    [Header("Stats")]
-    [SerializeField] private string playerName = "Hero";
-    [SerializeField] private int maxHP = 100;
-    [SerializeField] private int maxEnergy = 3;
-
-    // Public getters for max stats
-    public string PlayerName => playerName;
-    public int MaxHP => maxHP;
-    public int MaxEnergy => maxEnergy;
-
-    public int currentHP { get; private set; }
-    public int currentEnergy { get; private set; }
-
     [Header("Starting Deck")]
     [SerializeField] private List<CardData> Deck;
     public List<CardData> hand = new List<CardData>();
@@ -35,8 +22,6 @@ public class Player : Character
         base.Awake();
         Debug.Log("Player Ready");
 
-        currentHP = maxHP;
-        currentEnergy = maxEnergy;
     }
 
     private void Start()
@@ -65,16 +50,15 @@ public class Player : Character
         Debug.Log("Draw 1 cards");
     }
  
-    public void UseEnergy(int amount)
+    public override void UseEnergy(int amount)
     {
-        currentEnergy = Mathf.Max(currentEnergy - amount, 0);
+        base.UseEnergy(amount);
         OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
-        Debug.Log("Player used " + amount + " energy. Current Energy: " + currentEnergy);
     }
 
-    public void TakeDamage(int damage)
+    public override void TakeDamage(int damage)
     {
-        currentHP = Mathf.Max(currentHP - damage, 0);
+        base.TakeDamage(damage);
 
         OnHPChanged?.Invoke(currentHP, MaxHP);
 
@@ -94,16 +78,11 @@ public class Player : Character
 
         Debug.Log("Player healed " + amount + " HP. Current HP: " + currentHP);
     }
-    private void Die()
+    public override void Die()
     {
-        Debug.Log("Player has died.");
+        base.Die();
         battlemanager.EndBattle(false);
        
-    }
-
-    public void RequestTurnEnd()
-    {
-        turnManager.PlayerEndTurn();
     }
 
     void DrawCard()
@@ -138,5 +117,10 @@ public class Player : Character
         {
 
         }
+    }
+
+    public void RequestTurnEnd()
+    {
+        turnManager.EndTurn();
     }
 }

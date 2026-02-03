@@ -20,12 +20,12 @@ public class CardData : ScriptableObject
 
     public virtual bool CanUse(BattleContext ctx)
     {
-        return ctx.user.currentEnergy >= cost;
+        return ctx.currentActor.currentEnergy >= cost;
     }
 
     public virtual void PayCost(BattleContext ctx)
     {
-        ctx.user.UseEnergy(cost);
+        ctx.currentActor.UseEnergy(cost);
     }
 
     public virtual bool Use(BattleContext ctx)
@@ -49,11 +49,11 @@ public class CardData : ScriptableObject
             var result = new DiceResult
             {
                 type = dice.type,
-                value = dice.CardDiceRoll(),
+                value = dice.Roll(),
                 owner = ctx.currentActor
             };
 
-            ctx.allDice.Add(result);
+            ctx.currentActor.PushDice(result);
         }
     }
 }

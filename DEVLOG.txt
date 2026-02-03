@@ -279,3 +279,59 @@
 -속도 기반 행동 우선권 시스템 완성
 -전투 흐름 전체 리팩토링
 -버그 최소화를 위한 구조 테스트 강화
+
+##2026-02-04
+
+###오늘 한 것
+
+-전투 시스템 구조 재설계 진행
+-SpeedDice → SpeedQueue → ActionSlot 흐름 고민
+-속도 기반 행동 처리 구조 설계
+-SpeedDiceResult / ActionSlot 구조 설계 시도
+-owner / speed / card / target 개념 정리
+-속도는 “순서용 데이터”로만 사용하기로 방향 설정
+-BattleContext 역할 재검토
+-전투 전체 상태 관리용 컨텍스트로 유지
+-턴마다 새로 생성하면 안 된다는 구조적 문제 인식
+-주사위 충돌(합) 시스템 구조 고민
+-List 기반 2개씩 처리 방식 문제점 파악
+-서로 다른 오너 보장 안 되는 구조 개선 필요성 확인
+-Stack 기반 LIFO 구조 아이디어 도입
+-DiceResult / Character 구조 개선 시도
+-owner, TakeDamage 구조 오류 디버깅
+-Character → Player/Enemy 오버라이드 구조 이해
+-카드 처리 구조 정리
+-CanUse / PayCost / Use / ResolveCard 흐름 구현
+-카드 사용 → Dice 생성 → 스택 저장 구조 정리
+-SpeedQueue 기반 턴 처리 흐름 설계
+-RollSpeed → BuildQueue → Sort → ResolveBattle 구조 확립
+-다대다 전투 확장 가능 구조 고려
+
+###문제
+
+-DiceResult에 owner 누락으로 컴파일 오류 발생
+-Character에 TakeDamage 미구현으로 호출 불가 문제
+-BattleContext 중복 생성으로 상태 꼬일 위험
+-속도 주사위 충돌 구조의 불안정성 인식
+-ActionSlot에 어떤 정보까지 넣어야 하는지 혼란
+
+###해결
+
+-DiceResult에 owner 참조 구조 추가 방향 확정
+-Character에 TakeDamage 구현 구조 설계 및 적용
+-BattleContext 단일 인스턴스 유지 구조로 재정렬
+-속도 주사위 충돌 로직을 실행 단계 중심으로 재설계
+-ActionSlot 필수 정보(actor / target / card / speed) 기준 확립
+-Stack 기반 충돌 처리 방식 적용 방향 확정
+
+###배운 점
+
+-속도 주사위는 “정렬용 데이터”일 뿐 전투 객체가 아니다
+-ActionSlot에는 actor / target / card / speed 만 있으면 충분하다
+-합(충돌)은 실행 단계에서 처리하는 게 가장 안정적이다
+-전투 상태는 BattleContext 하나로 유지해야 한다
+-Stack 구조가 합 시스템 구현에 가장 적합하다
+
+###다음 목표
+
+- ResolveBattle 구조 완성 및 합 기능 구현화

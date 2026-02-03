@@ -12,6 +12,9 @@ public class BattleManager : MonoBehaviour
         Lose
     }
 
+    List<Character> units = new();
+    List<ActionSlot> speedQueue = new();
+
     private BattleState state = BattleState.Ready;
     [SerializeField] private Player player;
     [SerializeField] private Enemy enemy;
@@ -40,9 +43,8 @@ public class BattleManager : MonoBehaviour
         turnManager.enabled = true;
         Debug.Log("BattleManager: Battle has started!");
 
-        ctx = new BattleContext(player, enemy);
-
         RollSpeed();
+        BuildSpeedQueue();
         SortSpeed();
     }
 
@@ -68,56 +70,57 @@ public class BattleManager : MonoBehaviour
 
     void RollSpeed()
     {
-        ctx.speedResults.Clear();
+        player.RollspeedDice();
+        enemy.RollspeedDice();
+    }
 
-        foreach (var v in player.rolledSpeeds)
-        {
-            ctx.speedResults.Add(new SpeedDiceResult()
-            {
-                owner = player,
-                speed = v
-            });
-        }
+    void BuildSpeedQueue()
+    {
+        speedQueue.Clear();
 
-        foreach (var v in enemy.rolledSpeeds)
+        foreach (var unit in units)
         {
-            ctx.speedResults.Add(new SpeedDiceResult()
+            foreach (var v in unit.rolledSpeeds)
             {
-                owner = enemy,
-                speed = v
-            });
+                speedQueue.Add(new ActionSlot
+                {
+                    owner = unit,
+                    //card = unit.selectedCard, // 따로 만들어야 함
+                    speed = v
+                });
+            }
         }
     }
 
     void SortSpeed()
     {
-        ctx.speedResults.Sort((a, b) => b.speed.CompareTo(a.speed));
+        speedQueue.Sort((a, b) => b.speed.CompareTo(a.speed));
     }
 
     void ProcessTurn() // 이건 턴 진행 버튼 만들거임 
     {
-        foreach (var r in ctx.speedResults)
-        {
-            if (!r.IsReady) { continue; }
-
-            r.card.Use(ctx);
-        }
-
-        ResolveBattle(ctx);
+        ResolveBattle();
     }
 
-    void ResolveBattle(BattleContext ctx)
+    void ResolveBattle()
     {
-        for (int i = 0; i + 1 < ctx.allDice.Count; i += 2)
+        foreach (var v in speedQueue)
         {
-            DiceResult a = ctx.allDice[i];
-            DiceResult b = ctx.allDice[i + 1];
-
-            ResolveDiceClash(a, b);
+            
         }
     }
 
-    // character 수정해야함 
+    void ResolveClash(Player P, Enemy e)
+    {
+        while (P.HasDice && e.HasDice)
+        {
+            var pd = P.PopDice();
+            var ed = P.PopDice();
+
+            ResolveDiceClash(pd, ed);
+        }
+    }
+
     void ResolveDiceClash(DiceResult P, DiceResult E)
     {
         if (P.type == DiceType.Attack && E.type == DiceType.Attack)
@@ -156,5 +159,17 @@ public class BattleManager : MonoBehaviour
             }
         }
     }
-    
+
+    void ApplyRemainingDice(Character c, Character target)
+    {
+        while (c.HasDice)
+        {
+            var d = c.PopDice();
+
+            if (d.type == DiceType.Attack)
+            {
+                target.TakeDamage(d.value);
+            }
+        }
+    }
 }
