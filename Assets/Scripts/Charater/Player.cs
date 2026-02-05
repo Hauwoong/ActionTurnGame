@@ -10,13 +10,11 @@ public class Player : Character
 
     [Header("References")]
     [SerializeField] private BattleManager battlemanager;
-    [SerializeField] private TurnManager turnManager;
 
     // UI 업데이트를 위한 이벤트
     public event Action<int, int> OnHPChanged;
     public event Action<int, int> OnEnergyChanged;
     public event Action OnHandChanged;
-
     protected override void Awake()
     {
         base.Awake();
@@ -26,7 +24,7 @@ public class Player : Character
 
     private void Start()
     {
-        if (battlemanager == null || turnManager == null)
+        if (battlemanager == null)
         {
             Debug.LogError("Player: Missing Reference to BattleManager or TurnManager.");
         }
@@ -37,19 +35,9 @@ public class Player : Character
         }
         OnHandChanged?.Invoke();
     }
-
-    public void OnTurnStart()
-    {
-        currentEnergy = maxEnergy;
-        OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
-        Debug.Log("Player's Turn Started");
-        Debug.Log("Player Energy Refreshed to " + currentEnergy);
-        
-        DrawCard();
-
-        Debug.Log("Draw 1 cards");
-    }
  
+    // 자원 관련 메소드
+
     public override void UseEnergy(int amount)
     {
         base.UseEnergy(amount);
@@ -85,6 +73,8 @@ public class Player : Character
        
     }
 
+    // 카드 관련 메소드
+
     void DrawCard()
     {
         if(Deck.Count == 0)
@@ -111,16 +101,15 @@ public class Player : Character
         OnHandChanged?.Invoke();
     }
 
-    public void GetSelectedCard()
+    // 턴 관련 메소드
+    public override void OnTurnStart()
     {
-        for (int i = 0; i < speedDices.Count; i++)
-        {
+        base.OnTurnStart();
 
-        }
-    }
+        OnEnergyChanged?.Invoke(currentEnergy, MaxEnergy);
+       
+        DrawCard();
 
-    public void RequestTurnEnd()
-    {
-        turnManager.EndTurn();
+        Debug.Log("Draw 1 cards");
     }
 }

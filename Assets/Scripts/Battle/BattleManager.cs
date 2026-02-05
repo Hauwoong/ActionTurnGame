@@ -13,24 +13,28 @@ public class BattleManager : MonoBehaviour
     }
 
     List<Character> units = new();
+    List<ActionSlot> plannedActions = new();
     List<ActionSlot> speedQueue = new();
 
     private BattleState state = BattleState.Ready;
     [SerializeField] private Player player;
     [SerializeField] private Enemy enemy;
-    [SerializeField] private TurnManager turnManager;
-    private BattleContext ctx;
 
     public void Awake()
     {
-        if (player == null || enemy == null || turnManager == null)
+        if (player == null || enemy == null)
         {
             Debug.LogError("BattleManager: One or more required components are not assigned.");
             enabled = false;
             return;
         }
+
+        units.Add(player);
+        units.Add(enemy);
+
         StartBattle();
     }
+
     public void StartBattle()
     {
         if (state != BattleState.Ready)
@@ -40,12 +44,42 @@ public class BattleManager : MonoBehaviour
         }
         state = BattleState.Fighting;
 
-        turnManager.enabled = true;
         Debug.Log("BattleManager: Battle has started!");
+    }
+    public void StartTurn()
+    {
+        plannedActions.Clear();
 
         RollSpeed();
-        BuildSpeedQueue();
+
+        foreach (var unit in units)
+        {
+            unit.OnTurnStart();
+        }
+
+        StartBattle();
+    }
+
+    public void EndTurn()
+    {
+        ResolveTurn();
+    }
+
+    public void ResolveTurn() // 이건 턴 진행 버튼 만들거임 
+    {
+        speedQueue.Clear();
+        speedQueue.AddRange(plannedActions);
+
         SortSpeed();
+
+        ResolveBattle();
+
+        foreach (var unit in units)
+        {
+            unit.ClearDiceStack();
+        }
+
+        StartTurn();
     }
 
     public void EndBattle(bool playerWon)
@@ -63,8 +97,6 @@ public class BattleManager : MonoBehaviour
                 Debug.Log("BattleManager: Player has lost the battle.");
 
             }
-            
-            turnManager.enabled = false;
         }
     }
 
@@ -74,22 +106,30 @@ public class BattleManager : MonoBehaviour
         enemy.RollspeedDice();
     }
 
-    void BuildSpeedQueue()
-    {
-        speedQueue.Clear();
-
-        foreach (var unit in units)
+    public void RegisterAction(Character owner, Character target, CardData card, int index)
+    {   
+        if (owner.IsDiceUsed(index))
         {
-            foreach (var v in unit.rolledSpeeds)
-            {
-                speedQueue.Add(new ActionSlot
-                {
-                    owner = unit,
-                    //card = unit.selectedCard, // 따로 만들어야 함
-                    speed = v
-                });
-            }
+            Debug.Log("This dice already used!");
+            return;
         }
+
+        int speed = owner.rolledSpeeds[index];
+
+        ActionSlot slot = new ActionSlot
+        {
+            owner = owner,
+            target = target,
+            card = card,
+            speed = speed,
+            diceIndex = index
+        };
+
+        plannedActions.Add(slot);
+
+        owner.UseDice(index);
+
+        Debug.Log($"Action Registered: {owner.name} / {card.cardName}");
     }
 
     void SortSpeed()
@@ -97,25 +137,23 @@ public class BattleManager : MonoBehaviour
         speedQueue.Sort((a, b) => b.speed.CompareTo(a.speed));
     }
 
-    void ProcessTurn() // 이건 턴 진행 버튼 만들거임 
-    {
-        ResolveBattle();
-    }
-
     void ResolveBattle()
     {
-        foreach (var v in speedQueue)
+        foreach (var action in speedQueue)
         {
-            
+            BattleContext ctx = new BattleContext(action.owner, action.target);
+            action.card.Use(ctx);
+            // 적이 사용한 카드 
+            ResolveClash(ctx.currentActor, ctx.target);
         }
     }
 
-    void ResolveClash(Player P, Enemy e)
+    void ResolveClash(Character p, Character e)
     {
-        while (P.HasDice && e.HasDice)
+        while (p.HasDice && e.HasDice)
         {
-            var pd = P.PopDice();
-            var ed = P.PopDice();
+            var pd = p.PopDice();
+            var ed = e.PopDice();
 
             ResolveDiceClash(pd, ed);
         }

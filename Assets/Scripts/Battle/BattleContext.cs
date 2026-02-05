@@ -7,7 +7,7 @@ public class BattleContext
     public Character currentActor;
     public Character target;
     // 생성자 추가
-    BattleContext(Character currentActor, Character target)
+    public BattleContext(Character currentActor, Character target)
     {
         this.currentActor = currentActor;
         this.target = target;
@@ -16,7 +16,9 @@ public class BattleContext
 public struct ActionSlot
 {
     public Character owner;
+    public Character target;
     public CardData card;
     public int speed;
+    public int diceIndex;
 }
 

@@ -23,7 +23,7 @@ public class Enemy : Character
         }
     }
 
-    public void OnTurnStart()
+    public override void OnTurnStart()
     {
         currentEnergy = maxEnergy;
 

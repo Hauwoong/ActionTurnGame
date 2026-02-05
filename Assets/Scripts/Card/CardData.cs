@@ -28,18 +28,16 @@ public class CardData : ScriptableObject
         ctx.currentActor.UseEnergy(cost);
     }
 
-    public virtual bool Use(BattleContext ctx)
+    public virtual void Use(BattleContext ctx)
     {
         if (!CanUse(ctx))
         {
             Debug.Log("Not enough energy to use this card.");
-            return false;
+            return;
         }
         PayCost(ctx);
 
         ResolveCard(ctx);
-
-        return true;
     }
 
     protected virtual void ResolveCard(BattleContext ctx)

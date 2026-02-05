@@ -24,14 +24,16 @@ public class Character : MonoBehaviour
 
     [Header("주사위 스택")]
     protected Stack<DiceResult> diceStack = new();
-
     public bool HasDice => diceStack.Count > 0;
+    public bool[] usedDice;
     protected virtual void Awake()
     {
         currentHP = maxHP;
         currentEnergy = maxEnergy;
         InitSpeedDice();
     }
+
+    // 주사위 관련 메소드
 
     void InitSpeedDice()
     {
@@ -70,6 +72,18 @@ public class Character : MonoBehaviour
         diceStack.Clear();
     }
 
+    public bool IsDiceUsed(int index)
+    {
+        return usedDice[index];
+    }
+
+    public void UseDice(int index)
+    {
+        usedDice[index] = true;
+    }
+
+    // 자원 관련 메소드
+
     public virtual void TakeDamage(int dmg)
     {
         currentHP = Mathf.Max(currentHP - dmg, 0);
@@ -86,6 +100,14 @@ public class Character : MonoBehaviour
     {
         currentEnergy -= amount;
         Debug.Log($"{Name} used {amount} Energy. Current Energy: {currentEnergy}");
+    }
+
+    // 행동 메소드
+    public virtual void OnTurnStart()
+    {
+        usedDice = new bool[rolledSpeeds.Count];
+        currentEnergy = maxEnergy;
+        Debug.Log($"{Name} Energy Refreshed to {currentEnergy}");
     }
 
     public virtual void Die()

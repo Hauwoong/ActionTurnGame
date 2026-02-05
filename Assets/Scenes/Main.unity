@@ -881,8 +881,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b81c2fe36530e34891e0cdd3c6d097d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  charsetName: 
   maxHP: 50
   maxEnergy: 3
+  diceCount: 1
+  speedDices: []
+  rolledSpeeds: 
+  usedDice: 
+  deck: []
+  hand: []
   battlemanager: {fileID: 1354636381}
 --- !u!1 &1010873776
 GameObject:
@@ -1036,52 +1043,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1010873776}
   m_CullTransparentMesh: 1
---- !u!1 &1066554954
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1066554956}
-  - component: {fileID: 1066554955}
-  m_Layer: 0
-  m_Name: TurnManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1066554955
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1066554954}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bb907272488d331439cb9b5d81bcbff2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  player: {fileID: 1464710258}
-  enemy: {fileID: 980967296}
---- !u!4 &1066554956
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1066554954}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.9480256, y: 0.0025472715, z: 0.041067835}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1077537886
 GameObject:
   m_ObjectHideFlags: 0
@@ -1116,7 +1077,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   turnText: {fileID: 962304327}
   endTurnButton: {fileID: 90289725}
-  turnManager: {fileID: 1066554955}
+  battleManager: {fileID: 1354636381}
   player: {fileID: 1464710258}
 --- !u!114 &1077537888
 MonoBehaviour:
@@ -1341,7 +1302,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 1464710258}
   enemy: {fileID: 980967296}
-  turnManager: {fileID: 1066554955}
 --- !u!4 &1354636382
 Transform:
   m_ObjectHideFlags: 0
@@ -1387,14 +1347,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fe5b103e4aea394a9ae7704ba033dee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerName: Hero
+  charsetName: 
   maxHP: 100
   maxEnergy: 3
+  diceCount: 1
+  speedDices: []
+  rolledSpeeds: 
+  usedDice: 
   Deck:
   - {fileID: 11400000, guid: 028b47a64aa263a4b899c3f816fe2996, type: 2}
-  battlemanager: {fileID: 1354636381}
-  turnManager: {fileID: 1066554955}
   hand: []
+  battlemanager: {fileID: 1354636381}
 --- !u!212 &1464710259
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -1926,7 +1889,6 @@ SceneRoots:
   - {fileID: 1733787069}
   - {fileID: 1464710260}
   - {fileID: 980967295}
-  - {fileID: 1066554956}
   - {fileID: 1354636382}
   - {fileID: 1077537891}
   - {fileID: 130793598}

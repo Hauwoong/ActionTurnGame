@@ -45,7 +45,7 @@ public class CardUI : MonoBehaviour
 
     private void OnClick()
     {
-        player.GetSelectedCard();
+
     }
 
     private void OnDestroy()

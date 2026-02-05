@@ -335,3 +335,44 @@
 ###다음 목표
 
 - ResolveBattle 구조 완성 및 합 기능 구현화
+
+##2026-02-XX
+
+###오늘 한 것
+
+-BattleManager 중심 전투 구조 설계
+-TurnManager 역할 재검토 및 통합 방향 고민
+-속도 주사위 기반 행동 시스템 구현
+-SpeedDice → ActionSlot 흐름 정리
+-카드 선택 → 행동 등록 구조 설계
+-RegisterAction() 시스템 구현
+-BattleContext 구조 재정비
+-Player / Enemy 공통 전투 흐름 설계
+
+###문제
+
+-StartBattle() 시점에 BuildSpeedQueue 호출로 카드 선택 전 처리됨
+-card / target이 null 상태로 처리되는 오류 발생
+-TurnManager / BattleManager 역할 중복으로 흐름 분산
+-diceStack / BattleContext 초기화 시점 혼란
+-구조 설명과 실제 코드 불일치 발생
+-TurnManager 삭제 후 Visual Scripting(Bolt) 노드 오류 다수 발생
+
+###해결
+
+-입력 중심 구조로 전투 흐름 재설계
+-속도 선택 → 카드 선택 → 타겟 선택 → ActionSlot 생성 → Resolve 흐름 확정
+-ActionSlot 구조 정리 및 책임 명확화
+-BattleManager 중심 구조로 전투 흐름 통합
+-TurnManager 최소화 / 제거 방향 설정
+-리소스 관리 책임 분리 (Energy / Dice / Stack / TurnFlow)
+
+###배운 점
+
+-입력 → 처리 → 결과 흐름이 명확해야 시스템이 안정된다
+-관리 주체가 불분명하면 구조가 쉽게 꼬인다
+-ActionSlot 기반 구조는 LOR 스타일에 매우 적합하다
+-설계 → 구현 → 리팩토링 사이클이 중요하다
+-구조 단순화가 유지보수성을 크게 높인다
+
+
