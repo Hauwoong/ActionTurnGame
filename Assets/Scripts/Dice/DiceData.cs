@@ -31,16 +31,4 @@ public class DiceResult
     public Character owner;
 }
 
-[System.Serializable]
-public class SpeedDice
-{
-    public int min = 1;
-    public int max = 6;
-    public int value;
 
-    public int Roll()
-    {
-        value = Random.Range(min, max + 1);
-        return value;
-    }
-}

@@ -19,41 +19,39 @@ public class Character : MonoBehaviour
 
     [Header("Speed Dice")]
     public int diceCount = 1;
-    public List<SpeedDice> speedDices = new();
+    public List<SpeedSlot> speedSlots = new();
     public List<int> rolledSpeeds = new();
 
     [Header("주사위 스택")]
     protected Stack<DiceResult> diceStack = new();
     public bool HasDice => diceStack.Count > 0;
-    public bool[] usedDice;
+    public bool[] usedSlot;
     protected virtual void Awake()
     {
         currentHP = maxHP;
         currentEnergy = maxEnergy;
-        InitSpeedDice();
     }
 
     // 주사위 관련 메소드
 
-    void InitSpeedDice()
-    {
-        speedDices.Clear();
-
-        for (int i = 0; i < diceCount; i++)
-        {
-            speedDices.Add(new SpeedDice());
-        }
-    }
-
     public void RollspeedDice()
     {
         rolledSpeeds.Clear();
+        speedSlots.Clear();
 
-        foreach (var dice in speedDices)
-        {
-            dice.Roll();
-            rolledSpeeds.Add(dice.value);
-        }
+        usedSlot = new bool[diceCount];
+
+        for (int i = 0; i < diceCount; i++)
+       {
+            int v = Random.Range(1, 9);
+            rolledSpeeds.Add(v);
+
+            speedSlots.Add(new SpeedSlot
+            {
+                owner = this,
+                index = i
+            });
+       }
     }
 
     public void PushDice(DiceResult dice)
@@ -72,14 +70,14 @@ public class Character : MonoBehaviour
         diceStack.Clear();
     }
 
-    public bool IsDiceUsed(int index)
+    public bool IsSlotUsed(int index)
     {
-        return usedDice[index];
+        return usedSlot[index];
     }
 
-    public void UseDice(int index)
+    public void UseSlot(int index)
     {
-        usedDice[index] = true;
+        usedSlot[index] = true;
     }
 
     // 자원 관련 메소드
@@ -105,7 +103,6 @@ public class Character : MonoBehaviour
     // 행동 메소드
     public virtual void OnTurnStart()
     {
-        usedDice = new bool[rolledSpeeds.Count];
         currentEnergy = maxEnergy;
         Debug.Log($"{Name} Energy Refreshed to {currentEnergy}");
     }

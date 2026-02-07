@@ -5,25 +5,31 @@ public class PlayerActionInput : MonoBehaviour
     public Player player;
     public BattleManager battleMananger;
 
-    private int selectedDiceIndex = -1;
+    SpeedSlot speedSlot = null;
 
-    public void SelectSpeedDice(int index)
+    public void SelectSpeedSlot(SpeedSlot slot)
     {
-        selectedDiceIndex = index;
+        speedSlot = slot;
 
-        Debug.Log($"Speed Dice {index} selected");
+        Debug.Log($"Speed Dice {speedSlot.index} selected");
     }
 
-    public void SelectCard(CardData card, Character target)
+    public void SelectCard(SpeedSlot targetSlot,CardData card)
     {
-        if (selectedDiceIndex == -1)
+        if (speedSlot == null)
         {
-            Debug.Log("Select speed dice first!");
+            Debug.Log("Select speed Slot first!");
             return;
         }
 
-        battleMananger.RegisterAction(player, target, card, selectedDiceIndex);
+        if (speedSlot.IsUsed)
+        {
+            Debug.Log("This slot already used!");
+            return;
+        }
 
-        selectedDiceIndex = -1; // 선택된 속도 주사위 인덱스 값 초기화
+        battleMananger.RegisterAction(speedSlot,targetSlot,card);
+
+        speedSlot = null; // 선택된 속도 주사위 인덱스 값 초기화
     }
 }

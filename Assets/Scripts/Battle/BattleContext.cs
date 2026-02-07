@@ -13,12 +13,4 @@ public class BattleContext
         this.target = target;
     }
 }
-public struct ActionSlot
-{
-    public Character owner;
-    public Character target;
-    public CardData card;
-    public int speed;
-    public int diceIndex;
-}
 

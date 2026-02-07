@@ -1,6 +1,7 @@
 
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 public class BattleManager : MonoBehaviour
 {
@@ -45,6 +46,8 @@ public class BattleManager : MonoBehaviour
         state = BattleState.Fighting;
 
         Debug.Log("BattleManager: Battle has started!");
+
+        StartTurn();
     }
     public void StartTurn()
     {
@@ -57,7 +60,6 @@ public class BattleManager : MonoBehaviour
             unit.OnTurnStart();
         }
 
-        StartBattle();
     }
 
     public void EndTurn()
@@ -69,8 +71,6 @@ public class BattleManager : MonoBehaviour
     {
         speedQueue.Clear();
         speedQueue.AddRange(plannedActions);
-
-        SortSpeed();
 
         ResolveBattle();
 
@@ -106,45 +106,77 @@ public class BattleManager : MonoBehaviour
         enemy.RollspeedDice();
     }
 
-    public void RegisterAction(Character owner, Character target, CardData card, int index)
-    {   
-        if (owner.IsDiceUsed(index))
+    public void RegisterAction(SpeedSlot mySlot, SpeedSlot targetSlot, CardData card)
+    {
+        if (mySlot.IsUsed)
         {
-            Debug.Log("This dice already used!");
+            Debug.Log("This slot already used!");
             return;
         }
 
-        int speed = owner.rolledSpeeds[index];
-
-        ActionSlot slot = new ActionSlot
+        ActionSlot newSlot = new ActionSlot
         {
-            owner = owner,
-            target = target,
+            mySlot = mySlot,
+            targetSlot = targetSlot,
             card = card,
-            speed = speed,
-            diceIndex = index
+            isClashing = false,
+            boutTarget = null
         };
 
-        plannedActions.Add(slot);
+        foreach (var old in plannedActions)
+        {
+            if (IsMutualTarget(newSlot, old)) // 서로 타겟팅일 경우
+            {
+                MakeBout(newSlot, old);
+            }
 
-        owner.UseDice(index);
+            else if (CanIntercept(newSlot, old)) // 속도가 더 빠를 경우
+            {
+                MakeBout(newSlot, old);
+            }
+        }
 
-        Debug.Log($"Action Registered: {owner.name} / {card.cardName}");
+        plannedActions.Add(newSlot);
+        mySlot.Use();
     }
 
-    void SortSpeed()
+    bool IsMutualTarget(ActionSlot a, ActionSlot b)
     {
-        speedQueue.Sort((a, b) => b.speed.CompareTo(a.speed));
+        return
+            a.targetSlot == b.mySlot &&
+            b.targetSlot == a.mySlot;
+    }
+
+    bool CanIntercept(ActionSlot a, ActionSlot b)
+    {
+        return
+            a.targetSlot == b.targetSlot &&
+            a.mySlot.speed > a.targetSlot.speed;
+    }
+
+    void MakeBout(ActionSlot a, ActionSlot b)
+    {
+        a.isClashing = true;
+        b.isClashing = true;
+
+        a.boutTarget = b;
+        b.boutTarget = a;
     }
 
     void ResolveBattle()
     {
-        foreach (var action in speedQueue)
+        var ordered = plannedActions.OrderByDescending(s => s.mySlot.speed).ToList();
+
+        foreach (var slot in ordered)
         {
-            BattleContext ctx = new BattleContext(action.owner, action.target);
-            action.card.Use(ctx);
-            // 적이 사용한 카드 
-            ResolveClash(ctx.currentActor, ctx.target);
+            if (slot.card == null) continue;
+
+            slot.card.Use(new BattleContext(slot.mySlot.owner, slot.targetSlot.owner));
+
+            if (slot.isClashing)
+            {
+                ResolveClash(slot.mySlot.owner, slot.boutTarget.mySlot.owner);
+            }
         }
     }
 
