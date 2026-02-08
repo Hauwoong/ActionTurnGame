@@ -14,8 +14,7 @@ public class BattleManager : MonoBehaviour
     }
 
     List<Character> units = new();
-    List<ActionSlot> plannedActions = new();
-    List<ActionSlot> speedQueue = new();
+    List<SpeedSlot> allSlots = new();
 
     private BattleState state = BattleState.Ready;
     [SerializeField] private Player player;
@@ -50,14 +49,15 @@ public class BattleManager : MonoBehaviour
         StartTurn();
     }
     public void StartTurn()
-    {
-        plannedActions.Clear();
-
+    { 
         RollSpeed();
+
+        allSlots.Clear();
 
         foreach (var unit in units)
         {
             unit.OnTurnStart();
+            allSlots.AddRange(unit.speedSlots);
         }
 
     }
@@ -67,18 +67,15 @@ public class BattleManager : MonoBehaviour
         ResolveTurn();
     }
 
-    public void ResolveTurn() // 이건 턴 진행 버튼 만들거임 
+    public void ResolveTurn()
     {
-        speedQueue.Clear();
-        speedQueue.AddRange(plannedActions);
+        BuildInterceptMap();
 
         ResolveBattle();
 
         foreach (var unit in units)
-        {
             unit.ClearDiceStack();
-        }
-
+        
         StartTurn();
     }
 
@@ -114,68 +111,54 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
-        ActionSlot newSlot = new ActionSlot
-        {
-            mySlot = mySlot,
-            targetSlot = targetSlot,
-            card = card,
-            isClashing = false,
-            boutTarget = null
-        };
+        mySlot.card = card;
+        mySlot.target = targetSlot;
+        mySlot.Use();
 
-        foreach (var old in plannedActions)
-        {
-            if (IsMutualTarget(newSlot, old)) // 서로 타겟팅일 경우
-            {
-                MakeBout(newSlot, old);
-            }
+        Debug.Log($"{mySlot.owner.name} registered {card.cardName}");
+    }
 
-            else if (CanIntercept(newSlot, old)) // 속도가 더 빠를 경우
-            {
-                MakeBout(newSlot, old);
-            }
+    void BuildInterceptMap()
+    {
+        foreach (var slot in allSlots)
+        {
+            slot.interceptCandidates.Clear();
+            slot.currentBout = null;
         }
 
-        plannedActions.Add(newSlot);
-        mySlot.Use();
-    }
+        foreach (var a in allSlots)
+        {
+            if (a.target == null) continue;
 
-    bool IsMutualTarget(ActionSlot a, ActionSlot b)
-    {
-        return
-            a.targetSlot == b.mySlot &&
-            b.targetSlot == a.mySlot;
-    }
+            foreach (var b in allSlots)
+            {
+                if (a == b) continue;
+                if (b.target == null) continue;
 
-    bool CanIntercept(ActionSlot a, ActionSlot b)
-    {
-        return
-            a.targetSlot == b.targetSlot &&
-            a.mySlot.speed > a.targetSlot.speed;
-    }
-
-    void MakeBout(ActionSlot a, ActionSlot b)
-    {
-        a.isClashing = true;
-        b.isClashing = true;
-
-        a.boutTarget = b;
-        b.boutTarget = a;
+                if (a.target == b.target)
+                {
+                    if (b.speed > a.target.speed)
+                    {
+                        a.interceptCandidates.Add(b);
+                    }
+                }
+            }
+        }
     }
 
     void ResolveBattle()
     {
-        var ordered = plannedActions.OrderByDescending(s => s.mySlot.speed).ToList();
+        var ordered = allSlots.OrderByDescending(s => s.speed).ToList();
 
         foreach (var slot in ordered)
         {
             if (slot.card == null) continue;
 
-            slot.card.Use(new BattleContext(slot.mySlot.owner, slot.targetSlot.owner));
+            slot.card.Use(new BattleContext(slot.owner, slot.target.owner));
 
-            if (slot.isClashing)
+            if (slot.currentBout != null)
             {
-                ResolveClash(slot.mySlot.owner, slot.boutTarget.mySlot.owner);
+                ResolveClash(slot.owner, slot.currentBout.owner);
             }
         }
     }

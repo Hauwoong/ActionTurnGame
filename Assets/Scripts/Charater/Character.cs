@@ -39,8 +39,6 @@ public class Character : MonoBehaviour
         rolledSpeeds.Clear();
         speedSlots.Clear();
 
-        usedSlot = new bool[diceCount];
-
         for (int i = 0; i < diceCount; i++)
        {
             int v = Random.Range(1, 9);
@@ -103,8 +101,11 @@ public class Character : MonoBehaviour
     // 행동 메소드
     public virtual void OnTurnStart()
     {
+        usedSlot = new bool[diceCount];
         currentEnergy = maxEnergy;
         Debug.Log($"{Name} Energy Refreshed to {currentEnergy}");
+
+        foreach (var slot in speedSlots) slot.Clear();
     }
 
     public virtual void Die()
