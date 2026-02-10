@@ -13,12 +13,15 @@ public class BattleManager : MonoBehaviour
         Lose
     }
 
-    List<Character> units = new();
+    private List<Character> units = new();
+    public IReadOnlyList<Character> Units => units;
     List<SpeedSlot> allSlots = new();
 
     private BattleState state = BattleState.Ready;
     [SerializeField] private Player player;
     [SerializeField] private Enemy enemy;
+
+    [SerializeField] SlotDebugPanel debugPanel;
 
     public void Awake()
     {
@@ -60,6 +63,7 @@ public class BattleManager : MonoBehaviour
             allSlots.AddRange(unit.speedSlots);
         }
 
+        debugPanel.Refresh();
     }
 
     public void EndTurn()
@@ -116,6 +120,8 @@ public class BattleManager : MonoBehaviour
         mySlot.Use();
 
         Debug.Log($"{mySlot.owner.name} registered {card.cardName}");
+
+        debugPanel.Refresh();
     }
 
     void BuildInterceptMap()
@@ -144,6 +150,7 @@ public class BattleManager : MonoBehaviour
                 }
             }
         }
+        debugPanel.Refresh();
     }
 
     void ResolveBattle()
@@ -225,4 +232,6 @@ public class BattleManager : MonoBehaviour
             }
         }
     }
+
+    
 }

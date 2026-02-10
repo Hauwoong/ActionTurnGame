@@ -3,7 +3,7 @@ using UnityEngine;
 public class PlayerActionInput : MonoBehaviour
 {
     public Player player;
-    public BattleManager battleMananger;
+    public BattleManager battleManager;
 
     SpeedSlot speedSlot = null;
 
@@ -28,7 +28,7 @@ public class PlayerActionInput : MonoBehaviour
             return;
         }
 
-        battleMananger.RegisterAction(speedSlot,targetSlot,card);
+        battleManager.RegisterAction(speedSlot,targetSlot,card);
 
         speedSlot = null; // 선택된 속도 주사위 인덱스 값 초기화
     }

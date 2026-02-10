@@ -12,14 +12,16 @@ public class CardUI : MonoBehaviour
     [SerializeField] Button button;
 
     [Header("Reference")]
-    private CardData cardData;
-    private BattleManager battleManager;
-    private Player player;
+    public CardData card;
+    public SpeedSlot targetSlot;
+    public PlayerActionInput input;
+    //private BattleManager battleManager;
+    //private Player player;
 
     public void Setup(CardData data, BattleManager bm)
     {
-        cardData = data;
-        battleManager = bm;
+        card = data;
+        //battleManager = bm;
 
         UpdateUI();
 
@@ -29,23 +31,23 @@ public class CardUI : MonoBehaviour
 
     private void UpdateUI()
     {
-        if (cardData == null) return;
+        if (card == null) return;
 
-        cardNameText.text = cardData.cardName;
-        cardCostText.text = cardData.cost.ToString();
+        cardNameText.text = card.cardName;
+        cardCostText.text = card.cost.ToString();
 
         cardDamageText.gameObject.SetActive(false); // 기본값으로 비활성화
 
 
-        if (artworkImage != null && cardData.artwork != null)
+        if (artworkImage != null && card.artwork != null)
         {
-            artworkImage.sprite = cardData.artwork;
+            artworkImage.sprite = card.artwork;
         }
     }
 
     private void OnClick()
     {
-
+        input.SelectCard(targetSlot, card);
     }
 
     private void OnDestroy()
