@@ -1,4 +1,4 @@
-using System.ComponentModel;
+
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,8 +11,26 @@ public class SlotDebugItem : MonoBehaviour
     public TextMeshProUGUI cardText;
     public TextMeshProUGUI interceptText;
     public TextMeshProUGUI boutText;
+    public Button button;
 
     public Image bg;
+
+    public PlayerActionInput input;
+    public SpeedSlot slot;
+
+    public void Init(SpeedSlot slot, PlayerActionInput input)
+    {
+        this.slot = slot;
+        this.input = input;
+
+        Bind(slot);
+
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(OnClick);
+        }
+    }
 
     public void Bind(SpeedSlot slot)
     {
@@ -54,5 +72,10 @@ public class SlotDebugItem : MonoBehaviour
             bg.color = new Color(1f, 0.6f, 0f);
         else
             bg.color = Color.white;
+    }
+
+    public void OnClick()
+    {
+        input.SelectSpeedSlot(slot);
     }
 }

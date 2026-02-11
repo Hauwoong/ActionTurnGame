@@ -9,6 +9,7 @@ public class SlotDebugPanel : MonoBehaviour
     public Transform enemyGroup;
 
     public SlotDebugItem itemPrefab;
+    public PlayerActionInput input;
 
     List<SlotDebugItem> items = new();
 
@@ -25,7 +26,7 @@ public class SlotDebugPanel : MonoBehaviour
 
                 var item = Instantiate(itemPrefab, parent);
 
-                item.Bind(slot);
+                item.Init(slot, input);
                 items.Add(item);
             }
         }

@@ -512,7 +512,14 @@ MonoBehaviour:
   cardText: {fileID: 887170225017100022}
   interceptText: {fileID: 4023585700857944847}
   boutText: {fileID: 1022417134449301265}
+  button: {fileID: 2552994913345652777}
   bg: {fileID: 2778330654514617048}
+  input: {fileID: 0}
+  slot:
+    owner: {fileID: 0}
+    index: 0
+    card: {fileID: 0}
+    interceptCandidates: []
 --- !u!114 &2552994913345652777
 MonoBehaviour:
   m_ObjectHideFlags: 0

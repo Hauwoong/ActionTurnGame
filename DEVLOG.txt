@@ -462,3 +462,63 @@
 -SlotUI / CardUI 래퍼 스크립트로 입력 구조 통일하기
 -입력 로그(Debug.Log) 적극 활용해서 흐름 추적
 -슬롯 선택 시 시각적 강조(색상/테두리) 추가 고려
+
+##2026-02-12
+
+###오늘 한 것
+
+-SpeedSlot 기반 전투 구조 유지 및 구조 재정비
+-ActionSlot 제거 후 슬롯 중심 구조로 전환
+-Intercept / Bout 구조 설계 방향 재검토
+-BuildInterceptMap 로직 수정 및 테스트
+-디버깅용 Slot UI 시스템 구축
+-SlotDebugPanel 구현
+-SlotDebugItem 구현
+-SpeedSlot 정보 시각화 구현
+-소유자 / 속도 / 타겟 / 카드 / Intercept 후보 / Bout 상태 표시
+-Slot 클릭 → PlayerActionInput 연동
+-Button → SpeedSlot 연결 구조 테스트
+-카드 UI Button 정상 동작 확인
+-PlayerActionInput 구조 재활용 및 연동
+
+###문제
+
+-Intercept 로직이 “가장 빠른 슬롯 우선” 구조로 잘못 구현됨
+-LOR 실제 구조와 다르게 동작하는 문제 발생
+-합(Bout) 기본 / 가로채기 우선순위 불명확
+-마지막 타겟 기준 구조 미반영
+-SpeedSlot 버튼 연결 실패
+-OnClick 이벤트 미작동
+-PlayerActionInput 참조 오류 발생
+-SlotDebugItem Init / Bind 구조 충돌
+-메서드 누락으로 컴파일 에러 발생
+-Inspector에서 Player / BattleManager 연결 문제 발생
+
+###해결
+
+-SpeedSlot 중심 전투 구조로 완전 전환
+-ActionSlot 사용 중단 및 구조 단순화
+-Intercept / Bout 우선순위 구조 재정의 방향 설정
+-디버그 UI 체계 구축으로 상태 가시성 확보
+-SpeedSlot → SlotDebugItem → SlotDebugPanel 구조 확립
+-Button → 중간 UI → PlayerActionInput 연결 방식 재정비
+-SlotDebugItem 메서드 구조 수정 및 오류 해결
+-Inspector 컴포넌트 연결 구조 점검 및 수정
+
+###배운 점
+
+-전투 구조는 하나의 기준 객체로 통일해야 안정적이다
+-Debug UI는 복잡한 시스템 개발에서 필수 도구이다
+-LOR 합 구조는 단순 속도 비교로 구현할 수 없다
+-입력 → 로직 → 디버그 흐름이 연결되어야 개발 속도가 빨라진다
+-가시성이 부족하면 설계 오류를 발견하기 어렵다
+
+###다음 목표
+
+-Intercept / Bout 우선순위 로직 완성
+-마지막 타겟 기준 합 구조 구현
+-SpeedSlot 버튼 입력 구조 안정화
+-디버그 UI 정보 확장
+-합 처리 전체 흐름 재검증
+-전투 실행 단계 로직 고도화
+
