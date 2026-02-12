@@ -1,3 +1,4 @@
+using NUnit.Framework.Constraints;
 using UnityEngine;
 
 public class PlayerActionInput : MonoBehaviour
@@ -5,31 +6,43 @@ public class PlayerActionInput : MonoBehaviour
     public Player player;
     public BattleManager battleManager;
 
-    SpeedSlot speedSlot = null;
+    SpeedSlot selectedSlot = null;
+    CardData draggingCard = null;
 
     public void SelectSpeedSlot(SpeedSlot slot)
     {
-        speedSlot = slot;
+        selectedSlot = slot;
 
-        Debug.Log($"Speed Dice {speedSlot.index} selected");
+        Debug.Log($"Speed Dice {selectedSlot.index} selected");
     }
 
-    public void SelectCard(SpeedSlot targetSlot,CardData card)
+    public void StartDraggingCard(CardData card)
     {
-        if (speedSlot == null)
-        {
-            Debug.Log("Select speed Slot first!");
-            return;
-        }
+        draggingCard = card;
+    }
 
-        if (speedSlot.IsUsed)
-        {
-            Debug.Log("This slot already used!");
-            return;
-        }
+    public void RegisterToSlot(SpeedSlot targetSlot)
+    {
+        if (selectedSlot != null) return;
 
-        battleManager.RegisterAction(speedSlot,targetSlot,card);
+        battleManager.RegisterAction(selectedSlot, targetSlot, draggingCard);
 
-        speedSlot = null; // 선택된 속도 주사위 인덱스 값 초기화
+        draggingCard = null;
+        selectedSlot = null;
+    }
+
+    public void EndDraggingCard()
+    {
+        draggingCard = null;
+    }
+
+    public bool HasSelectedSlot()
+    {
+        return selectedSlot != null; 
+    }
+
+    public bool IsDraggingCard()
+    {
+        return draggingCard != null;
     }
 }

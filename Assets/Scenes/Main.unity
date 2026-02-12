@@ -372,7 +372,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 0, g: 0, b: 0, a: 0.392}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -413,7 +413,7 @@ MonoBehaviour:
   playerGroup: {fileID: 1156028887}
   enemyGroup: {fileID: 1444268441}
   itemPrefab: {fileID: 4694216570310576904, guid: d32fd2825f0aecd41938187f369ee63c, type: 3}
-  input: {fileID: 0}
+  input: {fileID: 1777030969}
 --- !u!1 &758676491
 GameObject:
   m_ObjectHideFlags: 0
@@ -982,7 +982,6 @@ MonoBehaviour:
   diceCount: 1
   speedSlots: []
   rolledSpeeds: 
-  usedSlot: 
   deck: []
   hand: []
   battlemanager: {fileID: 1354636381}
@@ -1519,7 +1518,6 @@ MonoBehaviour:
   diceCount: 1
   speedSlots: []
   rolledSpeeds: 
-  usedSlot: 
   Deck:
   - {fileID: 11400000, guid: 028b47a64aa263a4b899c3f816fe2996, type: 2}
   hand: []
@@ -1648,6 +1646,7 @@ MonoBehaviour:
   cardPrefab: {fileID: 6984608457088630669, guid: 6506dce8e4761104aac7df19b3e18e80, type: 3}
   cardParent: {fileID: 1469546228}
   battleManager: {fileID: 1354636381}
+  input: {fileID: 1777030969}
 --- !u!114 &1469546230
 MonoBehaviour:
   m_ObjectHideFlags: 0

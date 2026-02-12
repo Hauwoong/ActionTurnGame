@@ -2,8 +2,9 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
-public class SlotDebugItem : MonoBehaviour
+public class SlotDebugItem : MonoBehaviour, IDropHandler
 {
     public TextMeshProUGUI OwnerText;
     public TextMeshProUGUI speedText;
@@ -24,12 +25,6 @@ public class SlotDebugItem : MonoBehaviour
         this.input = input;
 
         Bind(slot);
-
-        if (button != null)
-        {
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(OnClick);
-        }
     }
 
     public void Bind(SpeedSlot slot)
@@ -74,8 +69,10 @@ public class SlotDebugItem : MonoBehaviour
             bg.color = Color.white;
     }
 
-    public void OnClick()
+    public void OnDrop(PointerEventData eventData)
     {
-        input.SelectSpeedSlot(slot);
+        if (input.IsDraggingCard()) return;
+
+        input.RegisterToSlot(slot);
     }
 }

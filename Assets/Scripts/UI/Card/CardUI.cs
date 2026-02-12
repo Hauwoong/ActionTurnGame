@@ -1,8 +1,9 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class CardUI : MonoBehaviour
+public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandler
 {
     [Header("Card UI Elements")]
     [SerializeField] TMP_Text cardNameText;
@@ -11,22 +12,25 @@ public class CardUI : MonoBehaviour
     [SerializeField] Image artworkImage;
     [SerializeField] Button button;
 
-    [Header("Reference")]
     public CardData card;
-    public SpeedSlot targetSlot;
     public PlayerActionInput input;
-    //private BattleManager battleManager;
-    //private Player player;
 
-    public void Setup(CardData data, BattleManager bm)
+    private RectTransform rect;
+    private CanvasGroup canvasGroup;
+    private Vector3 originalPos;
+
+    private void Awake()
     {
-        card = data;
-        //battleManager = bm;
+        rect = GetComponent<RectTransform>();
+        canvasGroup = GetComponent<CanvasGroup>();
+    }
 
+    public void Setup(CardData data, PlayerActionInput input)
+    {
+        this.card = data;
+        this.input = input;
+        
         UpdateUI();
-
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(OnClick);
     }
 
     private void UpdateUI()
@@ -45,9 +49,26 @@ public class CardUI : MonoBehaviour
         }
     }
 
-    private void OnClick()
+    public void OnBeginDrag(PointerEventData eventData)
     {
-        input.SelectCard(targetSlot, card);
+        if (!input.HasSelectedSlot()) return;
+
+        originalPos = rect.position;
+        canvasGroup.blocksRaycasts = false;
+        input.StartDraggingCard(card);
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        rect.position = eventData.position;
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        canvasGroup.blocksRaycasts = true;
+        rect.position = originalPos;
+
+        input.EndDraggingCard();
     }
 
     private void OnDestroy()

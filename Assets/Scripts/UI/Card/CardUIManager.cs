@@ -7,6 +7,7 @@ public class CardUIManager : MonoBehaviour
     [SerializeField] GameObject cardPrefab;
     [SerializeField] Transform cardParent;
     [SerializeField] BattleManager battleManager;
+    public PlayerActionInput input;
 
     private void Start()
     {
@@ -62,7 +63,7 @@ public class CardUIManager : MonoBehaviour
 
         if (cardUI != null)
         {
-            cardUI.Setup(card, battleManager);
+            cardUI.Setup(card,input);
         }
         else
         {

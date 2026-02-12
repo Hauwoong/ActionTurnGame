@@ -25,7 +25,7 @@ public class Character : MonoBehaviour
     [Header("주사위 스택")]
     protected Stack<DiceResult> diceStack = new();
     public bool HasDice => diceStack.Count > 0;
-    public bool[] usedSlot;
+    //public bool[] usedSlot;
     protected virtual void Awake()
     {
         currentHP = maxHP;
@@ -68,15 +68,15 @@ public class Character : MonoBehaviour
         diceStack.Clear();
     }
 
-    public bool IsSlotUsed(int index)
-    {
-        return usedSlot[index];
-    }
+    //public bool IsSlotUsed(int index)
+   // {
+   //    return usedSlot[index];
+  //  }
 
-    public void UseSlot(int index)
-    {
-        usedSlot[index] = true;
-    }
+   // public void UseSlot(int index)
+   // {
+   //     usedSlot[index] = true;
+  //  }
 
     // 자원 관련 메소드
 
@@ -101,7 +101,7 @@ public class Character : MonoBehaviour
     // 행동 메소드
     public virtual void OnTurnStart()
     {
-        usedSlot = new bool[diceCount];
+        //usedSlot = new bool[diceCount];
         currentEnergy = maxEnergy;
         Debug.Log($"{Name} Energy Refreshed to {currentEnergy}");
 

@@ -24,11 +24,12 @@ public class SpeedSlot
     public SpeedSlot currentBout;
 
     // 슬롯 사용 유무
-    public bool IsUsed => owner.IsSlotUsed(index);
+    private bool isUsed;
+    public bool IsUsed => isUsed;
 
     public void Use()
     {
-        owner.UseSlot(index);
+        isUsed = true;
     }
 
     public void Clear()
