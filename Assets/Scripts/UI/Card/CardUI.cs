@@ -10,19 +10,22 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
     [SerializeField] TMP_Text cardCostText;
     [SerializeField] TMP_Text cardDamageText;
     [SerializeField] Image artworkImage;
-    [SerializeField] Button button;
 
     public CardData card;
     public PlayerActionInput input;
 
     private RectTransform rect;
+    private Canvas canvas;
     private CanvasGroup canvasGroup;
     private Vector3 originalPos;
+    private Transform originalParent;
 
     private void Awake()
     {
         rect = GetComponent<RectTransform>();
+        canvas = GetComponentInParent<Canvas>();
         canvasGroup = GetComponent<CanvasGroup>();
+        originalParent = transform.parent;
     }
 
     public void Setup(CardData data, PlayerActionInput input)
@@ -53,26 +56,26 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
     {
         if (!input.HasSelectedSlot()) return;
 
+        input.StartDraggingCard(card);
+
         originalPos = rect.position;
         canvasGroup.blocksRaycasts = false;
-        input.StartDraggingCard(card);
+
+        transform.SetParent(canvas.transform);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        rect.position = eventData.position;
+        rect.position += (Vector3)eventData.delta / canvas.scaleFactor;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
         canvasGroup.blocksRaycasts = true;
+
+        transform.SetParent(originalParent);
         rect.position = originalPos;
 
         input.EndDraggingCard();
-    }
-
-    private void OnDestroy()
-    {
-        button.onClick.RemoveAllListeners();
     }
 }

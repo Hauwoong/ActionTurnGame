@@ -6,8 +6,8 @@ public class PlayerActionInput : MonoBehaviour
     public Player player;
     public BattleManager battleManager;
 
-    SpeedSlot selectedSlot = null;
-    CardData draggingCard = null;
+    [SerializeField]SpeedSlot selectedSlot = null;
+    [SerializeField]CardData draggingCard = null;
 
     public void SelectSpeedSlot(SpeedSlot slot)
     {
@@ -18,12 +18,13 @@ public class PlayerActionInput : MonoBehaviour
 
     public void StartDraggingCard(CardData card)
     {
+        Debug.Log("Drag Start");
         draggingCard = card;
     }
 
     public void RegisterToSlot(SpeedSlot targetSlot)
     {
-        if (selectedSlot != null) return;
+        if (selectedSlot == null) return;
 
         battleManager.RegisterAction(selectedSlot, targetSlot, draggingCard);
 
@@ -41,7 +42,7 @@ public class PlayerActionInput : MonoBehaviour
         return selectedSlot != null; 
     }
 
-    public bool IsDraggingCard()
+    public bool ISDraggingCard()
     {
         return draggingCard != null;
     }

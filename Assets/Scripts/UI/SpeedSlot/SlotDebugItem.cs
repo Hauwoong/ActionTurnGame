@@ -24,6 +24,9 @@ public class SlotDebugItem : MonoBehaviour, IDropHandler
         this.slot = slot;
         this.input = input;
 
+        button.onClick.RemoveListener(Onclick);
+        button.onClick.AddListener(Onclick);
+
         Bind(slot);
     }
 
@@ -69,9 +72,14 @@ public class SlotDebugItem : MonoBehaviour, IDropHandler
             bg.color = Color.white;
     }
 
+    public void Onclick()
+    {
+        input.SelectSpeedSlot(slot);
+    }
+
     public void OnDrop(PointerEventData eventData)
     {
-        if (input.IsDraggingCard()) return;
+        if (!input.ISDraggingCard()) return;
 
         input.RegisterToSlot(slot);
     }

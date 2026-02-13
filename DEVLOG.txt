@@ -578,3 +578,52 @@
 -배열 기반 슬롯 구조 → 객체 상태 기반 구조로 점진적 개선
 -입력 상태 흐름 다이어그램 정리
 
+##2026-02-XX
+
+###오늘 한 것
+
+-카드 UI 드래그 기능 구현
+-CardUI에 IBeginDragHandler / IDragHandler / IEndDragHandler 적용
+-드래그 시작 시 PlayerActionInput.StartDraggingCard() 호출
+-CanvasGroup.blocksRaycasts = false 처리
+-드래그 종료 시 원위치 복귀 로직 구현
+-EndDraggingCard() 호출 구조 완성
+-CardUIManager 동적 생성 구조 점검
+-Player.OnHandChanged 구독 구조 확인
+-RefreshUI() 기반 카드 재생성 확인
+-cardUI.Setup(card, input) 연결 정상 동작 확인
+-카드 드래그 미작동 원인 디버깅 진행
+
+###문제
+
+-OnBeginDrag 로그 출력되지 않음
+-카드 클릭 / 드래그 이벤트 자체가 호출되지 않음
+-이벤트 시스템 정상인데 입력이 전달되지 않음
+-투명 UI 오브젝트가 Raycast를 차단하고 있었음
+-SlotDebugPanel이 화면 전체를 덮고 이벤트를 가로막는 문제 발생
+
+###해결
+
+-CardPrefab 구조 점검 (Image / Raycast Target 확인)
+-EventSystem 및 Input Module 점검
+-LayoutGroup 영향 여부 확인
+-Raycast 차단 오브젝트 추적
+-SlotDebugPanel의 Raycast Target 비활성화
+-또는 CanvasGroup.blocksRaycasts OFF 처리
+-카드 드래그 정상 동작 확인
+
+###배운 점
+
+-UI가 반응하지 않으면 Raycast 차단 여부를 가장 먼저 확인해야 한다
+-투명 Image도 입력을 막는다
+-Layout 문제와 이벤트 문제는 구분해서 접근해야 한다
+-디버깅은 “코드 → 시스템 → 구조 → 레이캐스트” 순으로 좁혀가는 것이 효율적이다
+
+###다음 목표
+
+-카드 → 슬롯 드롭 구조 완성
+-IDropHandler 기반 슬롯 입력 처리 구현
+-RegisterAction 드래그 기반 구조로 연결
+-드래그 중 시각적 피드백 추가
+-슬롯 선택 시 강조 UI 적용
+
