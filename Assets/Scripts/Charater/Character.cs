@@ -104,8 +104,6 @@ public class Character : MonoBehaviour
         //usedSlot = new bool[diceCount];
         currentEnergy = maxEnergy;
         Debug.Log($"{Name} Energy Refreshed to {currentEnergy}");
-
-        foreach (var slot in speedSlots) slot.Clear();
     }
 
     public virtual void Die()
