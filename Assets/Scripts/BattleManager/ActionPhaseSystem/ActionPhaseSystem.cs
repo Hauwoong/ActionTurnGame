@@ -4,8 +4,12 @@ public class ActionPhaseSystem
 {
     public void RegisterAction(BattleState state, ActionInstance action)
     {
-        state.RegisterActions.Add(action);
-        state.BoutGraph.RegisterAction(action);
+        state.RegisterAction(action);
     }
-       
+
+
+    public void CancelAction(BattleState state, SpeedSlot slot)
+    {
+        state.CancelAction(slot);
+    }
 }

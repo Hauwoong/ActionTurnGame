@@ -727,3 +727,177 @@
 -UI 합 실시간 표시 연동
 -Speed 변형 상태이상 시스템 설계
 -그래프 기반 전투 흐름 전체 통합 테스트
+
+=======================================================================
+개발 로그 - 전투 그래프 구조 철학 확정
+
+구조 철학 재정립
+
+절대 금지 원칙 확립
+전체 액션 정렬 후 일괄 계산 방식 사용 금지
+
+이유
+LOR는 행동을 지정하는 순간마다 합 그래프가 즉시 갱신되어야 한다
+Resolve 직전에만 일괄 계산이 가능하다
+평상시에는 반드시 증분 업데이트 구조여야 한다
+
+확정 사항
+전체 재계산 금지
+변경된 부분만 재평가
+그래프는 항상 현재 상태를 유지한다
+=====================================
+BattleState 와 BoutGraph 책임 분리
+
+기존 문제
+BattleState와 BoutGraph 모두 액션을 저장하고 있었다
+구조적 중복이 발생하고 있었다
+
+역할 재정의
+
+BattleState
+ActionBySlot 보관
+Units 보관
+현재 등록된 ActionInstance 보관
+데이터 소유 책임
+
+BoutGraph
+edges (확정된 합 관계)
+targetMap
+interceptCandidates
+계산 전용 시스템
+
+private IReadOnlyDictionary<SpeedSlot, ActionInstance> actionBySlot
+=> state.ActionBySlot;
+
+정리
+데이터는 BattleState가 소유
+계산은 BoutGraph가 담당
+======================
+슬롯 중심 구조 확정
+
+기존 구조
+Character 중심
+
+변경 구조
+SpeedSlot 중심
+
+변경 이유
+LOR는 슬롯 단위 전투 구조이다
+한 캐릭터는 여러 슬롯을 가질 수 있다
+합은 슬롯 대 슬롯 관계이다
+
+Dictionary<SpeedSlot, SpeedSlot> edges;
+
+슬롯 기반 구조로 완전 전환 완료
+===========================
+전투 우선순위 체계 확정
+
+우선순위
+Intercept
+Direct
+Unopposed
+
+핵심 규칙
+Intercept가 이미 성립한 경우 Direct는 무시한다
+
+if (edges.ContainsKey(target)) return;
+
+Direct 차단 로직 확정
+============================
+Intercept 판정 로직 확정
+
+논쟁 포인트
+action.Speed 사용 여부
+source.speed 사용 여부
+target.speed 사용 여부
+
+최종 결정
+슬롯의 고정 속도를 사용한다
+
+if (source.speed > targetAction.SourceSlot.speed)
+
+결정 이유
+LOR는 슬롯 속도를 비교한다
+상태이상은 슬롯 생성 시 반영한다
+UI도 슬롯 기준으로 표시한다
+===============================
+RegisterOrder 도입
+
+문제
+동일 속도의 슬롯이 여러 개 존재할 수 있다
+마지막 지정이 우선권을 가져야 한다
+
+해결
+
+if (action.RegisterOrder > currentAction.RegisterOrder)
+
+동속일 경우 마지막 지정 우선 규칙 구현 완료
+=================================
+Cancel 증분 구조 설계
+
+핵심 문제
+추가는 쉽지만 삭제는 복잡하다
+하나 제거하면 연결 관계가 연쇄적으로 흔들릴 수 있다
+
+Cancel 처리 흐름
+
+RemoveFromTargetMap(action);
+RemoveEdgesInvolving(action);
+RemoveInterceptCandidate(action);
+ReevaluateAffectedSlots(action);
+
+재계산 범위
+취소한 슬롯
+그 타겟
+그 타겟을 노리던 슬롯
+기존 합 상대
+
+전체 재계산 금지
+영향 집합만 재계산
+========================================
+InterceptCandidate 분리
+
+Dictionary<SpeedSlot, List<SpeedSlot>> interceptCandidates;
+
+분리 이유
+edges는 확정된 합 관계
+후보는 UI 표시용 선택 가능 상태
+계산 그래프와 UI 상태를 분리한다
+==========================================
+edges 구조 결정
+
+양방향 구조 유지
+
+edges[a] = b;
+edges[b] = a;
+
+이유
+합은 쌍 개념이다
+Connect와 Disconnect가 단순해진다
+구조 안정성이 높다
+==============================================
+파생 데이터 개념 도입
+
+원본 데이터
+ActionBySlot
+TargetMap
+
+파생 데이터
+edges
+interceptCandidates
+
+취소 시 원칙
+원본을 수정한다
+파생 데이터는 국소 재계산한다
+
+이 개념은 엔진 확장성에 매우 중요하다
+==============================================
+성능 검토
+
+최대 가정
+10명
+1인당 최대 5 슬롯
+총 50 슬롯
+
+국소 재계산으로 충분하다
+O(n^2) 전체 재계산은 필요 없다

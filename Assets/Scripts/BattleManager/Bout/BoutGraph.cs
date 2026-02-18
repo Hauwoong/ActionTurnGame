@@ -1,11 +1,9 @@
 using System.Collections.Generic;
 public class BoutGraph
 {
-    // 모든 행동들
-    public List<ActionInstance> Actions = new();
-
+    private BattleState state;
     // Character => action 현재 행동
-    private Dictionary<SpeedSlot, ActionInstance> actionBySlot = new();
+    private IReadOnlyDictionary<SpeedSlot, ActionInstance> actionBySlot => state.ActionBySlot;
 
     //타겟 => 그 타겟을 노리는 모든 행동
     private Dictionary<SpeedSlot, List<ActionInstance>> targetMap = new();
@@ -14,20 +12,32 @@ public class BoutGraph
     public Dictionary<SpeedSlot, SpeedSlot> edges = new();
 
     // 합 후보들
-    public Dictionary<SpeedSlot, List<ActionInstance>> interceptCandidates = new();
+    public Dictionary<SpeedSlot, List<SpeedSlot>> interceptCandidates = new();
+
+    public BoutGraph(BattleState state)
+    {
+        this.state = state;
+    }
 
     public void RegisterAction(ActionInstance action)
     {
-        Actions.Add(action);
-
-        actionBySlot[action.SourceSlot] = action;
-
         AddToTargetMap(action);
 
         UpdateRelationsFor(action);
     }
 
-    void AddToTargetMap(ActionInstance action)
+    public void CancelAction(ActionInstance action)
+    {
+        RemoveFromTargetMap(action);
+
+        RemoveEdgesInvolving(action);
+
+        RemoveInterceptCandidate(action);
+
+        ReevaluateAffectedSlots(action);
+    }
+
+    void AddToTargetMap(ActionInstance action)          
     {
         var targetSlot = action.TargetSlot;
 
@@ -39,34 +49,29 @@ public class BoutGraph
         targetMap[targetSlot].Add(action);
     }
 
+    void RemoveFromTargetMap(ActionInstance action)
+    {
+        var targetSlot = action.TargetSlot;
+
+        if (targetMap.TryGetValue(targetSlot, out var list))
+        {
+            list.Remove(action);
+
+            if (list.Count == 0)
+            {
+                targetMap.Remove(targetSlot);
+            }
+        }
+    }
+
     void UpdateRelationsFor(ActionInstance action)
     {
-
-        // 정면 합 검사
-        TryBuildDirectClash(action);
-
         // 인터셉트 검사
         TryBuildInterceptClash(action);
+
+        // 정명 합 검사
+        TryBuildDirectClash(action);
     }
-
-    void TryBuildDirectClash(ActionInstance action)
-    {
-        var Source = action.SourceSlot;
-        var target = action.TargetSlot;
-
-        if (!actionBySlot.ContainsKey(target))
-        {
-            return;
-        }
-
-        var counter = actionBySlot[target];
-        
-        if (counter.TargetSlot == action.SourceSlot)
-        {
-            Connect(Source,target);
-        }
-    }
-
     void TryBuildInterceptClash(ActionInstance action)
     {
         var source = action.SourceSlot;
@@ -77,6 +82,8 @@ public class BoutGraph
 
         if (source.speed > targetAction.SourceSlot.speed)
         {
+            AddInterceptCandidate(target, source);
+
             if (edges.ContainsKey(target))
             {
                 var current = edges[target];
@@ -98,6 +105,58 @@ public class BoutGraph
         }
     }
 
+    void TryBuildDirectClash(ActionInstance action)
+    {
+        var Source = action.SourceSlot;
+        var target = action.TargetSlot;
+
+        if (edges.ContainsKey(target)) return; // 이미 타겟이 다른 행동과 합 되어있음 => 이미 intercetp 당한 상태
+
+        var counter = actionBySlot[target];
+
+        if (counter.TargetSlot == action.SourceSlot)
+        {
+            Connect(Source, target);
+        }
+    }
+
+    void RemoveEdgesInvolving(ActionInstance action)
+    {
+        SpeedSlot Source = action.SourceSlot;
+
+        if (!edges.ContainsKey(Source))
+        {
+            return;
+        }
+
+        Disconnect(Source);
+    }
+
+    void AddInterceptCandidate(SpeedSlot target, SpeedSlot attacker)
+    {
+        if (!interceptCandidates.ContainsKey(target))
+        {
+            interceptCandidates[target] = new List<SpeedSlot>();
+        }
+
+        if (!interceptCandidates[target].Contains(attacker))
+        {
+            interceptCandidates[target].Add(attacker);
+        }
+    }
+
+    void RemoveInterceptCandidate(ActionInstance action)
+    {
+        var target = action.TargetSlot;
+        var source = action.SourceSlot;
+
+        if (!interceptCandidates.ContainsKey(target)) return;
+
+        if (!interceptCandidates[target].Contains(source)) return;
+
+        interceptCandidates[target].Remove(source);
+    }
+
     void Connect(SpeedSlot a, SpeedSlot b)
     {
         Disconnect(a);
@@ -115,5 +174,18 @@ public class BoutGraph
 
         edges.Remove(a);
         edges.Remove(other);
+    }
+
+    void ReevaluateAffectedSlots(ActionInstance cancelled)
+    {
+        SpeedSlot affectedTarget = cancelled.TargetSlot;
+
+        if (targetMap.TryGetValue(affectedTarget, out List<ActionInstance> attackers))
+        {
+            foreach (var attacker in attackers)
+            {
+                UpdateRelationsFor(attacker);
+            }
+        }
     }
 }
