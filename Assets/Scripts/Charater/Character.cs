@@ -68,18 +68,6 @@ public class Character : MonoBehaviour
         diceStack.Clear();
     }
 
-    //public bool IsSlotUsed(int index)
-   // {
-   //    return usedSlot[index];
-  //  }
-
-   // public void UseSlot(int index)
-   // {
-   //     usedSlot[index] = true;
-  //  }
-
-    // 자원 관련 메소드
-
     public virtual void TakeDamage(int dmg)
     {
         currentHP = Mathf.Max(currentHP - dmg, 0);

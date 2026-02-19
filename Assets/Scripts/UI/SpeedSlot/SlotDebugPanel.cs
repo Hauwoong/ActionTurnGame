@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public class SlotDebugPanel : MonoBehaviour
 {
     public BattleManager battle;
+    public BattleState state => battle.State;
 
     public Transform playerGroup;
     public Transform enemyGroup;
@@ -17,7 +18,7 @@ public class SlotDebugPanel : MonoBehaviour
     {
         Clear();
 
-        foreach (Character unit in battle.Units)
+        foreach (Character unit in state.Units)
         {
             foreach (SpeedSlot slot in unit.speedSlots)
             {

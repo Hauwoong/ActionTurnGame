@@ -578,7 +578,7 @@
 -배열 기반 슬롯 구조 → 객체 상태 기반 구조로 점진적 개선
 -입력 상태 흐름 다이어그램 정리
 
-##2026-02-XX
+##2026-02-14
 
 ###오늘 한 것
 
@@ -901,3 +901,103 @@ interceptCandidates
 
 국소 재계산으로 충분하다
 O(n^2) 전체 재계산은 필요 없다
+
+##2026-02-20
+
+###오늘 한 것
+
+-기존 ExecutionSystem 구조 전면 점검
+-LOR 방식의 합(Clash) / 인터셉트(Intercept) 구조 정확화
+-PriorityQueue 기반 실행 순서 설계
+-O(n²) BoutBuilder 구조 제거 결정
+-증분 업데이트 기반 BoutGraph 설계
+-전투 구조를 Character 중심에서 SpeedSlot 중심으로 재정렬
+-RegisterActions 리스트 기반 흐름 문제 재분석
+-Resolve 단계 PriorityQueue 빌드 방식 재검토
+-TryFindBout 정면합 검사 구조 세부 분석
+-Intercept 별도 로직 구조적 한계 확인
+-턴 마지막 O(n²) 전체 스캔 방식의 비효율성 명확화
+-실시간 합 반영 불가능 구조 문제 확정
+-슬롯 단위 전투 처리 구조 최종 확정
+-PriorityQueue<ActionInstance, int> 구조 도입
+-우선순위 기준을 Action.Speed로 명확화
+-MaxHeap 기반 속도 우선 실행 구조 설계
+-ExecutionSystem 속도 순 처리 흐름 확립
+-O(n²) BoutBuilder 완전 폐기 확정
+-UI 실시간 합 반영 가능 구조 방향 수립
+-슬롯 취소 시 재계산 비효율 제거 전략 정리
+-증분 업데이트 기반 BoutGraph 구조 채택
+-Action 등록 시점 관계 즉시 업데이트 구조 도입
+-핵심 자료구조 설계 및 확정
+-Dictionary<SpeedSlot, ActionInstance> actionBySlot
+-Dictionary<SpeedSlot, List<ActionInstance>> targetMap
+-Dictionary<SpeedSlot, SpeedSlot> edges
+-Intercept 우선순위 규칙 LOR 기준으로 재정의
+-Intercept는 Direct Clash보다 우선 규칙 확정
+-속도가 높은 슬롯만 인터셉트 가능 구조 확정
+-동일 속도일 경우 마지막 지정(RegisterOrder) 우선 규칙 확정
+-속도 비교 기준을 슬롯 속도로 확정
+-확장성 확보를 위해 Action.Speed 프로퍼티 유지
+-버프 / 디버프 / 속도 변형 대응 구조 정리
+-Disconnect / Connect 기반 그래프 유지 방식 설계
+-슬롯 취소 대비 가능 구조 확보
+-합 생성 단계와 실행 단계 완전 분리 확정
+-Action 등록(UI 단계) → BoutGraph 실시간 관계 유지 → 턴 종료 시 ExecutionSystem 처리 구조 확립
+-BoutBuilder 역할 재정의 후 완전 폐기
+-Execution은 그래프 기반 처리 구조 확정
+
+###문제
+
+-합이 실시간 반영되지 않는 구조적 한계
+-Resolve 시 전체 스캔 방식의 비효율
+-슬롯이 아닌 Character 기준 매핑 구조 문제
+-Intercept 우선순위가 단순 속도 기준으로 잘못 설계됨
+-마지막 지정 우선 규칙 미반영 상태
+-O(n²) 전체 반복 구조 유지 문제
+-UI 실시간 합 표시 불가능 구조
+-슬롯 취소 시 전체 재계산 필요 구조
+-속도 비교 기준 혼란 (slot.speed vs action.Speed)
+
+###해결
+
+-Character 중심 구조 폐기 → SpeedSlot 중심 구조로 전환
+-PriorityQueue 기반 실행 순서 도입
+-증분 업데이트 기반 BoutGraph 설계
+-Action 등록 시 관계 즉시 갱신 구조 채택
+-actionBySlot / targetMap / edges 자료구조 확립
+-Intercept 우선순위 규칙 LOR 기준으로 재정의
+-속도 높은 슬롯만 인터셉트 가능 구조 확정
+-동속일 경우 마지막 지정 우선 규칙 구현
+-슬롯 속도 기준 비교로 통일
+-확장성 고려하여 Action.Speed 프로퍼티 유지
+-합 생성과 실행 단계 완전 분리
+-O(n²) BoutBuilder 완전 제거
+
+###배운 점
+
+-LOR 전투는 캐릭터 중심이 아니라 슬롯 중심 구조다
+-합 시스템은 리스트가 아니라 그래프 구조로 보는 것이 자연스럽다
+-실시간 반영이 안 되는 구조는 결국 재설계하게 된다
+-O(n²) 구조는 초기 구현은 쉽지만 확장에서 무너진다
+-우선순위는 단일 기준이 아니라 규칙 집합이다
+-합 생성과 실행은 반드시 분리해야 안정적이다
+-확장성을 고려한 프로퍼티 설계는 미래 리팩토링 비용을 줄인다
+-전투 엔진 구조가 한 단계 상승했다
+
+###현재 엔진 상태
+
+-슬롯 기반 전투 구조 확립
+-증분 업데이트 그래프 구조 적용
+-Intercept 우선순위 구현 완료
+-마지막 지정 우선 규칙 구현 완료
+-속도 비교 기준 확정
+-확장성 고려 설계 완료
+
+###다음 목표
+
+-Indirect Clash 설계
+-합 변경(Tab 키) 시스템 구현
+-Resolve 순서 LOR 완전 재현
+-UI 합 실시간 표시 연동
+-Speed 변형 상태이상 시스템 설계
+-그래프 기반 전투 흐름 통합 테스트
