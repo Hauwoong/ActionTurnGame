@@ -2,7 +2,8 @@ using UnityEngine;
 public enum DiceType
 {
     Attack,
-    Block
+    Block,
+    Envade
 }
 
 public enum DiceEffect
@@ -24,11 +25,5 @@ public class DiceData
     }
 }
 
-public class DiceResult
-{
-    public DiceType type;
-    public int value;
-    public Character owner;
-}
 
 

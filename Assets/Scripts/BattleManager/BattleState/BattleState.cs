@@ -11,6 +11,8 @@ public class BattleState
 
     public BoutGraph BoutGraph;
 
+    public List<CombatLog> CombatLogs = new();
+
     public BattleState()
     {
         BoutGraph = new BoutGraph(this);
@@ -18,7 +20,7 @@ public class BattleState
 
     public void StartNewTurn()
     {
-        actionBySlot.Clear();
+        Clear();
 
         foreach (var unit in Units)
         {
@@ -49,5 +51,12 @@ public class BattleState
         actionBySlot.Remove(slot);
 
         BoutGraph.CancelAction(action);
+    }
+
+    public void Clear()
+    {
+        actionBySlot.Clear();
+        BoutGraph?.Clear();
+        CombatLogs?.Clear();
     }
 }

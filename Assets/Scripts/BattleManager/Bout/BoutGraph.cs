@@ -188,4 +188,11 @@ public class BoutGraph
             }
         }
     }
+
+    public void Clear()
+    {
+        targetMap.Clear();
+        edges.Clear();
+        interceptCandidates.Clear();
+    }
 }

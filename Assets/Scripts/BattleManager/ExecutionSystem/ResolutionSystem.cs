@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 public class ResolutionSystem
 {
@@ -12,12 +11,12 @@ public class ResolutionSystem
         this.state = state;
     }
 
-    public void Resolve(BattleState state)
+    public void Resolve()
     {
         executionQueue.Clear(); // Clear the execution queue at the start of each resolution phase
         resolved.Clear(); // Clear the resolved set at the start of each resolution phase
 
-        BuildExecutionQueue(state);
+        BuildExecutionQueue();
 
         while (executionQueue.Count > 0)
         {
@@ -41,9 +40,10 @@ public class ResolutionSystem
                 resolved.Add(slot);
             }
         }
+
     }
 
-    void BuildExecutionQueue(BattleState state)
+    void BuildExecutionQueue()
     {
         foreach (var kvp in state.ActionBySlot)
         {
@@ -56,5 +56,43 @@ public class ResolutionSystem
                 RegisterOrder = action.RegisterOrder
             });
         }
+    }
+
+    void ResolveClash(SpeedSlot slot, SpeedSlot opponent)
+    {
+        ActionRuntime aRuntime = CreateRuntime(state.ActionBySlot[slot]);
+        ActionRuntime bRuntime = CreateRuntime(state.ActionBySlot[opponent]);
+
+        CombatLog log = CombatEngine.ClashResolve(aRuntime, bRuntime);
+        
+        state.CombatLogs.Add(log);
+    }
+
+    void ResolveUnopposed(SpeedSlot slot)
+    {
+
+    }
+
+    ActionRuntime CreateRuntime(ActionInstance action)
+    {
+        ActionRuntime runtime = new ActionRuntime
+        {
+            Source = action,
+            DicePool = new List<DiceRuntime>(),
+            CurrentIndex = 0,
+        };
+
+        foreach (var dice in action.Card.dices)
+        {
+            runtime.DicePool.Add(new DiceRuntime
+            {
+                Type = dice.type,
+                Min = dice.min,
+                Max = dice.max,
+                IsDestoryed = false
+            });
+        }
+
+        return runtime;
     }
 }

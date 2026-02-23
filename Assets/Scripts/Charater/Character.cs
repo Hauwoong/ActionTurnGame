@@ -23,7 +23,7 @@ public class Character : MonoBehaviour
     public List<int> rolledSpeeds = new();
 
     [Header("주사위 스택")]
-    protected Stack<DiceResult> diceStack = new();
+    protected Queue<DiceRuntime> diceStack = new();
     public bool HasDice => diceStack.Count > 0;
     //public bool[] usedSlot;
     protected virtual void Awake()
@@ -52,15 +52,15 @@ public class Character : MonoBehaviour
        }
     }
 
-    public void PushDice(DiceResult dice)
+    public void PushDice(DiceRuntime dice)
     {
-        diceStack.Push(dice);
+        diceStack.Enqueue(dice);
     }
 
-    public DiceResult PopDice()
+    public DiceRuntime PopDice()
     {
         if (diceStack.Count == 0) return null;
-        return diceStack.Pop();
+        return diceStack.Dequeue();
     }
 
     public void ClearDiceStack()

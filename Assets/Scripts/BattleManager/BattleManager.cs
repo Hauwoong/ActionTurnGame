@@ -29,7 +29,7 @@ public class BattleManager : MonoBehaviour
 
     public void EndTurn()
     {
-        resolution.Resolve(state);
+        resolution.Resolve();
         OnBattleStateChanged?.Invoke(state);
 
         StartTurn();
