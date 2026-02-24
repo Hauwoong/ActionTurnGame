@@ -1001,3 +1001,57 @@ O(n^2) 전체 재계산은 필요 없다
 -UI 합 실시간 표시 연동
 -Speed 변형 상태이상 시스템 설계
 -그래프 기반 전투 흐름 통합 테스트
+
+##2026-02-25
+
+###오늘 한 것
+
+-전투 구조를 Card Dice 중심에서 Character DiceQueue 중심 구조로 전환 결정
+-Clash 이후 CharacterRuntime 재생성 방식 완전 제거
+-DiceQueue 기반 통합 Resolve 루프 재설계
+-합 / 일방공격을 동일한 Dice 소비 흐름 안에서 처리하도록 구조 단순화
+-CombatLog를 Turn 전체 공유 구조로 확정
+-CombatEvent 기반 전투 기록 구조 채택
+-RNG 외부 주입 필요성 확인 (리플레이 / 동기화 대비 설계 방향 확정)
+-ResolutionSystem God Script화 방지 → ClashEngine 분리 방향 확정
+-Slot을 전투 주체가 아닌 행동 순서 결정자로 역할 재정의
+-CharacterRuntime을 전투 흐름의 중심 객체로 확정
+
+-전투 중심 객체를 CharacterRuntime으로 고정
+-Slot은 전투 시작 전 매칭 / 속도 결정 전용 구조로 분리
+-DiceEngine은 계산 전용, 상태 변경은 CombatEngine이 담당하도록 책임 분리 확정
+
+###문제
+
+-Clash 이후 CharacterRuntime을 새로 생성하는 구조로 인해 상태 일관성 붕괴 위험
+-합과 일방공격 로직이 분리되어 코드 중복 및 유지보수 부담 증가
+-Dice 저장 구조가 단순 Queue 자료구조에 머물러 설계 의도 불명확
+-ResolutionSystem에 책임이 과도하게 집중되는 God Script화 위험
+-RNG 내부 생성 방식으로 인해 리플레이 / 동기화 확장성 부족
+
+###해결
+
+-CharacterRuntime 재생성 방식 제거 → 동일 객체 유지 구조로 안정화
+-DiceQueue 기반 단일 Resolve 루프 설계로 합 / 일방공격 통합
+-“상대 Dice 존재 여부”에 따른 분기 처리 구조 확정
+-CombatLog를 Turn 단위 단일 리스트로 통합 관리
+-CombatEvent 기반 이벤트 기록 구조 채택
+-RNG 외부 주입 방식 설계 방향 확정
+-ResolutionSystem에서 ClashEngine 분리 설계
+-DiceEngine은 계산 전용, CombatEngine은 상태 변경 담당으로 역할 명확화
+
+###배운 점
+
+-전투 시스템의 핵심은 “Dice 이동”이 아니라 “Dice 소비 흐름”이다
+-합과 일방공격은 다른 시스템이 아니라 동일 루프의 분기다
+-전투 중심 객체는 카드가 아니라 CharacterRuntime이다
+-슬롯은 전투 객체가 아니라 순서 결정자이다
+-로그 기반 설계는 디버깅과 확장성 모두에 유리하다
+-엔진이 커질수록 계산 시스템과 상태 변경 시스템을 분리해야 한다
+
+###구조적 결론
+
+-전투 중심 = CharacterRuntime
+-슬롯 = 전투 전 매칭 / 속도 결정 전용
+-로그 = Turn 단위 단일 리스트
+-Dice = 이동 개념이 아니라 소비 기록 개념

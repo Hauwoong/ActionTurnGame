@@ -2,44 +2,44 @@ using UnityEngine;
 
 public class CombatEngine
 {
-    public static CombatLog ClashResolve(ActionRuntime a, ActionRuntime b)
+    public static CombatLog ClashResolve(CharacterRuntime a, CharacterRuntime b)
     {
-        CombatLog log = new();
-
-        log.Add(new CombatEvent
+        CombatLog log = new CombatLog
         {
-            Source = a.Source.SourceSlot,
-            Target = b.Source.SourceSlot,
-            Type = CombatEventType.ClashStarted
-        });
+            UnitA = a.Owner,
+            UnitB = b.Owner
+        };
 
-        while (!a.IsFinished && !b.IsFinished)
+        while (a.ActiveQueue.HasDice && b.ActiveQueue.HasDice)
         {
             ResolveDiceVSDice(a, b, log);
         }
 
-        
+        if (a.ActiveQueue.HasDice)
+        {
+            ResolveOpposedDice(a, b, log);
+        }
+
+        if (b.ActiveQueue.HasDice)
+        {
+            ResolveOpposedDice(b, a, log);
+        }
+
+        return log;
     }
 
-    static void ContinueUnopposedResolve(Character attacker, ActionRuntime Defender, CombatLog log)
+    static void ResolveDiceVSDice(CharacterRuntime a, CharacterRuntime b, CombatLog log)
     {
-
-    }
-
-    static void ResolveDiceVSDice(ActionRuntime a, ActionRuntime b, CombatLog log)
-    {
-        DiceRuntime diceA = a.CurrentDice;
-        DiceRuntime diceB = b.CurrentDice;
+        DiceRuntime diceA = a.CurrnetDice;
+        DiceRuntime diceB = b.CurrnetDice;
 
         DiceClashOutcome outcome = DiceEngine.Resolve(diceA, diceB);
 
         log.Add(new CombatEvent
         {
-            Source = a.Source.SourceSlot,
-            Target = b.Source.SourceSlot,
+            UnitA = a.Owner,
+            UnitB = b.Owner,
             Type = CombatEventType.DiceRolled,
-            SourceDiceIndex = a.CurrentIndex,
-            TargetDiceIndex = b.CurrentIndex,
             SourceRoll = outcome.RollA,
             TargetRoll = outcome.RollB
         });
@@ -47,13 +47,38 @@ public class CombatEngine
         if (outcome.DestoryA)
         {
             diceA.IsDestoryed = true;
-            a.Advance();
+            a.ActiveQueue.DestoryDice();
         }
 
         if (outcome.DestoryB)
         {
             diceB.IsDestoryed = true;
-            b.Advance();
+            b.ActiveQueue.DestoryDice();
+        }
+    }
+
+    static void ResolveOpposedDice(CharacterRuntime a, CharacterRuntime b, CombatLog log)
+    {
+        int originalCount = a.ActiveQueue.Count();
+
+        for (int i = 0; i < originalCount; i++)
+        {
+            DiceRuntime dice = a.CurrnetDice;
+
+            if (dice.Type != DiceType.Attack)
+            {
+                a.HoldQueue.PushFront(dice);
+            }
+
+            else
+            {
+                // 공격 주사위 로그 만들기
+            }
+        }
+
+        while (a.HoldQueue.HasDice)
+        {
+            a.ActiveQueue.PushFront(a.HoldQueue.PopFront());
         }
     }
 }

@@ -2,24 +2,11 @@ using System.Collections.Generic;
 
 public class CharacterRuntime
 {
-    public SpeedSlot slot;
+    public Character Owner;
 
-    private Queue<DiceRuntime> defencestack = new();
+    public DiceQueue ActiveQueue = new DiceQueue();
 
-    public bool HasDefenceDice => defencestack.Count > 0;
+    public DiceQueue HoldQueue = new DiceQueue();
 
-    public DiceRuntime PopDice()
-    {
-        return defencestack.Count > 0 ? defencestack.Dequeue() : null;
-    }
-
-    public void PushDice(DiceRuntime dice)
-    {
-        defencestack.Enqueue(dice);
-    }
-
-    public void Clear()
-    {
-        defencestack.Clear();
-    }
+    public DiceRuntime CurrnetDice => ActiveQueue.HasDice ? ActiveQueue.PeekFront() : null;
 }

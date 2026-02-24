@@ -58,14 +58,15 @@ public class ResolutionSystem
         }
     }
 
-    void ResolveClash(SpeedSlot slot, SpeedSlot opponent)
+    void ResolveClash(SpeedSlot aSlot, SpeedSlot bSlot)
     {
-        ActionRuntime aRuntime = CreateRuntime(state.ActionBySlot[slot]);
-        ActionRuntime bRuntime = CreateRuntime(state.ActionBySlot[opponent]);
+        EnqueueCardDice(aSlot);
+        EnqueueCardDice(bSlot);
 
-        CombatLog log = CombatEngine.ClashResolve(aRuntime, bRuntime);
-        
-        state.CombatLogs.Add(log);
+        CharacterRuntime charA = state.GetRuntime(aSlot.owner);
+        CharacterRuntime charB = state.GetRuntime(bSlot.owner);
+
+        CombatLog log = CombatEngine.ClashResolve(charA, charB);
     }
 
     void ResolveUnopposed(SpeedSlot slot)
@@ -94,5 +95,26 @@ public class ResolutionSystem
         }
 
         return runtime;
+    }
+
+    void EnqueueCardDice(SpeedSlot slot)
+    {
+        if (state.ActionBySlot.TryGetValue(slot, out var action))
+        {
+            var runtime = state.GetRuntime(slot.owner);
+
+            foreach (var dicedata in action.Card.dices)
+            {
+                DiceRuntime diceRuntime = new DiceRuntime
+                {
+                    Type = dicedata.type,
+                    Min = dicedata.min,
+                    Max = dicedata.max,
+                    IsDestoryed = false
+                };
+
+                runtime.EnqueueDice(diceRuntime);
+            }
+        }
     }
 }

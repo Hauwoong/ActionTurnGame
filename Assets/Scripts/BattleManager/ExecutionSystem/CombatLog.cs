@@ -1,7 +1,11 @@
 using System.Collections.Generic;
+using Unity.Profiling;
 using Unity.VisualScripting;
 public class CombatLog
 {
+    public Character UnitA;
+    public Character UnitB;
+
     public List<CombatEvent> Events = new();
 
     public void Add(CombatEvent log)
@@ -12,13 +16,10 @@ public class CombatLog
 
 public class CombatEvent
 {
+    public Character UnitA;
+    public Character UnitB;
+
     public CombatEventType Type;
-
-    public SpeedSlot Source;
-    public SpeedSlot Target;
-
-    public int? SourceDiceIndex;
-    public int? TargetDiceIndex;
 
     public int? SourceRoll;
     public int? TargetRoll;

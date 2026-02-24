@@ -11,6 +11,8 @@ public class BattleState
 
     public BoutGraph BoutGraph;
 
+    public Dictionary<Character, CharacterRuntime> CharacterRuntimes = new();
+
     public List<CombatLog> CombatLogs = new();
 
     public BattleState()
@@ -53,10 +55,24 @@ public class BattleState
         BoutGraph.CancelAction(action);
     }
 
+    public CharacterRuntime GetRuntime(Character owner)
+    {
+        if (!CharacterRuntimes.TryGetValue(owner, out var runtime))
+        {
+            runtime = new CharacterRuntime();
+            CharacterRuntimes[owner] = runtime;
+        }
+
+        runtime.CurrentIndex = 0;
+
+        return runtime;
+    }
+
     public void Clear()
     {
         actionBySlot.Clear();
         BoutGraph?.Clear();
+        CharacterRuntimes.Clear();
         CombatLogs?.Clear();
     }
 }
