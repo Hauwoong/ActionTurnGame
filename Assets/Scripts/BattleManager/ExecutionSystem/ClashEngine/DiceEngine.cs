@@ -1,7 +1,7 @@
 
 public class DiceEngine
 {
-    public static DiceClashOutcome Resolve(DiceRuntime a, DiceRuntime b)
+    public static DiceClashOutcome ResolveClash(DiceRuntime a, DiceRuntime b)
     {
         int rollA = a.Roll();
         int rollB = b.Roll();
@@ -38,6 +38,21 @@ public class DiceEngine
         }
 
         return outcome;
+    }
+
+    public static DiceUnopposedOutcome ResolveUnopposed(DiceRuntime a)
+    {
+        int rollA = a.Roll();
+
+        DiceUnopposedOutcome outcome = new DiceUnopposedOutcome
+        {
+            RollA = rollA,
+            Damage = rollA, // 데미지 공식 계산 확장성을 위한 
+        };
+
+        outcome.DestoryA = true; // 만약 재사용 하거나 안 부숴지는 주사위시 확장성을 위한
+
+        return outcome; 
     }
 }
 

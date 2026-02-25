@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.ComponentModel;
 
 public class BattleState
 {
@@ -24,6 +25,12 @@ public class BattleState
     {
         Clear();
 
+        RollSpeedDice();
+        InitializeRuntime();
+    }
+
+    void RollSpeedDice()
+    {
         foreach (var unit in Units)
         {
             unit.RollspeedDice();
@@ -54,25 +61,26 @@ public class BattleState
 
         BoutGraph.CancelAction(action);
     }
+    
+    void InitializeRuntime()
+    {
+        CharacterRuntimes = new();
+
+        foreach (Character character in Units)
+        {
+            CharacterRuntimes[character] = new CharacterRuntime(character);
+        }
+    }
 
     public CharacterRuntime GetRuntime(Character owner)
     {
-        if (!CharacterRuntimes.TryGetValue(owner, out var runtime))
-        {
-            runtime = new CharacterRuntime();
-            CharacterRuntimes[owner] = runtime;
-        }
-
-        runtime.CurrentIndex = 0;
-
-        return runtime;
+        return CharacterRuntimes[owner];
     }
 
     public void Clear()
     {
         actionBySlot.Clear();
         BoutGraph?.Clear();
-        CharacterRuntimes.Clear();
         CombatLogs?.Clear();
     }
 }

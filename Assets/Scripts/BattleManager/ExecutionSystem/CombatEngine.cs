@@ -1,5 +1,4 @@
-using UnityEngine;
-
+using System.Collections.Generic;
 public class CombatEngine
 {
     public static CombatLog ClashResolve(CharacterRuntime a, CharacterRuntime b)
@@ -10,30 +9,33 @@ public class CombatEngine
             UnitB = b.Owner
         };
 
-        while (a.ActiveQueue.HasDice && b.ActiveQueue.HasDice)
+        while (!a.IsFinished && !b.IsFinished)
         {
             ResolveDiceVSDice(a, b, log);
         }
 
-        if (a.ActiveQueue.HasDice)
-        {
-            ResolveOpposedDice(a, b, log);
-        }
-
-        if (b.ActiveQueue.HasDice)
+        if (a.IsFinished)
         {
             ResolveOpposedDice(b, a, log);
         }
+
+        if (b.IsFinished)
+        {
+            ResolveOpposedDice(a, b, log);
+        }    
+        
+        a.CleanupAfterAction();
+        b.CleanupAfterAction();
 
         return log;
     }
 
     static void ResolveDiceVSDice(CharacterRuntime a, CharacterRuntime b, CombatLog log)
     {
-        DiceRuntime diceA = a.CurrnetDice;
-        DiceRuntime diceB = b.CurrnetDice;
+        DiceRuntime diceA = a.CurrentDice;
+        DiceRuntime diceB = b.CurrentDice;
 
-        DiceClashOutcome outcome = DiceEngine.Resolve(diceA, diceB);
+        DiceClashOutcome outcome = DiceEngine.ResolveClash(diceA, diceB);
 
         log.Add(new CombatEvent
         {
@@ -47,38 +49,29 @@ public class CombatEngine
         if (outcome.DestoryA)
         {
             diceA.IsDestoryed = true;
-            a.ActiveQueue.DestoryDice();
+            a.Advance();
         }
 
         if (outcome.DestoryB)
         {
             diceB.IsDestoryed = true;
-            b.ActiveQueue.DestoryDice();
+            b.Advance();
         }
     }
 
     static void ResolveOpposedDice(CharacterRuntime a, CharacterRuntime b, CombatLog log)
     {
-        int originalCount = a.ActiveQueue.Count();
-
-        for (int i = 0; i < originalCount; i++)
+        while (!a.IsFinished)
         {
-            DiceRuntime dice = a.CurrnetDice;
+            DiceRuntime dice = a.CurrentDice;
 
             if (dice.Type != DiceType.Attack)
             {
-                a.HoldQueue.PushFront(dice);
+                a.SkipDice();
+                continue;
             }
 
-            else
-            {
-                // 공격 주사위 로그 만들기
-            }
-        }
-
-        while (a.HoldQueue.HasDice)
-        {
-            a.ActiveQueue.PushFront(a.HoldQueue.PopFront());
+            DiceUnopposedOutcome outcome = DiceEngine.ResolveUnopposed(dice);
         }
     }
 }

@@ -74,47 +74,26 @@ public class ResolutionSystem
 
     }
 
-    ActionRuntime CreateRuntime(ActionInstance action)
-    {
-        ActionRuntime runtime = new ActionRuntime
-        {
-            Source = action,
-            DicePool = new List<DiceRuntime>(),
-            CurrentIndex = 0,
-        };
-
-        foreach (var dice in action.Card.dices)
-        {
-            runtime.DicePool.Add(new DiceRuntime
-            {
-                Type = dice.type,
-                Min = dice.min,
-                Max = dice.max,
-                IsDestoryed = false
-            });
-        }
-
-        return runtime;
-    }
-
     void EnqueueCardDice(SpeedSlot slot)
     {
         if (state.ActionBySlot.TryGetValue(slot, out var action))
         {
             var runtime = state.GetRuntime(slot.owner);
 
-            foreach (var dicedata in action.Card.dices)
-            {
-                DiceRuntime diceRuntime = new DiceRuntime
-                {
-                    Type = dicedata.type,
-                    Min = dicedata.min,
-                    Max = dicedata.max,
-                    IsDestoryed = false
-                };
+            List<DiceRuntime> cardDice = new();
 
-                runtime.EnqueueDice(diceRuntime);
+            foreach (var dice in action.Card.dices)
+            {
+                cardDice.Add(new DiceRuntime
+                {
+                    Type = dice.type,
+                    Min = dice.min,
+                    Max = dice.max,
+                    IsDestoryed = false
+                });
             }
+
+            runtime.AddCardDice(cardDice);
         }
     }
 }

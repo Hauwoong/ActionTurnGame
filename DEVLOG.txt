@@ -1055,3 +1055,98 @@ O(n^2) 전체 재계산은 필요 없다
 -슬롯 = 전투 전 매칭 / 속도 결정 전용
 -로그 = Turn 단위 단일 리스트
 -Dice = 이동 개념이 아니라 소비 기록 개념
+
+##2026-02-26
+
+###오늘 한 것
+
+-전투 구조를 Slot 중심에서 Character 중심 구조로 완전 재정렬
+-BattleState가 Dictionary<Character, CharacterRuntime> 보유하도록 구조 확정
+-턴 시작 시 InitializeRuntime()에서 Runtime 생성 구조로 확정
+-Resolve 단계에서 Runtime 생성 제거
+-전투 도중 Runtime 생명주기 변동 제거
+-참조 안정성 확보
+
+-Dice 처리 구조를 Queue 기반에서 Cursor 기반으로 전환 확정
+-내부 List<DiceRuntime> + int DiceCursor 구조 도입
+-CurrentDice / Advance() / IsFinished 인터페이스 정리
+-승리 Dice 유지 구조 반영
+-회피 연속 합 대응 구조 설계
+-Dequeue 기반 소비 구조 완전 폐기
+-LOR 스타일 “패배한 쪽만 커서 이동” 구조 확정
+
+-합(Clash) Resolve 루프 구조 확정
+-while (!a.IsFinished && !b.IsFinished) 반복 구조 채택
+-DiceEngine.ResolveClash 호출 구조 정리
+-Destroy된 쪽만 Advance() 처리
+-승리 Dice 유지 기반 연속 합 구조 완성
+-1:1 매칭 구조 폐기
+-소비 기반 매칭 구조 폐기
+-상태 기반 반복 구조로 단순화
+
+-ResolveOpposedDice 구조 추가
+-일방 공격 처리 구조 분리
+-공격 주사위만 실행
+-비공격 주사위는 Skip 후 유지
+-Cleanup 단계에서 잔여 주사위 정리
+-방어/회피 주사위 소실 문제 제거
+-합 종료 후 잔여 Dice 자연 처리 구조 확정
+
+-CombatLog 시스템 도입
+-CombatLog를 Turn 전체 공유 구조로 확정
+-BattleState가 List<CombatLog> 보유
+-Resolve의 1차 목적을 상태 변경이 아닌 로그 생성으로 전환
+-Resolve → Log 생성 → 연출 시스템 소비 구조 확정
+-전투 계산과 연출 시스템 완전 분리
+
+-BattleState 구조 정리
+-Units / ActionBySlot / BoutGraph / CharacterRuntimes / CombatLogs 구조 확정
+-StartNewTurn → Clear → RollSpeedDice → InitializeRuntime 흐름 정리
+-턴 시작 시 Runtime 초기화 고정
+-Resolve는 상태 변경만 수행
+-로그는 턴 단위 누적 구조 확정
+
+###문제
+
+-Resolve 중 Runtime 생성으로 참조 불안정 발생 가능성
+-Queue 기반 Dice 소비 구조가 승리 유지 구조와 충돌
+-1:1 매칭 기반 합 구조의 확장성 한계
+-슬롯 중심 설계와 실제 Dice 소비 흐름 간 괴리
+-전투 로직과 연출 로직이 섞일 위험
+
+###해결
+
+-CharacterRuntime을 턴 시작 시 고정 생성 구조로 변경
+-Resolve 단계에서 객체 생성 완전 제거
+-Queue 제거 → Cursor 기반 진행 구조 도입
+-패배한 쪽만 Advance() 하는 구조 확정
+-상태 기반 반복 Resolve 루프 설계
+-일방 공격 처리 로직 분리
+-CombatLog 중심 전투 흐름으로 전환
+-전투 계산 시스템과 연출 시스템 완전 분리
+
+###배운 점
+
+-전투는 소비가 아니라 “진행” 구조로 보는 것이 맞다
+-Dice는 제거되는 객체가 아니라 상태를 따라 이동하는 흐름이다
+-승리 Dice 유지 구조는 Queue 모델로는 자연스럽지 않다
+-Resolve는 계산기이며, 연출은 로그를 소비하는 별도 시스템이다
+-객체 생명주기를 고정하면 참조 안정성이 크게 향상된다
+-슬롯 중심 설계는 전투 시작 전 단계에만 적합하다
+
+###현재 구조 상태
+
+-CharacterRuntime 중심 구조 안정화 완료
+-Cursor 기반 Dice 순환 구조 확정
+-Clash / Unopposed 분리 완료
+-CombatLog 기반 전투 흐름 확립
+-Resolve 단계 객체 생성 제거 완료
+-전투 계산과 연출 완전 분리 완료
+
+###다음 목표
+
+-ResolveClash 세부 처리 디테일 정리
+-사망 / 스태거 중간 개입 처리 구조 설계
+-CombatLog 세부 타입 확장
+-전투 종료 조건 처리 정리
+-전체 Turn 흐름 통합 테스트 진행
