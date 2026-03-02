@@ -16,8 +16,13 @@ public class BattleState
 
     public List<CombatLog> CombatLogs = new();
 
-    public BattleState()
+    public LorRuleSet Rules;
+
+    public IRng Rng { get; private set; }
+
+    public BattleState(int seed)
     {
+        Rng = new DeterministicRng(seed);
         BoutGraph = new BoutGraph(this);
     }
 

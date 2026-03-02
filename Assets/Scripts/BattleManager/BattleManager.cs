@@ -4,7 +4,7 @@ using System;
 
 public class BattleManager : MonoBehaviour
 {
-    private BattleState state = new();
+    private BattleState state;
     public BattleState State => state;
 
     private ResolutionSystem resolution;
@@ -19,6 +19,11 @@ public class BattleManager : MonoBehaviour
     {
         actionPhase = new ActionPhaseSystem(state);
         resolution = new ResolutionSystem(state);
+    }
+
+    public void StartBattle(int seed)
+    {
+        state = new BattleState(seed);
     }
 
     public void StartTurn()

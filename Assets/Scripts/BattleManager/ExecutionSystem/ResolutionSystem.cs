@@ -2,13 +2,16 @@ using System.Collections.Generic;
 
 public class ResolutionSystem
 {
-    BattleState state;
+    private BattleState state;
+    private readonly CombatExecutor executor;
+    private readonly BattleResolutionLoop loop;
     private readonly PriorityQueue<SpeedSlot, ActionPriority> executionQueue = new();
     private HashSet<SpeedSlot> resolved = new();
 
     public ResolutionSystem(BattleState state)
     {
         this.state = state;
+        executor = new CombatExecutor(state.Rules, state.Rng, loop);
     }
 
     public void Resolve()
@@ -66,7 +69,13 @@ public class ResolutionSystem
         CharacterRuntime charA = state.GetRuntime(aSlot.owner);
         CharacterRuntime charB = state.GetRuntime(bSlot.owner);
 
-        CombatLog log = CombatEngine.ClashResolve(charA, charB);
+        var input = new ClashInput(
+            charA.GetRemainingDice(),
+            charB.GetRemainingDice());
+
+        executor.Execute(input);
+
+        loop.Resolve();
     }
 
     void ResolveUnopposed(SpeedSlot slot)
@@ -94,6 +103,32 @@ public class ResolutionSystem
             }
 
             runtime.AddCardDice(cardDice);
+        }
+    }
+
+    void ApplyClashResult(
+        CharacterRuntime a,
+        CharacterRuntime b,
+        ClashResult result)
+    {
+        int cursorA = 0;
+        int cursorB = 0;
+
+        foreach (var step in result.Steps)
+        {
+            if (step.DestoryA)
+            {
+                a.GetDiceAt(a.DiceCursor).IsDestoryed = true;
+                a.Advance();
+                cursorA++;
+            }
+
+            if (step.DestoryB)
+            {
+                b.GetDiceAt(b.DiceCursor).IsDestoryed = true;
+                a.Advance();
+                cursorB++;
+            }
         }
     }
 }
