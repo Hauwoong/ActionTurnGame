@@ -2,19 +2,33 @@ using System.Collections.Generic;
 
 public class BattleRuntime
 {
-    private readonly Dictionary<Character, CharacterRuntime> characters = new();
-    public IReadOnlyDictionary<Character, CharacterRuntime> Characters => characters;
+    private readonly Dictionary<int, CharacterRuntime> _characters;
+    public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
 
-    public BattleRuntime(IEnumerable<Character> participants)
+    public BattleRuntime(IEnumerable<Character> characters)
     {
-        foreach (var character in participants)
+        _characters = new Dictionary<int, CharacterRuntime>();
+
+        foreach (var c in characters)
         {
-            characters[character] = new CharacterRuntime(character);
+            _characters[c.Owner.Id] = c;
         }
     }
 
     public CharacterRuntime GetRuntime(Character character)
     {
         return characters[character];
+    }
+
+    public DiceRuntime GetDice(DiceHandle handle)
+    {
+        var character = characters[handle.Owner];
+        return character.GetDice(handle.DiceId);
+    }
+
+    public Character GetCharacter(Character character)
+    {
+        var runtime = characters[character];
+        return runtime.GetCharacter(character);
     }
 }

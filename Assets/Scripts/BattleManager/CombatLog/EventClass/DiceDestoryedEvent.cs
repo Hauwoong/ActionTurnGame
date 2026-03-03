@@ -1,16 +1,17 @@
+using JetBrains.Annotations;
+
 public sealed class DiceDestoryedEvent : ICombatEvent
 {
-    public readonly Character Owner;
-    public readonly int DiceId;
+    public DiceHandle Handle { get; private set; }
 
-    public DiceDestoryedEvent(Character owner, int diceId)
+    public DiceDestoryedEvent(DiceHandle handle)
     {
-        Owner = owner;
-        DiceId = diceId;
+        Handle = handle;
     }
 
     public void Apply(BattleRuntime runtime)
     {
-        runtime.GetRuntime(Owner).MarkDestoryed(DiceId);
+        var dice = runtime.GetDice(Handle);
+        dice.IsDestoryed = true; ;
     }
 }

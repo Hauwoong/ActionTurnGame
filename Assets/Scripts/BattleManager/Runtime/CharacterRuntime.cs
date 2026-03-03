@@ -2,42 +2,99 @@ using System.Collections.Generic;
 
 public class CharacterRuntime
 {
-    public Character Owner;
+    private readonly CharacterState state; // 기존의 character을 characterstate로 변경
 
-    private List<DiceEntry> DicePool = new();
+    private readonly int CharacterId; // 캐릭터 마다 고유 번호
 
-    private Dictionary<int, DiceRuntime> DiceById = new();
+    private readonly List<DiceEntry> DicePool = new(); // 캐릭터 런타임이 소유하는 주사위
+    private readonly Dictionary<int, DiceRuntime> DiceById = new(); // 이벤트가 주사위 id 추적을 용이하게 하기 위한 딕셔너리
 
-    public int DiceCursor { get; private set; }
+    public int DiceCursor { get; private set; } // List + Cursor 조합으로 주사위 관리
 
-    private int NextDiceId = 0;
+    private int CurrentHp;
+
+    private readonly List<StatusEffectRuntime> _statusEffects; // 이벤트 개입을 전제로 하는 상태이상
+
+    private int NextDiceId = 0; // CharacterRuntime -> DiceEntry 소유하니 id 생성은 characterruntime 역할
 
     public bool IsFinished => DiceCursor >= DicePool.Count;
 
-    public CharacterRuntime(Character owner)
+    public CharacterRuntime(CharacterState owner)
     {
-        Owner = owner;
+        state = owner;
         DiceCursor = 0;
+        CurrentHp = state.MaxHp;
     }
 
     public IReadOnlyList<DiceEntry> GetRemainingDice() => DicePool;
 
-    public DiceEntry GetCurrentDice()
+    public bool TryGetCurrentDice(out DiceEntry dice)
     {
-        if (IsFinished) return null;
-        return DicePool[DiceCursor];
+        if (IsFinished)
+        {
+            dice = default;
+            return false;
+        }
+
+        dice = DicePool[DiceCursor];
+        return true;
     }
 
-    public DiceEntry GetDiceAt(int index) => DicePool[index];
-
-    public void AddCardDice(List<DiceEntry> cardDice)
+    public DiceRuntime GetDice(int id)
     {
-        DicePool.InsertRange(DiceCursor, cardDice);
+        if (DiceById.TryGetValue(id, out DiceRuntime runtime))
+        {
+            return runtime;
+        }
+
+        return null;
+    }
+
+    public void UseCard(CardData card)
+    {
+        var cardDice = card.dices;
+        var dices = CreateDiceEntry(cardDice);
+        AddCardDice(dices);
+    }
+
+    List<DiceEntry> CreateDiceEntry(List<DiceData> cardDice)
+    {
+        List<DiceEntry> dices = new();
+
+        foreach (var dice in cardDice)
+        {
+            int id = NextDiceId++;
+
+            var diceRuntime = new DiceRuntime
+            {
+                Type = dice.type,
+                Min = dice.min,
+                Max = dice.max,
+                IsDestoryed = false
+            };
+
+            var diceHandle = new DiceHandle(
+                state.Source, id);
+
+            DiceById[id] = diceRuntime;
+
+            dices.Add(new DiceEntry(diceRuntime, diceHandle));
+        }
+
+        return dices;
+    }
+
+    void AddCardDice(List<DiceEntry> dices) // ActionBySlot 에서 카드 사용 -> 그럼 카드 안에 주사위 리스트는 여기서 계산 해야 하나? 
+    {
+        DicePool.InsertRange(DiceCursor, dices);
     }
     
     public void MarkDestoryed(int DiceId)
     {
-        DicePool[DiceCursor].Dice.IsDestoryed = true;
+        if (DiceById.TryGetValue(DiceId, out var dice))
+        {
+            dice.IsDestoryed = true;
+        }
     }
 
     public void Advance()
@@ -48,6 +105,7 @@ public class CharacterRuntime
             DiceCursor++;
         }
     }
+
     
     public void ResetCursor()
     {

@@ -1150,3 +1150,97 @@ O(n^2) 전체 재계산은 필요 없다
 -CombatLog 세부 타입 확장
 -전투 종료 조건 처리 정리
 -전체 Turn 흐름 통합 테스트 진행
+
+##2026-02-XX
+
+###오늘 한 것
+
+-Resolve 중 객체 생성 제거를 목표로 구조 철학 재정립
+-책임 계층 분리 및 설계도 / 실행 데이터 분리 확정
+-이벤트 기반 전투 구조 방향 확정
+
+-계층 구조를 Character → CharacterState → CharacterRuntime 3단 구조로 재정의
+-Character를 마스터 데이터(불변) 계층으로 확정
+-CharacterState를 전투 시작 스냅샷(불변 설계 데이터)으로 분리
+-CharacterRuntime을 실행 전용 객체(동적 상태 보유)로 확정
+-설계 계층과 실행 계층 완전 분리 성공
+
+-DiceEntry 구조 도입
+-DiceEntry = DiceRuntime + DiceHandle 구조 확정
+-다이스 아이덴티티와 동작 데이터 결합
+-DiceRuntime 생성 책임을 CharacterRuntime으로 고정
+-NextDiceId를 CharacterRuntime 책임으로 확정
+-DiceById 딕셔너리 기반 ID 추적 구조 도입
+-List와 Dictionary가 동일 참조 공유하도록 구조 정리
+-Runtime 단일 생성 원칙 확정
+
+-Queue 기반 Dice 구조 폐기
+-List + Cursor 기반 순회 구조 확정
+-IsFinished = DiceCursor >= DicePool.Count 구조 정리
+-InsertRange 기반 중간 삽입 가능 구조 확보
+-파괴된 Dice 스킵 가능 구조 확보
+-ID 기반 접근과 자연스럽게 결합
+
+-null 반환 방식 제거
+-TryGetCurrentDice(out DiceEntry dice) 패턴 도입
+-null 기반 제어 제거
+-명시적 성공 / 실패 반환 방식으로 엔진 안정성 강화
+
+-카드 → Dice 생성 흐름 확정
+-ResolutionSystem → CharacterRuntime.UseCard() → CreateDiceEntry() → DicePool.InsertRange() 흐름 정리
+-Dice의 출처는 카드로 고정
+-CharacterState는 Dice 생성에 개입하지 않도록 책임 분리
+-패시브 Dice는 StatusEffectRuntime 이벤트 개입 방식으로 설계 방향 확정
+
+-StatusEffect 설계 방향 확정
+-이벤트 기반 개입 구조 채택
+-StatusEffect에 Priority 부여
+-직접 제거 금지 원칙 확정
+-제거 요청 후 Runtime이 일괄 정리하는 방식 채택
+-CharacterRuntime을 Aggregate Root로 유지
+-상태 효과와의 결합도 최소화
+
+###문제
+
+-Resolve 중 객체 생성으로 인한 생명주기 혼란 가능성
+-설계 데이터와 실행 데이터 혼합 구조 문제
+-Dice 아이덴티티 부재로 인한 추적 어려움
+-Queue 기반 Dice 구조의 확장성 한계
+-null 반환 기반 제어 흐름의 불안정성
+-StatusEffect가 Runtime을 직접 조작할 가능성
+
+###해결
+
+-3계층 구조 도입으로 설계 / 실행 데이터 완전 분리
+-CharacterState 도입으로 전투 시작 스냅샷 고정
+-DiceEntry 도입으로 다이스 단위 완전 보장
+-CharacterRuntime이 Dice 생성 및 ID 관리 전담
+-List + Cursor 구조로 확장성 확보
+-Try 패턴 적용으로 안정성 강화
+-StatusEffect는 이벤트 개입만 허용하도록 규칙 확정
+-Aggregate Root를 CharacterRuntime으로 고정
+
+###배운 점
+
+-설계 데이터와 실행 데이터는 반드시 분리해야 한다
+-아이덴티티가 없는 객체는 추적과 확장에서 한계를 가진다
+-Queue는 단순하지만 확장성에서는 제약이 많다
+-null 반환은 단기적으로 편하지만 장기적으로 위험하다
+-Aggregate Root를 명확히 하면 구조가 안정된다
+-이벤트 기반 구조는 확장을 자연스럽게 만든다
+
+###현재 구조 상태
+
+-Character / CharacterState / CharacterRuntime 3계층 구조 확정
+-DiceEntry 기반 다이스 단위 구조 완성
+-Cursor 기반 Dice 순환 구조 적용
+-Try 패턴 적용 완료
+-이벤트 기반 StatusEffect 설계 방향 확정
+-Resolve 중 객체 생성 제거 완료
+
+###다음 목표
+
+-StatusEffectRuntime 이벤트 세부 인터페이스 정의
+-CombatEvent 세부 타입 정교화
+-DiceResolve 루프와 StatusEffect 개입 통합
+-전투 흐름 전체 통합 테스트 진행

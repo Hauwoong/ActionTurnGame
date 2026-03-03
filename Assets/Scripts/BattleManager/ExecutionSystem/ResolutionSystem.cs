@@ -104,31 +104,5 @@ public class ResolutionSystem
 
             runtime.AddCardDice(cardDice);
         }
-    }
-
-    void ApplyClashResult(
-        CharacterRuntime a,
-        CharacterRuntime b,
-        ClashResult result)
-    {
-        int cursorA = 0;
-        int cursorB = 0;
-
-        foreach (var step in result.Steps)
-        {
-            if (step.DestoryA)
-            {
-                a.GetDiceAt(a.DiceCursor).IsDestoryed = true;
-                a.Advance();
-                cursorA++;
-            }
-
-            if (step.DestoryB)
-            {
-                b.GetDiceAt(b.DiceCursor).IsDestoryed = true;
-                a.Advance();
-                cursorB++;
-            }
-        }
-    }
+    }   
 }
