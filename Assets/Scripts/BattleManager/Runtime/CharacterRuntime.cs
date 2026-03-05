@@ -1,10 +1,9 @@
 using System.Collections.Generic;
+using UnityEditor.Rendering.LookDev;
 
 public class CharacterRuntime
 {
     private readonly CharacterState state; // 기존의 character을 characterstate로 변경
-
-    private readonly int CharacterId; // 캐릭터 마다 고유 번호
 
     private readonly List<DiceEntry> DicePool = new(); // 캐릭터 런타임이 소유하는 주사위
     private readonly Dictionary<int, DiceRuntime> DiceById = new(); // 이벤트가 주사위 id 추적을 용이하게 하기 위한 딕셔너리
@@ -19,9 +18,10 @@ public class CharacterRuntime
 
     public bool IsFinished => DiceCursor >= DicePool.Count;
 
-    public CharacterRuntime(CharacterState owner)
+    public CharacterRuntime(CharacterState owner, int id)
     {
         state = owner;
+        CharacterId = id;
         DiceCursor = 0;
         CurrentHp = state.MaxHp;
     }
@@ -106,9 +106,40 @@ public class CharacterRuntime
         }
     }
 
-    
     public void ResetCursor()
     {
         DiceCursor = 0;
+    }
+
+    public void RaiseTurnStart()
+    {
+        var ctx = new TurnStartContext(this);
+
+        foreach (var effect in _statusEffects)
+        {
+            effect.OnTurnStart(ctx);
+        }
+
+        _statusEffects.RemoveAll(e => e.IsExpird);
+    }
+
+    public void RaiseBeforeDamage(DamageContext ctx)
+    {
+        foreach (var effect in _statusEffects)
+        {
+            effect.OnBeforeDamage(ctx);
+        }
+
+        _statusEffects.RemoveAll(e => e.IsExpird);
+    }
+
+    public void RaiseAfterDamage(DamageContext ctx)
+    {
+        foreach (var effect in _statusEffects)
+        {
+            effect.OnAfterDamage(ctx);
+        }
+
+        _statusEffects.RemoveAll(e => e.IsExpird);
     }
 }

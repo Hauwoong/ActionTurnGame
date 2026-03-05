@@ -1,6 +1,8 @@
 
 using UnityEngine;
 using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 public class BattleManager : MonoBehaviour
 {
@@ -56,5 +58,16 @@ public class BattleManager : MonoBehaviour
     {
         actionPhase.CancelAction(state, slot);
         OnBattleStateChanged?.Invoke(state);
+    }
+
+    public BattleRuntime CreateBattle(IEnumerable<Character> characters)
+    {
+        int seed = Random.Shared.Next();
+
+        var state = new BattleSnapShot(characters, seed);
+
+        var runtime = new BattleRuntime(state);
+
+        return runtime;
     }
 }

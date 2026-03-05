@@ -12,8 +12,6 @@ public class BattleState
 
     public BoutGraph BoutGraph;
 
-    public Dictionary<Character, CharacterRuntime> CharacterRuntimes = new();
-
     public List<CombatLog> CombatLogs = new();
 
     public LorRuleSet Rules;
@@ -29,7 +27,6 @@ public class BattleState
     public void StartNewTurn()
     {
         Clear();
-
         RollSpeedDice();
         InitializeRuntime();
     }
@@ -69,17 +66,7 @@ public class BattleState
     
     void InitializeRuntime()
     {
-        CharacterRuntimes = new();
-
-        foreach (Character character in Units)
-        {
-            CharacterRuntimes[character] = new CharacterRuntime(character);
-        }
-    }
-
-    public CharacterRuntime GetRuntime(Character owner)
-    {
-        return CharacterRuntimes[owner];
+       
     }
 
     public void Clear()

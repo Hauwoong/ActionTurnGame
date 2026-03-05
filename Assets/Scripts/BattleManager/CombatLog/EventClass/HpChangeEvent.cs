@@ -1,7 +1,7 @@
 using NUnit.Framework.Internal.Commands;
 using UnityEngine;
 
-public class HpChangeEvent : ICombatEvnet
+public class HpChangeEvent : ICombatEvent
 {
     public Character Target { get; private set; }
     public int Delta { get; private set; }
@@ -14,6 +14,6 @@ public class HpChangeEvent : ICombatEvnet
 
     public void Apply(BattleRuntime runtime)
     {
-        var character = runtime.GetCharacter(Target);
+        runtime.GetCharacter()
     }
 }

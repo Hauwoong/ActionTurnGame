@@ -2,14 +2,16 @@ using UnityEngine;
 
 public sealed class CharacterState
 {
-    public Character Source;
+    public Character Source { get; }
 
+    public int CharacterId { get; }
     public int MaxHp { get; }
 
-    public CharacterState(Character source, int maxHp, int speed, int attackPower)
+    public CharacterState(Character source, int id)
     {
         Source = source;
-        MaxHp = maxHp;
+        CharacterId = id;
+        MaxHp = source.MaxHP;
     }
 
 
