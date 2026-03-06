@@ -17,11 +17,13 @@ public class CharacterRuntime
     private int NextDiceId = 0; // CharacterRuntime -> DiceEntry 소유하니 id 생성은 characterruntime 역할
 
     public bool IsFinished => DiceCursor >= DicePool.Count;
+    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> Effects;
 
-    public CharacterRuntime(CharacterState owner, int id)
+    public bool _dirty;
+
+    public CharacterRuntime(CharacterState owner)
     {
         state = owner;
-        CharacterId = id;
         DiceCursor = 0;
         CurrentHp = state.MaxHp;
     }
@@ -73,8 +75,10 @@ public class CharacterRuntime
                 IsDestoryed = false
             };
 
+            var characterhandle = new CharacterHandle(state.CharacterId);
+
             var diceHandle = new DiceHandle(
-                state.Source, id);
+                characterhandle, id);
 
             DiceById[id] = diceRuntime;
 
@@ -111,35 +115,65 @@ public class CharacterRuntime
         DiceCursor = 0;
     }
 
-    public void RaiseTurnStart()
+    public void AddStatus(StatusEffectType type, int stack)
+    {
+        if (Effects.TryGetValue(type, out StatusEffectRuntime effect))
+        {
+            effect.AddStack(stack);
+            _dirty = true;
+        }
+
+        else
+        {
+            var newEffect = StatusFactory.Create(type, this, stack); // 여기서 바로 characterRuntime이 상태이상 런타임 생성 VS StatusFactory를 이용하여 생성
+            _statusEffects.Add(newEffect);
+            Effects[type] = newEffect;
+            _dirty = true;
+        }
+    }
+
+    public void TriggerTurnStart()
     {
         var ctx = new TurnStartContext(this);
+
+        EnsureSorted();
 
         foreach (var effect in _statusEffects)
         {
             effect.OnTurnStart(ctx);
         }
 
-        _statusEffects.RemoveAll(e => e.IsExpird);
+        _statusEffects.RemoveAll(e => e.IsExpired);
     }
 
-    public void RaiseBeforeDamage(DamageContext ctx)
+    public void TriggerBeforeDamage(DamageContext ctx)
     {
+        EnsureSorted();
+
         foreach (var effect in _statusEffects)
         {
             effect.OnBeforeDamage(ctx);
         }
 
-        _statusEffects.RemoveAll(e => e.IsExpird);
+        _statusEffects.RemoveAll(e => e.IsExpired);
     }
 
-    public void RaiseAfterDamage(DamageContext ctx)
+    public void TriggerfterDamage(DamageContext ctx)
     {
+        EnsureSorted();
+
         foreach (var effect in _statusEffects)
         {
             effect.OnAfterDamage(ctx);
         }
 
-        _statusEffects.RemoveAll(e => e.IsExpird);
+        _statusEffects.RemoveAll(e => e.IsExpired);
+    }
+    void EnsureSorted()
+    {
+        if (!_dirty) return;
+
+        _statusEffects.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        _dirty = false;
     }
 }

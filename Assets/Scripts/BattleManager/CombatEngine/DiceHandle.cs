@@ -1,11 +1,11 @@
 public readonly struct DiceHandle
 {
-    public readonly int OwnerId;
+    public readonly CharacterHandle Owner;
     public readonly int DiceId;
 
-    public DiceHandle(int ownerId, int diceId)
+    public DiceHandle(CharacterHandle owner, int diceId)
     {
-        OwnerId = ownerId;
+        Owner = owner;
         DiceId = diceId;
     }
 }

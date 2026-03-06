@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.ComponentModel;
 
 public class BattleState
 {
@@ -12,15 +11,10 @@ public class BattleState
 
     public BoutGraph BoutGraph;
 
-    public List<CombatLog> CombatLogs = new();
-
     public LorRuleSet Rules;
 
-    public IRng Rng { get; private set; }
-
-    public BattleState(int seed)
+    public BattleState()
     {
-        Rng = new DeterministicRng(seed);
         BoutGraph = new BoutGraph(this);
     }
 
@@ -73,6 +67,5 @@ public class BattleState
     {
         actionBySlot.Clear();
         BoutGraph?.Clear();
-        CombatLogs?.Clear();
     }
 }

@@ -20,6 +20,7 @@ public class BattleSnapShot
             int id = CharacterId++;
 
             _characterStates.Add(new CharacterState(character, id));
+
         }
 
     }    

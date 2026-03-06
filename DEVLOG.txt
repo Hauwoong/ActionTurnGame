@@ -1151,7 +1151,7 @@ O(n^2) 전체 재계산은 필요 없다
 -전투 종료 조건 처리 정리
 -전체 Turn 흐름 통합 테스트 진행
 
-##2026-02-XX
+##2026-02-28
 
 ###오늘 한 것
 
@@ -1244,3 +1244,395 @@ O(n^2) 전체 재계산은 필요 없다
 -CombatEvent 세부 타입 정교화
 -DiceResolve 루프와 StatusEffect 개입 통합
 -전투 흐름 전체 통합 테스트 진행
+
+## 2026-03-01 ~ 07
+
+### 오늘 한 것
+
+[전투 엔진 아키텍처 대규모 재구성]
+
+초기 전투 구조에서 발견된 문제를 해결하기 위해
+전투 엔진의 전체 구조를 Runtime 중심 아키텍처로 재설계하였다.
+
+발견된 문제
+
+- Runtime 객체와 State 객체 역할 혼동
+- DiceRuntime / DiceHandle / DiceEntry 역할 혼동
+- Character 객체의 설계도 / 실행 상태 구분 불명확
+- 이벤트가 Runtime을 직접 수정하는 구조의 불안정성
+- Deterministic Replay를 고려하지 않은 RNG 구조
+
+
+--------------------------------------------------
+설계 목표
+--------------------------------------------------
+
+- 설계 데이터 / 실행 상태 완전 분리
+- Runtime 중심 전투 처리
+- Handle 기반 객체 추적
+- Deterministic RNG 구조
+- Effect 개입 가능한 이벤트 시스템
+
+
+--------------------------------------------------
+Dice 시스템 구조 확정
+--------------------------------------------------
+
+Dice 구조를 다음 3개의 객체로 분리하였다.
+
+DiceRuntime
+- 실제 전투 중 변화하는 주사위 상태
+- 포함 데이터
+  - Type
+  - Min
+  - Max
+  - IsDestroyed
+
+DiceHandle
+- 이벤트 시스템이 Dice를 추적하기 위한 ID 객체
+- 포함 데이터
+  - CharacterHandle Owner
+  - DiceId
+
+특징
+- DiceRuntime을 직접 참조하지 않음
+- 이벤트는 Handle만 전달
+- Runtime에서 Handle로 DiceRuntime 조회
+
+DiceEntry
+- DiceRuntime + DiceHandle 묶음
+- CharacterRuntime 내부 DicePool에서 사용
+
+목적
+- DiceRuntime
+- DiceHandle
+
+두 객체를 하나의 단위로 관리
+
+
+--------------------------------------------------
+CharacterRuntime 구조 확정
+--------------------------------------------------
+
+CharacterRuntime은 전투 중 캐릭터의 실제 상태를 관리한다.
+
+포함 데이터
+
+- CharacterState state
+- CurrentHp
+- DicePool
+- DiceById
+- DiceCursor
+- StatusEffectRuntime 목록
+
+
+--------------------------------------------------
+Dice 관리 구조
+--------------------------------------------------
+
+Dice는 다음 구조로 관리된다.
+
+DicePool (List)
+DiceById (Dictionary)
+
+두 컬렉션은 동일한 DiceRuntime 객체를 공유한다.
+
+Dice 생성 흐름
+
+DiceRuntime 생성
+→ DiceById 등록
+→ DiceEntry 생성
+→ DicePool 삽입
+
+따라서
+
+- Dictionary 수정
+- List 접근
+
+둘 모두 같은 DiceRuntime을 수정한다.
+
+
+--------------------------------------------------
+Dice Cursor 구조
+--------------------------------------------------
+
+DicePool은 Queue 대신
+
+List + Cursor
+
+구조를 사용한다.
+
+Cursor 조건
+
+IsFinished
+= DiceCursor >= DicePool.Count
+
+장점
+
+- InsertRange 가능
+- Dice 추가 비용 감소
+- 반복 처리 비용 감소
+
+
+--------------------------------------------------
+Dice 생성 책임
+--------------------------------------------------
+
+CardData → DiceRuntime 생성 책임은
+
+CharacterRuntime
+
+으로 확정하였다.
+
+흐름
+
+ResolutionSystem
+→ UseCard
+→ CharacterRuntime
+→ DiceRuntime 생성
+
+정리
+
+CardData = 설계 데이터  
+DiceRuntime = 실행 데이터
+
+
+--------------------------------------------------
+Handle 기반 Runtime 조회 구조
+--------------------------------------------------
+
+이벤트는 Runtime 객체를 직접 들고 있지 않는다.
+
+대신 Handle을 사용한다.
+
+조회 흐름
+
+DiceHandle
+→ BattleRuntime.GetDice(handle)
+→ CharacterRuntime.GetDice(id)
+→ DiceRuntime
+
+장점
+
+- 이벤트 직렬화 가능
+- 전투 로그 재생 가능
+- 객체 참조 안정성 확보
+
+
+--------------------------------------------------
+StatusEffectRuntime 구조 설계
+--------------------------------------------------
+
+StatusEffect는 Runtime 객체로 구현하였다.
+
+기본 구조
+
+public abstract class StatusEffectRuntime
+{
+    protected readonly CharacterRuntime Owner;
+    public int Priority { get; }
+
+    public bool IsExpired { get; protected set; }
+
+    public virtual void OnTurnStart(TurnStartContext ctx) { }
+
+    public virtual void OnBeforeDamage(DamageContext ctx) { }
+
+    public virtual void OnAfterDamage(DamageContext ctx) { }
+}
+
+특징
+
+- Owner CharacterRuntime 참조
+- Priority 기반 실행 순서
+- 이벤트 Hook 방식
+
+
+--------------------------------------------------
+StatusEffect 실행 방식
+--------------------------------------------------
+
+Effect 실행 흐름
+
+TurnStart
+→ CharacterRuntime
+→ StatusEffectRuntime
+
+장점
+
+- 시간 복잡도 감소
+- 이벤트 브로드캐스트 제거
+- 디버깅 용이
+
+
+--------------------------------------------------
+Dice Rule vs Effect 개입 규칙
+--------------------------------------------------
+
+Dice 충돌
+
+Rule Engine 처리
+
+DiceEngine
+ClashResolver
+
+
+Damage 발생
+
+StatusEffect 개입 가능
+
+DamageContext 생성
+→ OnBeforeDamage
+→ HP 감소
+→ OnAfterDamage
+
+
+--------------------------------------------------
+Runtime / Snapshot 구조 도입
+--------------------------------------------------
+
+Deterministic Simulation을 위해 Snapshot 시스템을 도입하였다.
+
+
+BattleSnapshot
+
+포함 데이터
+
+- Seed
+- CharacterState 목록
+
+역할
+
+Runtime 초기 상태 저장
+
+
+BattleRuntime
+
+Snapshot을 기반으로 Runtime 생성
+
+포함 데이터
+
+- CharacterRuntime Dictionary
+- RNG
+- CombatLog
+
+
+Runtime 생성 흐름
+
+BattleManager
+→ BattleSnapshot 생성
+→ BattleRuntime 생성
+
+
+--------------------------------------------------
+RNG 구조 확정
+--------------------------------------------------
+
+Deterministic simulation을 위해
+
+Seed 기반 RNG
+
+구조를 사용한다.
+
+흐름
+
+BattleManager
+→ Seed 생성
+→ BattleSnapshot 저장
+→ BattleRuntime RNG 생성
+
+동일 Seed 사용 시
+
+전투 결과 완전 재현 가능
+
+
+--------------------------------------------------
+BattleState 역할 재정의
+--------------------------------------------------
+
+기존 BattleState는 Runtime 데이터와 혼합되어 있었기 때문에
+역할을 다음과 같이 재정의하였다.
+
+BattleState
+
+전투 입력(Input)
+
+포함 데이터
+
+- Units
+- ActionBySlot
+- BoutGraph
+- Rules
+
+정리
+
+BattleState는 플레이어 행동 입력을 관리한다.
+
+
+--------------------------------------------------
+최종 전투 아키텍처
+--------------------------------------------------
+
+BattleManager
+→ BattleState (Input)
+→ BattleSnapshot
+→ BattleRuntime
+→ CharacterRuntime
+→ DiceRuntime
+→ StatusEffectRuntime
+
+
+--------------------------------------------------
+전투 실행 흐름
+--------------------------------------------------
+
+BattleManager
+→ BattleState 생성
+→ 플레이어 Action 등록
+→ BattleSnapshot 생성
+→ BattleRuntime 생성
+→ Resolution Loop 실행
+→ CombatResult 생성
+→ 게임 상태 반영
+
+
+--------------------------------------------------
+현재 엔진 상태
+--------------------------------------------------
+
+완료된 시스템
+
+- DiceRuntime
+- DiceHandle
+- DiceEntry
+- CharacterRuntime
+- BattleRuntime
+- BattleSnapshot
+- StatusEffectRuntime 기본 구조
+
+다음 작업
+
+- StatusEffect 이벤트 디버깅
+- DamageContext 완성
+- Resolution Loop 통합
+- Modifier System 설계
+- CombatLog 확장
+
+
+--------------------------------------------------
+현재 설계 특징
+--------------------------------------------------
+
+현재 전투 엔진 특징
+
+- Deterministic Simulation
+- Runtime 중심 구조
+- Handle 기반 객체 참조
+- Effect Hook 시스템
+- Snapshot 기반 전투 재현
+
+이 구조는 다음 게임의 전투 엔진 구조와 유사하다
+
+Library of Ruina
+Slay the Spire
+Darkest Dungeon

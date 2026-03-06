@@ -1,44 +1,40 @@
 using System.Collections.Generic;
-using UnityEditor.UI;
 
 public class BattleRuntime
 {
     private readonly int Seed;
 
-    private BattleState state;
+    public List<CombatLog> CombatLogs = new();
 
     private readonly Dictionary<int, CharacterRuntime> _characters;
     public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
 
-    private int NextCharacterId = 0;
+    public IRng rng { get; private set; }
 
-    public BattleRuntime(IEnumerable<Character> characters)
+    public BattleRuntime(BattleSnapShot snapShot)
     {
+        Seed = snapShot.Seed;
+
+        rng = new DeterministicRng(Seed);
+
         _characters = new Dictionary<int, CharacterRuntime>();
 
-        foreach (var character in characters)
+        foreach (var state in snapShot.CharacterStates)
         {
-            int id = NextCharacterId++;
+            var runtime = new CharacterRuntime(state);
 
-            var state = new CharacterState(character);
-            var runtime = new CharacterRuntime(state,id);
-            _characters.Add(id, runtime);
+            _characters[state.CharacterId] = runtime;
         }
     }
 
-    public CharacterRuntime GetRuntime(int characterId)
+    public CharacterRuntime GetCharacterRuntime(int characterId)
     {
         return _characters[characterId];
     }
 
     public DiceRuntime GetDice(DiceHandle handle)
     {
-        var character = _characters[handle.OwnerId];
+        var character = _characters[handle.Owner.CharacterId];
         return character.GetDice(handle.DiceId);
-    }
-
-    public CharacterRuntime GetCharacter(int characterId)
-    {
-        return _characters[characterId];
     }
 }

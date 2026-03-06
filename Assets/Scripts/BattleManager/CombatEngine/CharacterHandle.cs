@@ -1,13 +1,9 @@
-using UnityEngine;
-
 public readonly struct CharacterHandle
 {
-    private readonly int CharacterId;
-    private readonly string OwnerTag;
+    public readonly int CharacterId;
 
-    public CharacterHandle(int characterId, string ownerTag)
+    public CharacterHandle(int characterId)
     {
         CharacterId = characterId;
-        OwnerTag = ownerTag;
     }
 }

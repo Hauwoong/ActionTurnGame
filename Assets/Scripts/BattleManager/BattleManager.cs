@@ -2,7 +2,6 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 public class BattleManager : MonoBehaviour
 {
@@ -23,9 +22,9 @@ public class BattleManager : MonoBehaviour
         resolution = new ResolutionSystem(state);
     }
 
-    public void StartBattle(int seed)
+    public void StartBattle()
     {
-        state = new BattleState(seed);
+        state = new BattleState();
     }
 
     public void StartTurn()
@@ -62,7 +61,7 @@ public class BattleManager : MonoBehaviour
 
     public BattleRuntime CreateBattle(IEnumerable<Character> characters)
     {
-        int seed = Random.Shared.Next();
+        int seed = new System.Random().Next();
 
         var state = new BattleSnapShot(characters, seed);
 
