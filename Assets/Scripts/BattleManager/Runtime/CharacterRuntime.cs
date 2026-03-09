@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEditor.Rendering.LookDev;
 
 public class CharacterRuntime
 {
@@ -12,12 +11,16 @@ public class CharacterRuntime
 
     private int CurrentHp;
 
-    private readonly List<StatusEffectRuntime> _statusEffects; // 이벤트 개입을 전제로 하는 상태이상
+    private readonly List<StatusEffectRuntime> _statusEffects = new(); // 이벤트 개입을 전제로 하는 상태이상
 
     private int NextDiceId = 0; // CharacterRuntime -> DiceEntry 소유하니 id 생성은 characterruntime 역할
 
+    private readonly List<SpeedSlotRuntime> speedSlots = new(); // 캐릭터 런타임이 가지고 있는 스피드 슬록 => 스피드 슬롯 구조체 에서 스피드 슬롯 런타임으로 교체 예정
+    public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => speedSlots; // 캐릭터 스피드 슬롯 캡슐화
+
     public bool IsFinished => DiceCursor >= DicePool.Count;
-    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> Effects;
+
+    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> Effects = new();
 
     public bool _dirty;
 
@@ -26,9 +29,25 @@ public class CharacterRuntime
         state = owner;
         DiceCursor = 0;
         CurrentHp = state.MaxHp;
+        CreateSpeedSlots();
     }
 
-    public IReadOnlyList<DiceEntry> GetRemainingDice() => DicePool;
+    void CreateSpeedSlots()
+    {
+        for (int i = 0; i < state.SpeedSlotCount; i++)
+        {
+            var speedSlot = new SpeedSlot(state.CharacterId, i);
+
+            var runtime = new SpeedSlotRuntime(speedSlot, state.MinSpeed, state.MaxSpeed);
+
+            speedSlots.Add(runtime);
+        }
+    }
+
+    public IReadOnlyList<DiceEntry> GetRemainingDice()
+    {
+        return DicePool.GetRange(DiceCursor, DicePool.Count - DiceCursor);
+    }
 
     public bool TryGetCurrentDice(out DiceEntry dice)
     {
@@ -72,7 +91,7 @@ public class CharacterRuntime
                 Type = dice.type,
                 Min = dice.min,
                 Max = dice.max,
-                IsDestoryed = false
+                IsDestroyed = false
             };
 
             var characterhandle = new CharacterHandle(state.CharacterId);
@@ -93,18 +112,18 @@ public class CharacterRuntime
         DicePool.InsertRange(DiceCursor, dices);
     }
     
-    public void MarkDestoryed(int DiceId)
+    public void MarkDestroyed(int DiceId)
     {
         if (DiceById.TryGetValue(DiceId, out var dice))
         {
-            dice.IsDestoryed = true;
+            dice.IsDestroyed = true;
         }
     }
 
     public void Advance()
     {
         while (!IsFinished &&
-                DicePool[DiceCursor].Dice.IsDestoryed)
+                DicePool[DiceCursor].Dice.IsDestroyed)
         {
             DiceCursor++;
         }
@@ -143,7 +162,8 @@ public class CharacterRuntime
             effect.OnTurnStart(ctx);
         }
 
-        _statusEffects.RemoveAll(e => e.IsExpired);
+        FlushExpired();
+
     }
 
     public void TriggerBeforeDamage(DamageContext ctx)
@@ -155,10 +175,11 @@ public class CharacterRuntime
             effect.OnBeforeDamage(ctx);
         }
 
-        _statusEffects.RemoveAll(e => e.IsExpired);
+        FlushExpired();
+
     }
 
-    public void TriggerfterDamage(DamageContext ctx)
+    public void TriggerAfterDamage(DamageContext ctx)
     {
         EnsureSorted();
 
@@ -167,7 +188,8 @@ public class CharacterRuntime
             effect.OnAfterDamage(ctx);
         }
 
-        _statusEffects.RemoveAll(e => e.IsExpired);
+        FlushExpired();
+
     }
     void EnsureSorted()
     {
@@ -175,5 +197,10 @@ public class CharacterRuntime
 
         _statusEffects.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         _dirty = false;
+    }
+
+    void FlushExpired()
+    {
+        _statusEffects.RemoveAll(e => e.IsExpired);
     }
 }

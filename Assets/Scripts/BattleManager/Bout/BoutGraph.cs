@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 public class BoutGraph
 {
-    private BattleState state;
-    // Character => action 현재 행동
     private IReadOnlyDictionary<SpeedSlot, ActionInstance> actionBySlot => state.ActionBySlot;
 
     //타겟 => 그 타겟을 노리는 모든 행동
@@ -13,11 +11,6 @@ public class BoutGraph
 
     // 합 후보들
     public Dictionary<SpeedSlot, List<SpeedSlot>> interceptCandidates = new();
-
-    public BoutGraph(BattleState state)
-    {
-        this.state = state;
-    }
 
     public void RegisterAction(ActionInstance action)
     {
@@ -157,7 +150,7 @@ public class BoutGraph
         interceptCandidates[target].Remove(source);
     }
 
-    void Connect(SpeedSlot a, SpeedSlot b)
+    public void Connect(SpeedSlot a, SpeedSlot b)
     {
         Disconnect(a);
         Disconnect(b);

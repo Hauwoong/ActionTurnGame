@@ -1,22 +1,12 @@
-
-
 [System.Serializable]
-public class SpeedSlot
+public struct SpeedSlot
 {
-    public Character owner;
-    public int index;
+    public int CharacterId;
+    public int SlotIndex;
 
-    // ±¼¸² ¼Óµµ
-    public int speed => owner.rolledSpeeds[index];
-
-    // ½½·Ô »ç¿ë À¯¹«
-    private bool isUsed;
-    public bool IsUsed => isUsed;
-
-    public void Use()
+    public SpeedSlot(int characterId, int slotIndex)
     {
-        isUsed = true;
+        CharacterId = characterId;
+        SlotIndex = slotIndex;
     }
 }
-   
-

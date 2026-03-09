@@ -2,18 +2,18 @@ using UnityEngine;
 
 public class DamageEvent : ICombatEvent
 {
-    public CharacterRuntime Target;
+    public int CharacterId;
     public int Amount;
 
-    public DamageEvent(CharacterRuntime target, int damage)
+    public DamageEvent(int characterId, int damage)
     {
-        Target = target;
+        CharacterId = characterId;
         Amount = damage;
     }
 
     public void Apply(BattleRuntime runtime)
     {
-        var character = runtime.GetRuntime(Target);
+        var character = runtime.GetCharacterRuntime(CharacterId);
         character.TakeDamage(Amount);
     }
 }

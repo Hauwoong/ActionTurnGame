@@ -1,72 +1,34 @@
 
 using UnityEngine;
-using System;
 using System.Collections.Generic;
 
 public class BattleManager : MonoBehaviour
 {
-    private BattleState state;
-    public BattleState State => state;
+    private BattleRuntime _runtime;
+    public BattleRuntime Runtime => _runtime;
 
-    private ResolutionSystem resolution;
-    public ResolutionSystem Resolution => resolution;
-
-    private ActionPhaseSystem actionPhase;
-    public ActionPhaseSystem ActionPhase => actionPhase;    
-
-    public event Action<BattleState> OnBattleStateChanged;
-
-    public void Awake()
-    {
-        actionPhase = new ActionPhaseSystem(state);
-        resolution = new ResolutionSystem(state);
-    }
-
-    public void StartBattle()
-    {
-        state = new BattleState();
-    }
-
-    public void StartTurn()
-    {
-        state.StartNewTurn();
-        OnBattleStateChanged?.Invoke(state);
-    }
-
-    public void EndTurn()
-    {
-        resolution.Resolve();
-        OnBattleStateChanged?.Invoke(state);
-
-        StartTurn();
-    }
-
-    public void RegisterAction(SpeedSlot sourceSlot, SpeedSlot targetSlot, CardData card)
-    {
-        var action = new ActionInstance
-        {
-            SourceSlot = sourceSlot,
-            TargetSlot = targetSlot,
-            Card = card
-        };
-        actionPhase.RegisterAction(state, action);
-        OnBattleStateChanged?.Invoke(state);
-    }
-
-    public void CancelAction(SpeedSlot slot)
-    {
-        actionPhase.CancelAction(state, slot);
-        OnBattleStateChanged?.Invoke(state);
-    }
-
-    public BattleRuntime CreateBattle(IEnumerable<Character> characters)
+    public void CreateBattle(IEnumerable<Character> characters)
     {
         int seed = new System.Random().Next();
 
-        var state = new BattleSnapShot(characters, seed);
+        var snapshot = new BattleSnapShot(characters, seed);
 
-        var runtime = new BattleRuntime(state);
+        _runtime = new BattleRuntime(snapshot);
 
-        return runtime;
+    }
+
+    public void SubmitInput(BattleInput input)
+    {
+        if (_runtime != null) return;
+
+        _runtime.EnqueueEvent(new ClashResolveEvent(input.Clash));
+    }
+
+    public bool Step()
+    {
+        if (_runtime == null) return false;
+
+        _runtime.Step();
+        return true;
     }
 }

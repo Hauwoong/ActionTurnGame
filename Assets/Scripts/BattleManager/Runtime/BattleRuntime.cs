@@ -4,18 +4,34 @@ public class BattleRuntime
 {
     private readonly int Seed;
 
-    public List<CombatLog> CombatLogs = new();
+    private readonly List<CombatLog> _combatLogs = new();
+
+    public IReadOnlyList<CombatLog> CombatLogs => _combatLogs;
 
     private readonly Dictionary<int, CharacterRuntime> _characters;
+
     public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
 
-    public IRng rng { get; private set; }
+    public IRng Rng { get; }
 
+    private readonly Queue<ICombatEvent> eventQueue = new();
+
+    public bool HasEvents => eventQueue.Count > 0;
+
+    private readonly IRuleSet rules;
+
+    public CombatExecutor Executor { get; private set; }
+    private Dictionary<SpeedSlot, SpeedSlotRuntime> speedSlotRuntimeBySlot { get; }
+    public Dictionary<SpeedSlot, SpeedSlotRuntime> SpeedSlotRuntimeBySlot => speedSlotRuntimeBySlot;
     public BattleRuntime(BattleSnapShot snapShot)
     {
         Seed = snapShot.Seed;
 
-        rng = new DeterministicRng(Seed);
+        Rng = new DeterministicRng(Seed);
+
+        rules = new LorRuleSet();
+
+        Executor = new CombatExecutor(rules, Rng, this);
 
         _characters = new Dictionary<int, CharacterRuntime>();
 
@@ -24,7 +40,30 @@ public class BattleRuntime
             var runtime = new CharacterRuntime(state);
 
             _characters[state.CharacterId] = runtime;
+
+            foreach (var slot in runtime.SpeedSlots)  // 맞는지 확인 부탁
+            {
+                speedSlotRuntimeBySlot[slot.Slot] = slot;
+            }
         }
+    }
+
+    public void RollSpeed()
+    {
+        _characters.Clear();
+
+        foreach (var character in _characters.Values)
+        {
+            foreach (var slot in character.SpeedSlots)
+            {
+                slot.Roll(Rng);
+            }
+        }
+    }
+
+    public SpeedSlotRuntime GetSpeedSlotRuntime(SpeedSlot slot)
+    {
+        return speedSlotRuntimeBySlot[slot];
     }
 
     public CharacterRuntime GetCharacterRuntime(int characterId)
@@ -34,7 +73,26 @@ public class BattleRuntime
 
     public DiceRuntime GetDice(DiceHandle handle)
     {
-        var character = _characters[handle.Owner.CharacterId];
+        if (!_characters.TryGetValue(handle.Owner.CharacterId, out CharacterRuntime character)) return null;
+
         return character.GetDice(handle.DiceId);
+    }
+
+    public void EnqueueEvent(ICombatEvent ev)
+    {
+        eventQueue.Enqueue(ev);
+    }
+
+    public void Step()
+    {
+        if (eventQueue.Count == 0) return;
+
+        var ev = eventQueue.Dequeue();
+        ev.Apply(this);
+    }
+
+    public void AddLog(CombatLog log)
+    {
+        _combatLogs.Add(log);
     }
 }

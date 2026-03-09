@@ -17,6 +17,9 @@ public class Character : MonoBehaviour
     public int currentHP { get; protected set; }
     public int currentEnergy { get ; protected set; }
 
+    public int MinSpeed { get; protected set; }
+    public int MaxSpeed { get; protected set; }
+
     [Header("Speed Dice")]
     public int diceCount = 1;
     public List<SpeedSlot> speedSlots = new();

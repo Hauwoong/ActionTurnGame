@@ -6,5 +6,5 @@ public class DiceRuntime
     public int Min;
     public int Max;
 
-    public bool IsDestoryed;
+    public bool IsDestroyed;
 }

@@ -1,14 +1,17 @@
-using UnityEngine;
-using System.Collections.Generic;
 
 public class ActionInstance
 {
-    public SpeedSlot SourceSlot;
-    public SpeedSlot TargetSlot;
+    public SpeedSlot SourceSlot { get; }
+    public SpeedSlot TargetSlot { get; }
+    public CardData Card { get; }
+
+    public int RegisterOrder { get; }
     
-    public CardData Card;
-
-    public int Speed => SourceSlot.speed;
-
-    public int RegisterOrder; // 높을수록 먼저 등록된 행동
+    public ActionInstance(SpeedSlot source, SpeedSlot target, CardData card, int registerOrder)
+    {
+        SourceSlot = source;
+        TargetSlot = target;
+        Card = card;
+        RegisterOrder = registerOrder;
+    }
 }

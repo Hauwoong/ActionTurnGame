@@ -1,16 +1,14 @@
-using System.Collections.Generic;
-
 public class CombatExecutor
 {
+    private readonly BattleRuntime runtime;
     private readonly IRuleSet rules;
     private readonly IRng rng;
-    private readonly BattleResolutionLoop loop;
 
-    public CombatExecutor(IRuleSet rules, IRng rng, BattleResolutionLoop loop)
+    public CombatExecutor(IRuleSet rules, IRng rng, BattleRuntime runtime)
     {
         this.rules = rules;
         this.rng = rng;
-        this.loop = loop;
+        this.runtime = runtime;
     }
 
     public void Execute(ClashInput input)
@@ -28,7 +26,7 @@ public class CombatExecutor
 
             foreach (var ev in step.Events)
             {
-                ev.Dispatch(loop);
+                runtime.EnqueueEvent(ev);
             }
 
             cursorA = step.NextCursorA;
