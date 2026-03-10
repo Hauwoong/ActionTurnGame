@@ -1,6 +1,4 @@
 using System;
-
-
 public struct ActionPriority : IComparable<ActionPriority>
 {
     public int Speed;

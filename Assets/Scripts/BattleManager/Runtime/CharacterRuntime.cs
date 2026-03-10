@@ -17,7 +17,6 @@ public class CharacterRuntime
 
     private readonly List<SpeedSlotRuntime> speedSlots = new(); // 캐릭터 런타임이 가지고 있는 스피드 슬록 => 스피드 슬롯 구조체 에서 스피드 슬롯 런타임으로 교체 예정
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => speedSlots; // 캐릭터 스피드 슬롯 캡슐화
-
     public bool IsFinished => DiceCursor >= DicePool.Count;
 
     private readonly Dictionary<StatusEffectType, StatusEffectRuntime> Effects = new();
@@ -44,9 +43,10 @@ public class CharacterRuntime
         }
     }
 
-    public IReadOnlyList<DiceEntry> GetRemainingDice()
+    public IEnumerable<DiceEntry> GetRemainingDice()
     {
-        return DicePool.GetRange(DiceCursor, DicePool.Count - DiceCursor);
+        for (int i = DiceCursor; i < DicePool.Count; i++)
+            yield return DicePool[i];
     }
 
     public bool TryGetCurrentDice(out DiceEntry dice)
@@ -88,9 +88,7 @@ public class CharacterRuntime
 
             var diceRuntime = new DiceRuntime
             {
-                Type = dice.type,
-                Min = dice.min,
-                Max = dice.max,
+                Data = dice,
                 IsDestroyed = false
             };
 

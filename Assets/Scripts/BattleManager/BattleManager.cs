@@ -15,13 +15,14 @@ public class BattleManager : MonoBehaviour
 
         _runtime = new BattleRuntime(snapshot);
 
+        _runtime.RollSpeedDice();
     }
 
     public void SubmitInput(BattleInput input)
     {
-        if (_runtime != null) return;
+        if (_runtime == null) return;
 
-        _runtime.EnqueueEvent(new ClashResolveEvent(input.Clash));
+        _runtime.EnqueueEvent(new ClashResolveEvent(input.BoutGraph));
     }
 
     public bool Step()

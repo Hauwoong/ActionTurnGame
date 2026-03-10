@@ -1,4 +1,4 @@
-using UnityEngine;
+
 public enum DiceType
 {
     Attack,
@@ -18,11 +18,6 @@ public class DiceData
     public int min;
     public int max;
     public DiceEffect effect;
-
-    public int Roll()
-    {
-        return Random.Range(min, max+1);
-    }
 }
 
 

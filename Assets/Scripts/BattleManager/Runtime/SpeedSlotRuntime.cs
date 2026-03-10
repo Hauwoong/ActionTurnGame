@@ -5,9 +5,7 @@ public class SpeedSlotRuntime
 
     public int MinSpeed { get; }
     public int MaxSpeed { get; }
-
     public int Speed { get; private set; }
-    
     public bool Used { get; private set; }
 
     public SpeedSlotRuntime(SpeedSlot slot, int minSpeed, int maxSpeed)
@@ -23,7 +21,7 @@ public class SpeedSlotRuntime
         Used = false;
     }
 
-    public void MarkUse()
+    public void MarkUsed()
     {
         Used = true;
     }

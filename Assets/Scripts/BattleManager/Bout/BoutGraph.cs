@@ -1,7 +1,11 @@
 using System.Collections.Generic;
 public class BoutGraph
 {
-    private IReadOnlyDictionary<SpeedSlot, ActionInstance> actionBySlot => state.ActionBySlot;
+    private Dictionary<SpeedSlot, ActionInstance> actionBySlot;
+    public Dictionary<SpeedSlot, ActionInstance> ActionBySlot => actionBySlot;
+
+    private readonly Dictionary<SpeedSlot, SpeedSlotRuntime> slotRuntime;
+    public Dictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntime => slotRuntime;
 
     //타겟 => 그 타겟을 노리는 모든 행동
     private Dictionary<SpeedSlot, List<ActionInstance>> targetMap = new();
@@ -12,8 +16,16 @@ public class BoutGraph
     // 합 후보들
     public Dictionary<SpeedSlot, List<SpeedSlot>> interceptCandidates = new();
 
+    public BoutGraph(Dictionary<SpeedSlot, ActionInstance> actionBySlot, Dictionary<SpeedSlot, SpeedSlotRuntime> slotRuntime)
+    {
+        this.actionBySlot = actionBySlot;
+        this.slotRuntime = slotRuntime;
+    }
+
     public void RegisterAction(ActionInstance action)
     {
+        actionBySlot[action.SourceSlot] = action;
+
         AddToTargetMap(action);
 
         UpdateRelationsFor(action);
@@ -70,10 +82,12 @@ public class BoutGraph
         var source = action.SourceSlot;
         var target = action.TargetSlot;
 
-        var targetAction = actionBySlot.ContainsKey(target) ? actionBySlot[target] : null;
-        if (targetAction == null) return;
+        if (!actionBySlot.ContainsKey(target)) return;
 
-        if (source.speed > targetAction.SourceSlot.speed)
+        var sourceSpeed = slotRuntime[source].Speed;
+        var targetSpeed = slotRuntime[target].Speed;
+
+        if (sourceSpeed > targetSpeed)
         {
             AddInterceptCandidate(target, source);
 
@@ -81,7 +95,7 @@ public class BoutGraph
             {
                 var current = edges[target];
 
-                var currentAction = actionBySlot[current];
+                if (!actionBySlot.TryGetValue(current, out var currentAction)) return;
 
                 if (action.RegisterOrder > currentAction.RegisterOrder)
                 {
@@ -105,7 +119,7 @@ public class BoutGraph
 
         if (edges.ContainsKey(target)) return; // 이미 타겟이 다른 행동과 합 되어있음 => 이미 intercetp 당한 상태
 
-        var counter = actionBySlot[target];
+        if (!actionBySlot.TryGetValue(target, out var counter)) return;
 
         if (counter.TargetSlot == action.SourceSlot)
         {
@@ -161,9 +175,8 @@ public class BoutGraph
 
     void Disconnect(SpeedSlot a)
     {
-        if (!edges.ContainsKey(a)) return;
-
-        var other = edges[a];
+        if (!edges.TryGetValue(a, out var other))
+            return;
 
         edges.Remove(a);
         edges.Remove(other);

@@ -5,24 +5,22 @@ public class BattleRuntime
     private readonly int Seed;
 
     private readonly List<CombatLog> _combatLogs = new();
-
     public IReadOnlyList<CombatLog> CombatLogs => _combatLogs;
 
     private readonly Dictionary<int, CharacterRuntime> _characters;
-
     public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
 
     public IRng Rng { get; }
 
     private readonly Queue<ICombatEvent> eventQueue = new();
-
     public bool HasEvents => eventQueue.Count > 0;
 
     private readonly IRuleSet rules;
 
     public CombatExecutor Executor { get; private set; }
-    private Dictionary<SpeedSlot, SpeedSlotRuntime> speedSlotRuntimeBySlot { get; }
-    public Dictionary<SpeedSlot, SpeedSlotRuntime> SpeedSlotRuntimeBySlot => speedSlotRuntimeBySlot;
+
+    private Dictionary<SpeedSlot, SpeedSlotRuntime> slotRuntimeMap = new();
+    public Dictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntimeMap => slotRuntimeMap;
     public BattleRuntime(BattleSnapShot snapShot)
     {
         Seed = snapShot.Seed;
@@ -43,15 +41,13 @@ public class BattleRuntime
 
             foreach (var slot in runtime.SpeedSlots)  // 맞는지 확인 부탁
             {
-                speedSlotRuntimeBySlot[slot.Slot] = slot;
+                slotRuntimeMap[slot.Slot] = slot;
             }
         }
     }
 
-    public void RollSpeed()
+    public void RollSpeedDice()
     {
-        _characters.Clear();
-
         foreach (var character in _characters.Values)
         {
             foreach (var slot in character.SpeedSlots)
@@ -63,7 +59,7 @@ public class BattleRuntime
 
     public SpeedSlotRuntime GetSpeedSlotRuntime(SpeedSlot slot)
     {
-        return speedSlotRuntimeBySlot[slot];
+        return slotRuntimeMap[slot];
     }
 
     public CharacterRuntime GetCharacterRuntime(int characterId)
