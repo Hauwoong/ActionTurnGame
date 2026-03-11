@@ -1,13 +1,17 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 using System;
 using System.Collections.Generic;
 
+=======
+>>>>>>> d69ce474b7714212b5ec697ad90a7fa13dafd4dc
 =======
 >>>>>>> d69ce474b7714212b5ec697ad90a7fa13dafd4dc
 public class ClashInputBuilder
 {
     public ClashInput Build(BoutGraph graph, ActionInstance action)
     {
+<<<<<<< HEAD
 <<<<<<< HEAD
         if (graph.edges.TryGetValue(action.SourceSlot, out var otherSlot))
         {
@@ -23,6 +27,8 @@ public class ClashInputBuilder
         return action.Card.Dice;
    }
 =======
+=======
+>>>>>>> d69ce474b7714212b5ec697ad90a7fa13dafd4dc
         if (graph.edges.TryGetValues(action.SourceSlot, out var otherSlot))
         {
             var otherAction = graph.GetAction(otherSlot);
@@ -37,5 +43,8 @@ public class ClashInputBuilder
     {
         return action.Card.Dice;
     }
+<<<<<<< HEAD
+>>>>>>> d69ce474b7714212b5ec697ad90a7fa13dafd4dc
+=======
 >>>>>>> d69ce474b7714212b5ec697ad90a7fa13dafd4dc
 }
