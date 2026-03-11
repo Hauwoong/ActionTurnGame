@@ -19,7 +19,7 @@ public class CharacterRuntime
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => speedSlots; // 캐릭터 스피드 슬롯 캡슐화
     public bool IsFinished => DiceCursor >= DicePool.Count;
 
-    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> Effects = new();
+    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> effectMap = new();
 
     public bool _dirty;
 
@@ -86,11 +86,7 @@ public class CharacterRuntime
         {
             int id = NextDiceId++;
 
-            var diceRuntime = new DiceRuntime
-            {
-                Data = dice,
-                IsDestroyed = false
-            };
+            var diceRuntime = new DiceRuntime(dice);
 
             var characterhandle = new CharacterHandle(state.CharacterId);
 
@@ -134,7 +130,7 @@ public class CharacterRuntime
 
     public void AddStatus(StatusEffectType type, int stack)
     {
-        if (Effects.TryGetValue(type, out StatusEffectRuntime effect))
+        if (effectMap.TryGetValue(type, out StatusEffectRuntime effect))
         {
             effect.AddStack(stack);
             _dirty = true;
@@ -144,7 +140,7 @@ public class CharacterRuntime
         {
             var newEffect = StatusFactory.Create(type, this, stack); // 여기서 바로 characterRuntime이 상태이상 런타임 생성 VS StatusFactory를 이용하여 생성
             _statusEffects.Add(newEffect);
-            Effects[type] = newEffect;
+            effectMap[type] = newEffect;
             _dirty = true;
         }
     }

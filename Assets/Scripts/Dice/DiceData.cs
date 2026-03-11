@@ -3,7 +3,7 @@ public enum DiceType
 {
     Attack,
     Block,
-    Envade
+    Evade
 }
 
 public enum DiceEffect
@@ -14,10 +14,10 @@ public enum DiceEffect
 [System.Serializable]
 public class DiceData
 {
-    public DiceType type;
-    public int min;
-    public int max;
-    public DiceEffect effect;
+    public DiceType Type;
+    public int Min;
+    public int Max;
+    public DiceEffect[] Effects;
 }
 
 
