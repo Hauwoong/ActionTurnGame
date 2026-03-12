@@ -21,6 +21,9 @@ public class BattleRuntime
 
     private Dictionary<SpeedSlot, SpeedSlotRuntime> slotRuntimeMap = new();
     public Dictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntimeMap => slotRuntimeMap;
+
+    private ActionExecutionPlanner Planner;
+    
     public BattleRuntime(BattleSnapShot snapShot)
     {
         Seed = snapShot.Seed;
@@ -28,6 +31,8 @@ public class BattleRuntime
         Rng = new DeterministicRng(Seed);
 
         rules = new LorRuleSet();
+
+        Planner = new ActionExecutionPlanner();
 
         Executor = new CombatExecutor(rules, Rng, this);
 
@@ -39,7 +44,7 @@ public class BattleRuntime
 
             _characters[state.CharacterId] = runtime;
 
-            foreach (var slot in runtime.SpeedSlots)  // �´��� Ȯ�� ��Ź
+            foreach (var slot in runtime.SpeedSlots)  // ¸Â´ÂÁö È®ÀÎ ºÎÅ¹
             {
                 slotRuntimeMap[slot.Slot] = slot;
             }
@@ -91,4 +96,12 @@ public class BattleRuntime
     {
         _combatLogs.Add(log);
     }
+
+    public void UseAction(ActionInstance action)
+    {
+        var runtime = _characters[action.SourceSlot.CharacterId];
+        runtime.UseAction(action);
+    }
+
+    public 
 }
