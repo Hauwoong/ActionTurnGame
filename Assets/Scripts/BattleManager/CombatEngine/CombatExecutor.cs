@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 public class CombatExecutor
 {
     private readonly BattleRuntime runtime;
@@ -10,27 +12,62 @@ public class CombatExecutor
         this.rng = rng;
         this.runtime = runtime;
     }
-
-    public void Execute(ClashInput input)
+  
+    public void Execute(BoutGraph graph)
     {
-        int cursorA = 0;
-        int cursorB = 0;
+        var queue = BuildQueue(graph);
 
-        while (rules.CanContinue(input, cursorA, cursorB))
+        RunQueue(queue,graph);
+    }
+    PriorityQueue<ActionInstance, ActionPriority> BuildQueue(BoutGraph graph)
+    {
+        var pq = new PriorityQueue<ActionInstance, ActionPriority>();
+
+        foreach (var action in graph.ActionBySlot.Values)
         {
-            var step = rules.ResolveStep(
-                input,
-                cursorA,
-                cursorB,
-                rng);
+            var slot = action.SourceSlot;
 
-            foreach (var ev in step.Events)
+            var priority = new ActionPriority
             {
-                runtime.EnqueueEvent(ev);
+                Speed = graph.SlotRuntime[slot].Speed,
+                RegisterOrder = action.RegisterOrder
+            };
+
+            pq.Enqueue(action, priority);
+        }
+
+        return pq;
+    }
+
+    void RunQueue(PriorityQueue<ActionInstance, ActionPriority> queue, BoutGraph graph)
+    {
+        var visited = new HashSet<SpeedSlot>();
+
+        while (queue.Count > 0)
+        {
+            var action = queue.Dequeue();
+            var slot = action.SourceSlot;
+
+            if (visited.Contains(slot)) continue;
+
+            var targetSlot = action.TargetSlot;
+
+            if (graph.ActionBySlot.TryGetValue(targetSlot, out var opponent))
+            {
+                if (visited.Contains(targetSlot)) continue;
+
+                ResolveClash(action, opponent);
+
+                visited.Add(slot);
+                visited.Add(targetSlot);
             }
 
-            cursorA = step.NextCursorA;
-            cursorB = step.NextCursorB;
+            else
+            {
+                ResolveUnopposed(action);
+
+                visited.Add(slot);
+            }
         }
     }
 }

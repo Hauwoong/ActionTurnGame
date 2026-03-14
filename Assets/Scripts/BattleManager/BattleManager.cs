@@ -18,13 +18,18 @@ public class BattleManager : MonoBehaviour
         _runtime.RollSpeedDice();
     }
 
-    public void SubmitInput(BattleInput input)
+    public void StartBattle(BattleInput input)
+    {
+        _runtime.Start(input);
+    }
+
+    /*public void SubmitInput(BattleInput input)
     {
         if (_runtime == null) return;
 
         _runtime.EnqueueEvent(new ClashResolveEvent(input.BoutGraph));
     }
-
+    */
     public bool Step()
     {
         if (_runtime == null) return false;

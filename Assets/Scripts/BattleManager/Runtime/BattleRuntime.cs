@@ -15,14 +15,14 @@ public class BattleRuntime
     private readonly Queue<ICombatEvent> eventQueue = new();
     public bool HasEvents => eventQueue.Count > 0;
 
-    private readonly IRuleSet rules;
+    private readonly IRuleSet Rules;
 
     public CombatExecutor Executor { get; private set; }
 
     private Dictionary<SpeedSlot, SpeedSlotRuntime> slotRuntimeMap = new();
     public Dictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntimeMap => slotRuntimeMap;
 
-    private ActionExecutionPlanner Planner;
+    private BattleInput _input;
     
     public BattleRuntime(BattleSnapShot snapShot)
     {
@@ -30,11 +30,9 @@ public class BattleRuntime
 
         Rng = new DeterministicRng(Seed);
 
-        rules = new LorRuleSet();
+        Rules = new LorRuleSet();
 
-        Planner = new ActionExecutionPlanner();
-
-        Executor = new CombatExecutor(rules, Rng, this);
+        Executor = new CombatExecutor(Rules, Rng, this);
 
         _characters = new Dictionary<int, CharacterRuntime>();
 
@@ -103,5 +101,10 @@ public class BattleRuntime
         runtime.UseAction(action);
     }
 
-    public 
+    public void Start(BattleInput input)
+    {
+        _input = input;
+
+        Executor.Execute(_input.BoutGraph);
+    }
 }

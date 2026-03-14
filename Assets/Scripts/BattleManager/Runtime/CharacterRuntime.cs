@@ -71,31 +71,32 @@ public class CharacterRuntime
         return null;
     }
 
-    public void UseCard(CardData card)
+    public void UseAction(ActionInstance action)
     {
-        var cardDice = card.dices;
-        var dices = CreateDiceEntry(cardDice);
+        var dices = CreateDiceEntry(action);
         AddCardDice(dices);
     }
 
-    List<DiceEntry> CreateDiceEntry(List<DiceData> cardDice)
+    List<DiceEntry> CreateDiceEntry(ActionInstance action)
     {
         List<DiceEntry> dices = new();
 
-        foreach (var dice in cardDice)
+        var cardDice = action.Card.dices;
+
+        foreach (var diceData in action.Card.dices)
         {
             int id = NextDiceId++;
 
-            var diceRuntime = new DiceRuntime(dice);
+            var runtime = new DiceRuntime(diceData, action);
 
-            var characterhandle = new CharacterHandle(state.CharacterId);
+            var handle = new DiceHandle(
+                new CharacterHandle(state.CharacterId),
+                id
+            );
 
-            var diceHandle = new DiceHandle(
-                characterhandle, id);
+            DiceById[id] = runtime;
 
-            DiceById[id] = diceRuntime;
-
-            dices.Add(new DiceEntry(diceRuntime, diceHandle));
+            dices.Add(new DiceEntry(runtime, handle));
         }
 
         return dices;
@@ -110,7 +111,7 @@ public class CharacterRuntime
     {
         if (DiceById.TryGetValue(DiceId, out var dice))
         {
-            dice.IsDestroyed = true;
+            dice.Destory();
         }
     }
 

@@ -2,13 +2,13 @@ using System.Collections.Generic;
 
 public class BattleInput
 {
-    public IReadOnlyDictionary<SpeedSlot, ActionInstance> ActionBySlot { get; }
     public BoutGraph BoutGraph { get; }
 
-    public BattleInput(
-        IReadOnlyDictionary<SpeedSlot, ActionInstance> actionBySlot, BoutGraph boutGraph)
+    public int Seed { get; }
+
+    public BattleInput(BoutGraph boutGraph, int seed)
     {
-        ActionBySlot = actionBySlot;
         BoutGraph = boutGraph;
+        Seed = seed;
     }
 }
