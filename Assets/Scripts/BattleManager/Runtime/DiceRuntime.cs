@@ -3,14 +3,15 @@ public class DiceRuntime
 {
     public DiceData Data { get; }
     public ActionInstance Action { get; }
-    public CardData Card { get; }
+    public DiceHandle Handle { get; }
     public int CurrentRoll { get; private set; }
     public bool IsDestroyed { get; private set; }
 
-    public DiceRuntime(DiceData data, ActionInstance action)
+    public DiceRuntime(DiceData data, ActionInstance action, DiceHandle handle)
     {
         Data = data;
         Action = action;
+        Handle = handle;
         IsDestroyed = false;
     }
 
@@ -19,7 +20,12 @@ public class DiceRuntime
         CurrentRoll = rng.Range(Data.Min, Data.Max+1);
     }
 
-    public void Destory()
+    public DiceType GetDiceType()
+    {
+        return Data.Type;
+    }
+
+    public void Destroy()
     {
         IsDestroyed = true;
     }

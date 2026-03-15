@@ -1636,3 +1636,353 @@ BattleManager
 Library of Ruina
 Slay the Spire
 Darkest Dungeon
+
+## 2026-03-08 ~ 16
+
+### 전투 엔진 실행 구조 정리 (CombatExecutor / Dice Runtime / Rule System)
+
+--------------------------------------------------
+전투 실행 구조
+--------------------------------------------------
+
+BattleManager
+→ BattleRuntime.Start(BattleInput)
+→ CombatExecutor.Execute(BoutGraph)
+→ PriorityQueue 기반 행동 실행
+→ ResolveCombat (Dice 전투)
+→ CombatLog 생성
+→ BattleRuntime Step 적용
+
+핵심 원칙
+
+CombatExecutor = 전투 계산 담당
+BattleRuntime = 상태 적용 및 로그 처리
+
+정리
+
+Runtime = 상태
+Executor = 계산
+
+
+--------------------------------------------------
+BattleInput / BoutGraph 구조
+--------------------------------------------------
+
+BattleInput 포함 데이터
+
+- BoutGraph
+- ActionBySlot
+
+BoutGraph 내부 정보
+
+- SpeedSlot → ActionInstance 매핑
+- SlotRuntime (속도 정보)
+- edges (공격 대상 관계)
+
+SpeedSlot 의미
+
+SpeedSlot은 행동 턴이 아니라 카드 사용권이다.
+
+Character
+- SpeedSlot1 → 카드
+- SpeedSlot2 → 카드
+- SpeedSlot3 → 카드
+
+따라서 SpeedSlot은 행동 순서의 단위이지만
+Dice나 전투 객체의 소유자는 아니다.
+
+
+--------------------------------------------------
+ActionInstance 설계 원칙
+--------------------------------------------------
+
+ActionInstance 포함 데이터
+
+- SourceSlot
+- TargetSlot
+- RegisterOrder
+
+설계 결정
+
+ActionInstance의 Target은 절대 변경하지 않는다.
+
+이유
+
+플레이어 행동은 취소 후 다시 생성할 수 있지만
+적 행동은 Target을 변경하면 원래 타겟을 추적할 수 없게 된다.
+
+예
+
+A → B 공격
+
+전투 도중 B가 사망하더라도
+원래 타겟을 기억해야 한다.
+
+정리
+
+ActionInstance = 불변 행동 기록
+
+
+--------------------------------------------------
+CombatExecutor 설계
+--------------------------------------------------
+
+CombatExecutor 구조
+
+Execute
+→ BuildQueue
+→ RunQueue
+
+
+--------------------------------------------------
+BuildQueue
+--------------------------------------------------
+
+행동 순서를 결정하기 위해 PriorityQueue 사용
+
+우선순위 기준
+
+1. Speed
+2. RegisterOrder
+
+SpeedSlot 속도와 카드 등록 순서를 기준으로
+행동 순서를 결정한다.
+
+
+--------------------------------------------------
+RunQueue
+--------------------------------------------------
+
+실제 행동 실행 루프
+
+처리 순서
+
+1. Queue에서 ActionInstance dequeue
+2. 행동 유효성 검사
+3. Target 존재 여부 확인
+4. 합 여부 판단
+5. 행동 실행
+
+visited Set을 통해
+SpeedSlot은 한 번만 행동하도록 보장한다.
+
+
+--------------------------------------------------
+행동 유효성 검증
+--------------------------------------------------
+
+행동 실행 전 검증 항목
+
+- Actor 사망 여부
+- Actor Stagger 여부
+- Target 사망 여부
+- Target Stagger 여부
+
+검증 함수
+
+- IsValidAction
+- IsTargetAlive
+- IsTargetStaggered
+
+이를 통해
+큐에 남아있는 무효 행동을 안전하게 무시한다.
+
+
+--------------------------------------------------
+UseAction 실행 구조
+--------------------------------------------------
+
+행동 실행 시 CombatExecutor는 Dice를 직접 생성하지 않는다.
+
+구조
+
+CombatExecutor
+→ BattleRuntime.UseAction
+→ CharacterRuntime.CreateDice
+
+선택 이유
+
+- 전투 로그 기록 필요
+- 상태 변경은 Runtime에서 관리
+- Executor는 계산만 담당
+
+정리
+
+Executor = 명령
+Runtime = 상태 변경
+
+
+--------------------------------------------------
+Dice 생성 구조
+--------------------------------------------------
+
+Dice는 SpeedSlot이 아니라 CharacterRuntime에 속한다.
+
+구조
+
+CharacterRuntime
+→ DicePool
+
+DiceRuntime 포함 데이터
+
+- DiceData
+- ActionInstance
+- DiceHandle
+- CurrentRoll
+- IsDestroyed
+
+Dice는 Action 실행 시 생성되며
+CharacterRuntime의 DicePool에 저장된다.
+
+DicePool은 Cursor 기반 구조를 사용한다.
+
+
+--------------------------------------------------
+Dice 생성 타이밍
+--------------------------------------------------
+
+Dice 생성 시점
+
+Action 실행 시
+
+UseAction
+→ CharacterRuntime
+→ Dice 생성
+
+Roll은 생성 시 하지 않는다.
+
+Roll 수행 시점
+
+ResolveDiceClash 시점
+
+이 구조의 장점
+
+- 실제 사용되는 Dice만 Roll
+- RNG 소비 최소화
+- Determinism 유지
+- 전투 리플레이 안정성 확보
+
+
+--------------------------------------------------
+Combat 처리 방식
+--------------------------------------------------
+
+기존 구조
+
+ResolveClash
+ResolveUnopposed
+
+설계 변경 이유
+
+LOR 전투에서는 일방 공격도 실제로 Dice 전투가 발생한다.
+
+예
+
+상대 카드 Dice 소진 후
+캐릭터 남은 Dice 사용
+
+따라서 일방 공격 / 합 공격 구분은 의미가 없다.
+
+새로운 개념
+
+ResolveCombat
+
+Combat은 Dice Pool 기반 전투로 처리한다.
+
+
+--------------------------------------------------
+Dice Rule System
+--------------------------------------------------
+
+Dice 충돌 규칙은 if문으로 처리하지 않는다.
+
+RuleTable 구조 사용
+
+이유
+
+DiceType이 늘어날 경우
+
+if문 방식은
+
+N × N
+
+규칙이 필요하다.
+
+RuleTable 구조
+
+DiceType Pair
+→ IDiceRule
+
+Resolve 시
+
+RuleTable에서 규칙을 가져와 처리한다.
+
+
+--------------------------------------------------
+RNG 구조
+--------------------------------------------------
+
+Dice Roll 방식
+
+DiceRuntime.Roll(IRng)
+
+Roll 호출 시점
+
+ResolveDiceClash 시점
+
+장점
+
+- RNG 소비 순서 안정
+- 전투 재현 가능
+- Replay 시스템 구현 가능
+
+BattleSnapshot Seed와 결합하면
+
+동일 Seed → 동일 전투 결과
+
+
+--------------------------------------------------
+현재 전투 엔진 상태
+--------------------------------------------------
+
+구현 완료
+
+- BattleRuntime
+- CombatExecutor
+- PriorityQueue 행동 실행
+- ActionInstance 구조
+- SpeedSlot 시스템
+- DiceRuntime 구조
+- Character DicePool
+- UseAction → Dice 생성
+- ResolveCombat 개념
+- RuleTable 기반 Dice 규칙
+
+전투 엔진 핵심 구조는 대부분 확정된 상태이다.
+
+
+--------------------------------------------------
+다음 구현 예정
+--------------------------------------------------
+
+- ResolveCombat 상세 구현
+- Dice Clash Rule
+- Damage Rule
+- Effect System
+- CombatLog 이벤트 정의
+
+이후 BattleRuntime Step 시스템과 결합하여
+완전한 전투 시뮬레이션을 구성할 예정이다.
+
+
+--------------------------------------------------
+설계 핵심 요약
+--------------------------------------------------
+
+1. Executor와 Runtime 분리
+2. ActionInstance 불변 구조
+3. SpeedSlot = 카드 사용권
+4. Dice는 Character 소유
+5. Dice Roll은 Resolve 시점
+6. RuleTable 기반 Dice 규칙
+7. Combat = Dice Pool 기반 전투

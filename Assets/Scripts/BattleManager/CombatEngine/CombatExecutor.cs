@@ -3,12 +3,12 @@ using System.Collections.Generic;
 public class CombatExecutor
 {
     private readonly BattleRuntime runtime;
-    private readonly IRuleSet rules;
+    private DiceRuleTable ruleTable;
     private readonly IRng rng;
 
-    public CombatExecutor(IRuleSet rules, IRng rng, BattleRuntime runtime)
+    public CombatExecutor(DiceRuleTable ruleTable, IRng rng, BattleRuntime runtime)
     {
-        this.rules = rules;
+        this.ruleTable = ruleTable;
         this.rng = rng;
         this.runtime = runtime;
     }
@@ -50,24 +50,110 @@ public class CombatExecutor
 
             if (visited.Contains(slot)) continue;
 
-            var targetSlot = action.TargetSlot;
-
-            if (graph.ActionBySlot.TryGetValue(targetSlot, out var opponent))
+            if (!IsValidAction(action))
             {
-                if (visited.Contains(targetSlot)) continue;
-
-                ResolveClash(action, opponent);
-
                 visited.Add(slot);
-                visited.Add(targetSlot);
+                continue;
             }
 
-            else
+            if (graph.edges.TryGetValue(slot, out var targetSlot))
             {
-                ResolveUnopposed(action);
+                if (!IsTargetAlive(targetSlot))
+                {
+                    visited.Add(slot);
+                    continue;
+                }
 
-                visited.Add(slot);
+                if (graph.ActionBySlot.TryGetValue(targetSlot, out var opponent) && !IsTargetStaggered(targetSlot) && !visited.Contains(targetSlot))
+                {
+                    visited.Add(slot);
+                    visited.Add(targetSlot);
+
+                    runtime.UseAction(action); // 이벤트 형식으로 바꿔서 로그 -> 런타임 적용으로 개선 해야 함
+                    runtime.UseAction(opponent);
+
+                    ResolveCombat(action, opponent);
+                }
+
+                else
+                {
+                    visited.Add(slot);
+
+                    runtime.UseAction(action);
+
+                    ResolveCombat(action, null);
+                }
             }
         }
+    }
+
+    void ResolveCombat(ActionInstance a, ActionInstance b)
+    {
+        var diceA = runtime.GetRemainingDice(a.SourceSlot.CharacterId).GetEnumerator();
+        var diceB = b != null
+            ? runtime.GetRemainingDice(b.SourceSlot.CharacterId).GetEnumerator()
+            : null;
+
+        bool hasA = diceA.MoveNext();
+        bool hasB = diceB != null && diceB.MoveNext();
+
+        while (hasA && hasB)
+        {
+            ResolveDiceClash(diceA.Current, diceB.Current);
+
+            hasA = diceA.MoveNext();
+            hasB = diceB.MoveNext();
+        }
+
+        while (hasA)
+        {
+            ResolveUnopposedDice(diceA.Current);
+
+            hasA = diceA.MoveNext();
+        }
+
+        while (hasB)
+        {
+            ResolveUnopposedDice(diceB.Current);
+
+            hasB = diceB.MoveNext();
+        }
+    }
+
+    void ResolveDiceClash(DiceEntry a, DiceEntry b)
+    {
+        DiceRuntime diceA = a.Dice;
+        DiceRuntime diceB = b.Dice;
+
+        diceA.Roll(rng);
+        diceB.Roll(rng);
+
+        var rule = ruleTable.Get(diceA.GetDiceType(), diceB.GetDiceType());
+
+        rule.Resolve(diceA, diceB, context); // 이때 context는 damagecontext일까? 일단 넘기자
+    }
+
+    bool IsValidAction(ActionInstance action)
+    {
+        var actor = runtime.GetCharacterRuntime(action.SourceSlot.CharacterId);
+
+        if (actor.IsDead) return false;
+        if (actor.IsStaggered) return false;
+
+        return true;
+    }
+
+    bool IsTargetAlive(SpeedSlot slot)
+    {
+        var character = runtime.GetCharacterRuntime(slot.CharacterId);
+
+        return !character.IsDead;
+    }
+
+    bool IsTargetStaggered(SpeedSlot slot)
+    {
+        var character = runtime.GetCharacterRuntime(slot.CharacterId);
+
+        return character.IsStaggered;
     }
 }

@@ -11,7 +11,7 @@ public class ClashInputBuilder
 
             return new ClashInput(BuildDice(action), BuildDice(otherAction));
         }
-        return new ClashInput(BuildDice(action), Array.Empty<DiceEntry>()); // ÀÌ°Ç ¾î¶»°Ô °íÃÄ¾ß ÁÁÀ»±î µû·Î ÀÏ¹Ý°ø°Ý ÀÌº¥Æ®¸¦ ¸¸µé±î
+        return new ClashInput(BuildDice(action), Array.Empty<DiceEntry>());
     }
 
    IReadOnlyList<DiceEntry> BuildDice(ActionInstance action)

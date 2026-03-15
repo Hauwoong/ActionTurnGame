@@ -79,27 +79,27 @@ public class CharacterRuntime
 
     List<DiceEntry> CreateDiceEntry(ActionInstance action)
     {
-        List<DiceEntry> dices = new();
-
         var cardDice = action.Card.dices;
 
-        foreach (var diceData in action.Card.dices)
+        var entries = new List<DiceEntry>(cardDice.Count);
+
+        foreach (var diceData in cardDice)
         {
             int id = NextDiceId++;
 
-            var runtime = new DiceRuntime(diceData, action);
-
             var handle = new DiceHandle(
-                new CharacterHandle(state.CharacterId),
-                id
+               new CharacterHandle(state.CharacterId),
+               id
             );
+
+            var runtime = new DiceRuntime(diceData, action, handle);
 
             DiceById[id] = runtime;
 
-            dices.Add(new DiceEntry(runtime, handle));
+            entries.Add(new DiceEntry(runtime, handle));
         }
 
-        return dices;
+        return entries;
     }
 
     void AddCardDice(List<DiceEntry> dices) // ActionBySlot 에서 카드 사용 -> 그럼 카드 안에 주사위 리스트는 여기서 계산 해야 하나? 

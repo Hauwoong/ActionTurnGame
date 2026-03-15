@@ -77,6 +77,13 @@ public class BattleRuntime
         return character.GetDice(handle.DiceId);
     }
 
+    public IEnumerable<DiceEntry> GetRemainingDice(int characterId)
+    {
+        var character = _characters[characterId];
+
+        return character.GetRemainingDice();
+    }
+
     public void EnqueueEvent(ICombatEvent ev)
     {
         eventQueue.Enqueue(ev);
@@ -97,8 +104,8 @@ public class BattleRuntime
 
     public void UseAction(ActionInstance action)
     {
-        var runtime = _characters[action.SourceSlot.CharacterId];
-        runtime.UseAction(action);
+        var character = _characters[action.SourceSlot.CharacterId];
+        character.UseAction(action);
     }
 
     public void Start(BattleInput input)

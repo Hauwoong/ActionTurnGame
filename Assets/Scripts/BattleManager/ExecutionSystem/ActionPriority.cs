@@ -6,7 +6,7 @@ public struct ActionPriority : IComparable<ActionPriority>
 
     public int CompareTo(ActionPriority other)
     {
-        int speedCompare = Speed.CompareTo(other.Speed);
+        int speedCompare = other.Speed.CompareTo(Speed);
 
         if (speedCompare != 0) return speedCompare;
 
