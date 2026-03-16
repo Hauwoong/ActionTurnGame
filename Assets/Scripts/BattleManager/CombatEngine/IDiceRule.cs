@@ -1,5 +1,5 @@
 
 public interface IDiceRule
 {
-    void Resolve(DiceRuntime a, DiceRuntime b, BattleContext context);
+    DiceClashResult Resolve(DiceRuntime a, DiceRuntime b, IRng rng);
 }

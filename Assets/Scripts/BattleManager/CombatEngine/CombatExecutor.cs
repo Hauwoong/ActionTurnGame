@@ -125,12 +125,11 @@ public class CombatExecutor
         DiceRuntime diceA = a.Dice;
         DiceRuntime diceB = b.Dice;
 
-        diceA.Roll(rng);
-        diceB.Roll(rng);
-
         var rule = ruleTable.Get(diceA.GetDiceType(), diceB.GetDiceType());
 
-        rule.Resolve(diceA, diceB, context); // 이때 context는 damagecontext일까? 일단 넘기자
+        var result = rule.Resolve(diceA, diceB, rng);
+
+        runtime.PushLog(new DiceClashLog(diceA.Handle, diceB.Handle, result));
     }
 
     bool IsValidAction(ActionInstance action)
