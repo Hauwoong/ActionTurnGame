@@ -15,8 +15,6 @@ public class BattleRuntime
     private readonly Queue<ICombatEvent> eventQueue = new();
     public bool HasEvents => eventQueue.Count > 0;
 
-    private readonly IRuleSet Rules;
-
     public CombatExecutor Executor { get; private set; }
 
     private Dictionary<SpeedSlot, SpeedSlotRuntime> slotRuntimeMap = new();
@@ -30,9 +28,7 @@ public class BattleRuntime
 
         Rng = new DeterministicRng(Seed);
 
-        Rules = new LorRuleSet();
-
-        Executor = new CombatExecutor(Rules, Rng, this);
+        Executor = new CombatExecutor(Rng, this);
 
         _characters = new Dictionary<int, CharacterRuntime>();
 
@@ -77,11 +73,11 @@ public class BattleRuntime
         return character.GetDice(handle.DiceId);
     }
 
-    public IEnumerable<DiceEntry> GetRemainingDice(int characterId)
+    public List<DiceEntry> GetDicePool(int characterId)
     {
         var character = _characters[characterId];
 
-        return character.GetRemainingDice();
+        return character.
     }
 
     public void EnqueueEvent(ICombatEvent ev)

@@ -4,11 +4,13 @@ public class CombatExecutor
 {
     private readonly BattleRuntime runtime;
     private DiceRuleTable ruleTable;
+    private readonly CombatEventBuffer eventBuffer;
     private readonly IRng rng;
 
-    public CombatExecutor(DiceRuleTable ruleTable, IRng rng, BattleRuntime runtime)
+    public CombatExecutor(IRng rng, BattleRuntime runtime)
     {
-        this.ruleTable = ruleTable;
+        this.ruleTable = new DiceRuleTable();
+        this.eventBuffer = new();
         this.rng = rng;
         this.runtime = runtime;
     }
@@ -69,8 +71,17 @@ public class CombatExecutor
                     visited.Add(slot);
                     visited.Add(targetSlot);
 
-                    runtime.UseAction(action); // 이벤트 형식으로 바꿔서 로그 -> 런타임 적용으로 개선 해야 함
-                    runtime.UseAction(opponent);
+                    eventBuffer.Push(new CombatEvent
+                    {
+                        Type = CombatEventType.UseAction,
+                        Action = action
+                    });
+
+                    eventBuffer.Push(new CombatEvent
+                    {
+                        Type = CombatEventType.UseAction,
+                        Action = opponent
+                    });
 
                     ResolveCombat(action, opponent);
                 }
@@ -79,7 +90,11 @@ public class CombatExecutor
                 {
                     visited.Add(slot);
 
-                    runtime.UseAction(action);
+                    eventBuffer.Push(new CombatEvent
+                    {
+                        Type = CombatEventType.UseAction,
+                        Action = opponent
+                    });
 
                     ResolveCombat(action, null);
                 }
@@ -125,11 +140,30 @@ public class CombatExecutor
         DiceRuntime diceA = a.Dice;
         DiceRuntime diceB = b.Dice;
 
-        var rule = ruleTable.Get(diceA.GetDiceType(), diceB.GetDiceType());
+        diceA.Roll(rng);
+        diceB.Roll(rng);
+
+        var rule = ruleTable.GetRule(diceA.Type, diceB.Type);
 
         var result = rule.Resolve(diceA, diceB, rng);
 
         runtime.PushLog(new DiceClashLog(diceA.Handle, diceB.Handle, result));
+    }
+
+    void ResolveUnopposedDice(DiceEntry entry)
+    {
+        var dice = entry.Dice;
+
+        if (dice.Type == DiceType.Attack)
+        {
+            eventBuffer.Push(new DamageEvent(dice));
+
+            eventBuffer.Push(new DiceDestoryedEvent(dice.Handle));
+        }
+        else
+        {
+            eventBuffer.Push(new DiceConsumedEvent(dice.Handle));
+        }
     }
 
     bool IsValidAction(ActionInstance action)

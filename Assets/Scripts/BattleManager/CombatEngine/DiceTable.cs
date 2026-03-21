@@ -1,12 +1,29 @@
-
 using System.Collections.Generic;
 
 public class DiceRuleTable
 {
-    private readonly Dictionary<(DiceType, DiceType), IDiceRule> rules;
+    private readonly DiceRule[,] table;
 
-    public IDiceRule Get(DiceType a, DiceType b)
+    public DiceRuleTable()
     {
-        return rules[(a, b)];
+        table = new DiceRule[3, 3];
+
+        Initialize();
+    }
+
+    public DiceRule GetRule(DiceType a, DiceType b)
+    {
+        return table[(int)a, (int)b];
+    }
+
+    void Initialize()
+    {
+        table[(int)DiceType.Attack, (int)DiceType.Attack] =
+            new DiceRule
+            {
+                Win = ClashResult.AWin,
+                Lose = ClashResult.BWin,
+                Draw = ClashResult.Draw
+            };
     }
 }

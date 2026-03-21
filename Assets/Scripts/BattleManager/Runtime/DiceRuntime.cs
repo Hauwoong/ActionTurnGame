@@ -2,17 +2,16 @@
 public class DiceRuntime
 {
     public DiceData Data { get; }
+    public DiceType Type => Data.Type;
     public ActionInstance Action { get; }
-    public DiceHandle Handle { get; }
+    public DiceState State { get; private set; }
     public int CurrentRoll { get; private set; }
-    public bool IsDestroyed { get; private set; }
 
-    public DiceRuntime(DiceData data, ActionInstance action, DiceHandle handle)
+    public DiceRuntime(DiceData data, ActionInstance action)
     {
         Data = data;
         Action = action;
-        Handle = handle;
-        IsDestroyed = false;
+        State = DiceState.Ready;
     }
 
     public void Roll(IRng rng)
@@ -20,13 +19,18 @@ public class DiceRuntime
         CurrentRoll = rng.Range(Data.Min, Data.Max+1);
     }
 
-    public DiceType GetDiceType()
+    public void Consume() => State = DiceState.Consumed;
+    public void Destroy() => State = DiceState.Destroyed;
+    public void Recover()
     {
-        return Data.Type;
+        if (State == DiceState.Consumed)
+            State = DiceState.Ready;
     }
+}
 
-    public void Destroy()
-    {
-        IsDestroyed = true;
-    }
+public enum DiceState
+{
+    Ready,
+    Consumed,
+    Destroyed
 }

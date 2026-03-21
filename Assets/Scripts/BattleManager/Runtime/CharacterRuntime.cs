@@ -2,194 +2,108 @@ using System.Collections.Generic;
 
 public class CharacterRuntime
 {
-    private readonly CharacterState state; // 기존의 character을 characterstate로 변경
+    private readonly CharacterState _state;
+    private readonly DicePool _dicePool = new();
+    private readonly Dictionary<int, (DiceRuntime Runtime, DiceHandle Handle)> _diceById = new();
+    private int _nextDiceId = 0;
+    private int _currentHp;
+    private readonly List<StatusEffectRuntime> _statusEffects = new();
+    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> _effectMap = new();
+    private readonly List<SpeedSlotRuntime> _speedSlots = new();
+    private bool _dirty;
 
-    private readonly List<DiceEntry> DicePool = new(); // 캐릭터 런타임이 소유하는 주사위
-    private readonly Dictionary<int, DiceRuntime> DiceById = new(); // 이벤트가 주사위 id 추적을 용이하게 하기 위한 딕셔너리
+    public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => _speedSlots;
 
-    public int DiceCursor { get; private set; } // List + Cursor 조합으로 주사위 관리
-
-    private int CurrentHp;
-
-    private readonly List<StatusEffectRuntime> _statusEffects = new(); // 이벤트 개입을 전제로 하는 상태이상
-
-    private int NextDiceId = 0; // CharacterRuntime -> DiceEntry 소유하니 id 생성은 characterruntime 역할
-
-    private readonly List<SpeedSlotRuntime> speedSlots = new(); // 캐릭터 런타임이 가지고 있는 스피드 슬록 => 스피드 슬롯 구조체 에서 스피드 슬롯 런타임으로 교체 예정
-    public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => speedSlots; // 캐릭터 스피드 슬롯 캡슐화
-    public bool IsFinished => DiceCursor >= DicePool.Count;
-
-    private readonly Dictionary<StatusEffectType, StatusEffectRuntime> effectMap = new();
-
-    public bool _dirty;
-
-    public CharacterRuntime(CharacterState owner)
+    public CharacterRuntime(CharacterState state)
     {
-        state = owner;
-        DiceCursor = 0;
-        CurrentHp = state.MaxHp;
+        _state = state;
+        _currentHp = state.MaxHp;
         CreateSpeedSlots();
     }
 
     void CreateSpeedSlots()
     {
-        for (int i = 0; i < state.SpeedSlotCount; i++)
+        for (int i = 0; i < _state.SpeedSlotCount; i++)
         {
-            var speedSlot = new SpeedSlot(state.CharacterId, i);
-
-            var runtime = new SpeedSlotRuntime(speedSlot, state.MinSpeed, state.MaxSpeed);
-
-            speedSlots.Add(runtime);
+            var slot = new SpeedSlot(_state.CharacterId, i);
+            _speedSlots.Add(new SpeedSlotRuntime(slot, _state.MinSpeed, _state.MaxSpeed));
         }
     }
 
-    public IEnumerable<DiceEntry> GetRemainingDice()
+    // 주사위
+    public void UseAction(ActionInstance action)
     {
-        for (int i = DiceCursor; i < DicePool.Count; i++)
-            yield return DicePool[i];
-    }
-
-    public bool TryGetCurrentDice(out DiceEntry dice)
-    {
-        if (IsFinished)
+        foreach (var diceData in action.Card.dices)
         {
-            dice = default;
-            return false;
+            int id = _nextDiceId++;
+            var handle = new DiceHandle(new CharacterHandle(_state.CharacterId), id);
+            var runtime = new DiceRuntime(diceData, action);
+            _diceById[id] = (runtime, handle);
+            _dicePool.Inject(runtime);
         }
-
-        dice = DicePool[DiceCursor];
-        return true;
     }
 
     public DiceRuntime GetDice(int id)
     {
-        if (DiceById.TryGetValue(id, out DiceRuntime runtime))
-        {
-            return runtime;
-        }
-
-        return null;
+        _diceById.TryGetValue(id, out var entry);
+        return entry.Runtime;
     }
 
-    public void UseAction(ActionInstance action)
+    public DiceHandle GetDiceHandle(int id)
     {
-        var dices = CreateDiceEntry(action);
-        AddCardDice(dices);
+        _diceById.TryGetValue(id, out var entry);
+        return entry.Handle;
     }
 
-    List<DiceEntry> CreateDiceEntry(ActionInstance action)
-    {
-        var cardDice = action.Card.dices;
+    public DiceRuntime Peek() => _dicePool.Peek();
+    public void Advance(AdvanceType type) => _dicePool.Advance(type);
+    public void RecoverDice() => _dicePool.Recover();
+    public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
 
-        var entries = new List<DiceEntry>(cardDice.Count);
-
-        foreach (var diceData in cardDice)
-        {
-            int id = NextDiceId++;
-
-            var handle = new DiceHandle(
-               new CharacterHandle(state.CharacterId),
-               id
-            );
-
-            var runtime = new DiceRuntime(diceData, action, handle);
-
-            DiceById[id] = runtime;
-
-            entries.Add(new DiceEntry(runtime, handle));
-        }
-
-        return entries;
-    }
-
-    void AddCardDice(List<DiceEntry> dices) // ActionBySlot 에서 카드 사용 -> 그럼 카드 안에 주사위 리스트는 여기서 계산 해야 하나? 
-    {
-        DicePool.InsertRange(DiceCursor, dices);
-    }
-    
-    public void MarkDestroyed(int DiceId)
-    {
-        if (DiceById.TryGetValue(DiceId, out var dice))
-        {
-            dice.Destory();
-        }
-    }
-
-    public void Advance()
-    {
-        while (!IsFinished &&
-                DicePool[DiceCursor].Dice.IsDestroyed)
-        {
-            DiceCursor++;
-        }
-    }
-
-    public void ResetCursor()
-    {
-        DiceCursor = 0;
-    }
-
+    // 상태이상
     public void AddStatus(StatusEffectType type, int stack)
     {
-        if (effectMap.TryGetValue(type, out StatusEffectRuntime effect))
+        if (_effectMap.TryGetValue(type, out var effect))
         {
             effect.AddStack(stack);
-            _dirty = true;
         }
-
         else
         {
-            var newEffect = StatusFactory.Create(type, this, stack); // 여기서 바로 characterRuntime이 상태이상 런타임 생성 VS StatusFactory를 이용하여 생성
+            var newEffect = StatusFactory.Create(type, this, stack);
             _statusEffects.Add(newEffect);
-            effectMap[type] = newEffect;
-            _dirty = true;
+            _effectMap[type] = newEffect;
         }
+        _dirty = true;
     }
 
     public void TriggerTurnStart()
     {
         var ctx = new TurnStartContext(this);
-
         EnsureSorted();
-
         foreach (var effect in _statusEffects)
-        {
             effect.OnTurnStart(ctx);
-        }
-
         FlushExpired();
-
     }
 
     public void TriggerBeforeDamage(DamageContext ctx)
     {
         EnsureSorted();
-
         foreach (var effect in _statusEffects)
-        {
             effect.OnBeforeDamage(ctx);
-        }
-
         FlushExpired();
-
     }
 
     public void TriggerAfterDamage(DamageContext ctx)
     {
         EnsureSorted();
-
         foreach (var effect in _statusEffects)
-        {
             effect.OnAfterDamage(ctx);
-        }
-
         FlushExpired();
-
     }
+
     void EnsureSorted()
     {
         if (!_dirty) return;
-
         _statusEffects.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         _dirty = false;
     }
