@@ -2,42 +2,38 @@ using System.Collections.Generic;
 
 public class CombatExecutor
 {
-    private readonly BattleRuntime runtime;
-    private DiceRuleTable ruleTable;
-    private readonly CombatEventBuffer eventBuffer;
-    private readonly IRng rng;
+    private readonly BattleRuntime _runtime;
+    private readonly DiceRuleTable _ruleTable;
+    private readonly CombatEventBuffer _eventBuffer;
+    private readonly IRng _rng;
 
     public CombatExecutor(IRng rng, BattleRuntime runtime)
     {
-        this.ruleTable = new DiceRuleTable();
-        this.eventBuffer = new();
-        this.rng = rng;
-        this.runtime = runtime;
+        _ruleTable = new DiceRuleTable();
+        _eventBuffer = new();
+        _rng = rng;
+        _runtime = runtime;
     }
-  
+
     public void Execute(BoutGraph graph)
     {
         var queue = BuildQueue(graph);
-
-        RunQueue(queue,graph);
+        RunQueue(queue, graph);
     }
+
     PriorityQueue<ActionInstance, ActionPriority> BuildQueue(BoutGraph graph)
     {
         var pq = new PriorityQueue<ActionInstance, ActionPriority>();
-
         foreach (var action in graph.ActionBySlot.Values)
         {
             var slot = action.SourceSlot;
-
             var priority = new ActionPriority
             {
                 Speed = graph.SlotRuntime[slot].Speed,
                 RegisterOrder = action.RegisterOrder
             };
-
             pq.Enqueue(action, priority);
         }
-
         return pq;
     }
 
@@ -51,142 +47,109 @@ public class CombatExecutor
             var slot = action.SourceSlot;
 
             if (visited.Contains(slot)) continue;
-
             if (!IsValidAction(action))
             {
                 visited.Add(slot);
                 continue;
             }
 
-            if (graph.edges.TryGetValue(slot, out var targetSlot))
+            if (!graph.edges.TryGetValue(slot, out var targetSlot)) continue;
+            if (!IsTargetAlive(targetSlot))
             {
-                if (!IsTargetAlive(targetSlot))
-                {
-                    visited.Add(slot);
-                    continue;
-                }
+                visited.Add(slot);
+                continue;
+            }
 
-                if (graph.ActionBySlot.TryGetValue(targetSlot, out var opponent) && !IsTargetStaggered(targetSlot) && !visited.Contains(targetSlot))
-                {
-                    visited.Add(slot);
-                    visited.Add(targetSlot);
+            if (graph.ActionBySlot.TryGetValue(targetSlot, out var opponent)
+                && !IsTargetStaggered(targetSlot)
+                && !visited.Contains(targetSlot))
+            {
+                visited.Add(slot);
+                visited.Add(targetSlot);
 
-                    eventBuffer.Push(new CombatEvent
-                    {
-                        Type = CombatEventType.UseAction,
-                        Action = action
-                    });
+                _eventBuffer.Push(new CombatEvent { Type = CombatEventType.UseAction, Action = action });
+                _eventBuffer.Push(new CombatEvent { Type = CombatEventType.UseAction, Action = opponent });
 
-                    eventBuffer.Push(new CombatEvent
-                    {
-                        Type = CombatEventType.UseAction,
-                        Action = opponent
-                    });
+                ResolveCombat(action, opponent);
+            }
+            else
+            {
+                visited.Add(slot);
 
-                    ResolveCombat(action, opponent);
-                }
+                _eventBuffer.Push(new CombatEvent { Type = CombatEventType.UseAction, Action = action });
 
-                else
-                {
-                    visited.Add(slot);
-
-                    eventBuffer.Push(new CombatEvent
-                    {
-                        Type = CombatEventType.UseAction,
-                        Action = opponent
-                    });
-
-                    ResolveCombat(action, null);
-                }
+                ResolveCombat(action, null);
             }
         }
     }
 
     void ResolveCombat(ActionInstance a, ActionInstance b)
     {
-        var diceA = runtime.GetRemainingDice(a.SourceSlot.CharacterId).GetEnumerator();
-        var diceB = b != null
-            ? runtime.GetRemainingDice(b.SourceSlot.CharacterId).GetEnumerator()
-            : null;
+        int idA = a.SourceSlot.CharacterId;
+        int idB = b?.SourceSlot.CharacterId ?? -1;
 
-        bool hasA = diceA.MoveNext();
-        bool hasB = diceB != null && diceB.MoveNext();
-
-        while (hasA && hasB)
+        while (true)
         {
-            ResolveDiceClash(diceA.Current, diceB.Current);
+            var entryA = _runtime.PeekDice(idA);
+            var entryB = b != null ? _runtime.PeekDice(idB) : null;
 
-            hasA = diceA.MoveNext();
-            hasB = diceB.MoveNext();
+            if (entryA == null) break;
+
+            if (entryB != null)
+                ResolveDiceClash(idA, idB);
+            else
+                ResolveUnopposedDice(idA);
         }
 
-        while (hasA)
+        if (b != null)
         {
-            ResolveUnopposedDice(diceA.Current);
-
-            hasA = diceA.MoveNext();
-        }
-
-        while (hasB)
-        {
-            ResolveUnopposedDice(diceB.Current);
-
-            hasB = diceB.MoveNext();
+            while (_runtime.PeekDice(idB) != null)
+                ResolveUnopposedDice(idB);
         }
     }
 
-    void ResolveDiceClash(DiceEntry a, DiceEntry b)
+    void ResolveDiceClash(int idA, int idB)
     {
-        DiceRuntime diceA = a.Dice;
-        DiceRuntime diceB = b.Dice;
+        var entryA = _runtime.PeekDice(idA).Value;
+        var entryB = _runtime.PeekDice(idB).Value;
 
-        diceA.Roll(rng);
-        diceB.Roll(rng);
+        entryA.Dice.Roll(_rng);
+        entryB.Dice.Roll(_rng);
 
-        var rule = ruleTable.GetRule(diceA.Type, diceB.Type);
+        var rule = _ruleTable.GetRule(entryA.Dice.Type, entryB.Dice.Type);
+        var result = rule.Resolve(entryA.Dice, entryB.Dice);
 
-        var result = rule.Resolve(diceA, diceB, rng);
+        _runtime.AddLog(new DiceClashLog(entryA.Handle, entryB.Handle, result));
 
-        runtime.PushLog(new DiceClashLog(diceA.Handle, diceB.Handle, result));
+        _runtime.AdvanceDice(idA, result.AdvanceTypeA);
+        _runtime.AdvanceDice(idB, result.AdvanceTypeB);
     }
 
-    void ResolveUnopposedDice(DiceEntry entry)
+    void ResolveUnopposedDice(int characterId)
     {
-        var dice = entry.Dice;
+        var entry = _runtime.PeekDice(characterId).Value;
 
-        if (dice.Type == DiceType.Attack)
+        if (entry.Dice.Type == DiceType.Attack)
         {
-            eventBuffer.Push(new DamageEvent(dice));
-
-            eventBuffer.Push(new DiceDestoryedEvent(dice.Handle));
+            _eventBuffer.Push(new DamageEvent(entry.Handle));
+            _runtime.AdvanceDice(characterId, AdvanceType.Destroy);
         }
         else
         {
-            eventBuffer.Push(new DiceConsumedEvent(dice.Handle));
+            _eventBuffer.Push(new DiceConsumedEvent(entry.Handle));
+            _runtime.AdvanceDice(characterId, AdvanceType.Consume);
         }
     }
 
     bool IsValidAction(ActionInstance action)
     {
-        var actor = runtime.GetCharacterRuntime(action.SourceSlot.CharacterId);
-
-        if (actor.IsDead) return false;
-        if (actor.IsStaggered) return false;
-
-        return true;
+        var actor = _runtime.GetCharacterRuntime(action.SourceSlot.CharacterId);
+        return !actor.IsDead && !actor.IsStaggered;
     }
 
     bool IsTargetAlive(SpeedSlot slot)
-    {
-        var character = runtime.GetCharacterRuntime(slot.CharacterId);
-
-        return !character.IsDead;
-    }
+        => !_runtime.GetCharacterRuntime(slot.CharacterId).IsDead;
 
     bool IsTargetStaggered(SpeedSlot slot)
-    {
-        var character = runtime.GetCharacterRuntime(slot.CharacterId);
-
-        return character.IsStaggered;
-    }
+        => _runtime.GetCharacterRuntime(slot.CharacterId).IsStaggered;
 }

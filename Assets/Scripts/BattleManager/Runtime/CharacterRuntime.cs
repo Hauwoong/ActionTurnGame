@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
 
-public class CharacterRuntime
+public class CharacterRuntime : IEventSink
 {
     private readonly CharacterState _state;
+    private readonly IEventSink _eventSink;
     private readonly DicePool _dicePool = new();
-    private readonly Dictionary<int, (DiceRuntime Runtime, DiceHandle Handle)> _diceById = new();
+    private readonly Dictionary<int, DiceEntry> _diceById = new();
     private int _nextDiceId = 0;
     private int _currentHp;
     private readonly List<StatusEffectRuntime> _statusEffects = new();
@@ -12,22 +14,24 @@ public class CharacterRuntime
     private readonly List<SpeedSlotRuntime> _speedSlots = new();
     private bool _dirty;
 
+    public int CharacterId => _state.CharacterId;
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => _speedSlots;
 
-    public CharacterRuntime(CharacterState state)
+    public CharacterRuntime(CharacterState state, IEventSink eventSink)
     {
         _state = state;
+        _eventSink = eventSink;
         _currentHp = state.MaxHp;
         CreateSpeedSlots();
     }
 
-    void CreateSpeedSlots()
+    public void EnqueueEvent(ICombatEvent ev) => _eventSink.EnqueueEvent(ev);
+
+    public void TakeDamage(int amount)
     {
-        for (int i = 0; i < _state.SpeedSlotCount; i++)
-        {
-            var slot = new SpeedSlot(_state.CharacterId, i);
-            _speedSlots.Add(new SpeedSlotRuntime(slot, _state.MinSpeed, _state.MaxSpeed));
-        }
+        _currentHp -= amount;
+        if (_currentHp < 0)
+            _currentHp = 0;
     }
 
     // ÁÖ»çÀ§
@@ -38,24 +42,12 @@ public class CharacterRuntime
             int id = _nextDiceId++;
             var handle = new DiceHandle(new CharacterHandle(_state.CharacterId), id);
             var runtime = new DiceRuntime(diceData, action);
-            _diceById[id] = (runtime, handle);
-            _dicePool.Inject(runtime);
+            _diceById[id] = new DiceEntry(runtime, handle);
+            _dicePool.Inject(new DiceEntry(runtime, handle));
         }
     }
 
-    public DiceRuntime GetDice(int id)
-    {
-        _diceById.TryGetValue(id, out var entry);
-        return entry.Runtime;
-    }
-
-    public DiceHandle GetDiceHandle(int id)
-    {
-        _diceById.TryGetValue(id, out var entry);
-        return entry.Handle;
-    }
-
-    public DiceRuntime Peek() => _dicePool.Peek();
+    public DiceEntry? Peek() => _dicePool.Peek();
     public void Advance(AdvanceType type) => _dicePool.Advance(type);
     public void RecoverDice() => _dicePool.Recover();
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
@@ -101,6 +93,30 @@ public class CharacterRuntime
         FlushExpired();
     }
 
+    public void TriggerDiceClash()
+    {
+        EnsureSorted();
+        foreach (var effect in _statusEffects)
+            effect.OnDiceClash();
+        FlushExpired();
+    }
+
+    public void TriggerTurnEnd()
+    {
+        foreach (var effect in _statusEffects)
+            effect.OnTurnEnd();
+        FlushExpired();
+    }
+
+    void CreateSpeedSlots()
+    {
+        for (int i = 0; i < _state.SpeedSlotCount; i++)
+        {
+            var slot = new SpeedSlot(_state.CharacterId, i);
+            _speedSlots.Add(new SpeedSlotRuntime(slot, _state.MinSpeed, _state.MaxSpeed));
+        }
+    }
+
     void EnsureSorted()
     {
         if (!_dirty) return;
@@ -110,6 +126,13 @@ public class CharacterRuntime
 
     void FlushExpired()
     {
-        _statusEffects.RemoveAll(e => e.IsExpired);
+        for (int i = _statusEffects.Count - 1; i >= 0; i--)
+        {
+            if (_statusEffects[i].IsExpired)
+            {
+                _effectMap.Remove(_effectMap.FirstOrDefault(x => x.Value == _statusEffects[i]).Key);
+                _statusEffects.RemoveAt(i);
+            }
+        }
     }
 }

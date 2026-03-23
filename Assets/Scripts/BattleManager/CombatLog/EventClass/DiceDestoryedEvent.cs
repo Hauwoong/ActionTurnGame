@@ -1,4 +1,3 @@
-using JetBrains.Annotations;
 
 public sealed class DiceDestoryedEvent : ICombatEvent
 {

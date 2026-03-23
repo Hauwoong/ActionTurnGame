@@ -14,18 +14,10 @@ public class DiceRuntime
         State = DiceState.Ready;
     }
 
-    public void Roll(IRng rng)
-    {
-        CurrentRoll = rng.Range(Data.Min, Data.Max+1);
-    }
-
+    public void Roll(IRng rng) => CurrentRoll = rng.Range(Data.Min, Data.Max + 1);
     public void Consume() => State = DiceState.Consumed;
     public void Destroy() => State = DiceState.Destroyed;
-    public void Recover()
-    {
-        if (State == DiceState.Consumed)
-            State = DiceState.Ready;
-    }
+    public void Recover() => State = DiceState.Ready;
 }
 
 public enum DiceState

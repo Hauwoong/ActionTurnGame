@@ -1986,3 +1986,86 @@ BattleSnapshot Seed와 결합하면
 5. Dice Roll은 Resolve 시점
 6. RuleTable 기반 Dice 규칙
 7. Combat = Dice Pool 기반 전투
+
+---------------------------------------------------
+
+♟️ Combat System Refactoring - DicePool & Character Runtime
+개요
+전투 시스템의 핵심 구조를 리팩토링하고 상태이상 시스템 기반을 구축했습니다.
+
+DicePool 리팩토링
+
+List<DiceEntry> + Cursor 조합으로 단순화
+_injected, _injectCursor, IsInjectedConsumed 제거
+Inject() → List.Insert(_cursor) 방식으로 교체
+Advance(AdvanceType) — dice 파라미터 제거, 내부에서 cursor 주사위 직접 참조
+AdvanceType : Consume(합 단위 임시 사용), Destroy(영구 제거), Reuse(cursor 유지)
+Recover() — Consumed 상태만 Ready로 복구
+ResetForNextTurn() — Destroyed 제외 전부 Destroy 처리, cursor 초기화
+
+
+DiceRuntime 정리
+
+DiceHandle 제거 → DiceEntry가 단독 소유
+Reset() — Consumed 상태만 Ready로 복구
+
+
+DiceEntry / DiceHandle
+
+DicePool이 DiceEntry 기반으로 관리하도록 변경
+DiceHandle(CharacterHandle, DiceId) — 이벤트 타겟팅용 식별자로 유지
+
+
+CharacterRuntime 리팩토링
+
+DicePool 클래스 직접 소유
+_diceById — 이벤트에서 id 기반 주사위 추적용
+IEventSink 주입 — 순환 참조 방지
+TriggerDiceClash() 추가 — 출혈 등 합 단위 상태이상 트리거
+TriggerTurnEnd() 추가
+FlushExpired() — _effectMap도 같이 정리하도록 수정
+CharacterId 프로퍼티 노출
+TakeDamage() 추가
+
+
+BattleRuntime 리팩토링
+
+IEventSink 구현
+PeekDice(characterId), AdvanceDice(characterId, type) 래핑 메서드 추가
+GetDice(DiceHandle) 제거
+GetDicePool() 제거
+SlotRuntimeMap → IReadOnlyDictionary로 캡슐화
+네이밍 컨벤션 _camelCase로 통일
+
+
+CombatExecutor 리팩토링
+
+ResolveCombat() — Enumerator 순회 → PeekDice()/AdvanceDice() 방식으로 교체
+ResolveDiceClash(), ResolveUnopposedDice() — DiceEntry 파라미터 → characterId 기반으로 변경
+PushLog() → AddLog()로 통일
+단방향 공격 버그 수정 (opponent → action)
+네이밍 컨벤션 _camelCase로 통일
+
+
+상태이상 시스템 구축
+
+IEventSink 인터페이스 도입 — 의존성 역전으로 순환 참조 해결
+StatusEffectRuntime — OnDiceClash() 추가
+구현체 4개 추가:
+
+BleedEffect — 합마다 스택 피해 + 스택 절반 감소
+BurnEffect — 턴 종료 시 스택 피해 + 스택 절반 감소
+StrengthEffect — 데미지 계산 전 스택만큼 증가
+ParalysisEffect — 데미지 계산 전 스택만큼 감소
+
+
+StatusFactory — 타입 기반 생성
+StatusEffectType enum 추가
+
+
+다음 작업 예정
+
+DiceRuleTable 완성
+DamageContext 트리거 위치 확정
+CombatLog 구조 설계
+EventBuffer 구현 (Unity 연동용)
