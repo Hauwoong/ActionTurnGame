@@ -117,12 +117,19 @@ public class CombatExecutor
         entryB.Dice.Roll(_rng);
 
         var rule = _ruleTable.GetRule(entryA.Dice.Type, entryB.Dice.Type);
-        var result = rule.Resolve(entryA.Dice, entryB.Dice);
+        var (result, advanceA, advanceB) = rule.Resolve(entryA.Dice, entryB.Dice);
 
-        _runtime.AddLog(new DiceClashLog(entryA.Handle, entryB.Handle, result));
+        _runtime.AddLog(new DiceClashLog(
+        entryA.Handle, entryB.Handle,
+        entryA.Dice.CurrentRoll, entryB.Dice.CurrentRoll,
+        result, advanceA, advanceB
+        ));
 
-        _runtime.AdvanceDice(idA, result.AdvanceTypeA);
-        _runtime.AdvanceDice(idB, result.AdvanceTypeB);
+        _runtime.GetCharacterRuntime(idA).TriggerDiceClash();
+        _runtime.GetCharacterRuntime(idB).TriggerDiceClash();
+
+        _runtime.AdvanceDice(idA, advanceA);
+        _runtime.AdvanceDice(idB, advanceB);
     }
 
     void ResolveUnopposedDice(int characterId)

@@ -5,17 +5,16 @@ public class DiceRule
     public ClashResult Lose;
     public ClashResult Draw;
 
-    public AdvanceType AdvanceTypeA;
-    public AdvanceType AdvanceTypeB;
+    public (AdvanceType A, AdvanceType B) WinAdvance;
+    public (AdvanceType A, AdvanceType B) LoseAdvance;
+    public (AdvanceType A, AdvanceType B) DrawAdvance;
 
-    public ClashResult Resolve(DiceRuntime diceA, DiceRuntime diceB)
+    public (ClashResult Result, AdvanceType AdvanceA, AdvanceType AdvanceB) Resolve(DiceRuntime diceA, DiceRuntime diceB)
     {
         if (diceA.CurrentRoll > diceB.CurrentRoll)
-            return Win;
-
+            return (Win, WinAdvance.A, WinAdvance.B);
         if (diceA.CurrentRoll < diceB.CurrentRoll)
-            return Lose;
-
-        return Draw;
+            return (Lose, LoseAdvance.A, LoseAdvance.B);
+        return (Draw, DrawAdvance.A, DrawAdvance.B);
     }
 }
