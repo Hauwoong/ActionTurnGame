@@ -1,28 +1,18 @@
-public class DamageContext
+public class DamageContext : IClashContext
 {
     public CharacterRuntime Attacker { get; }
     public CharacterRuntime Defender { get; }
+    public bool IsCancelled { get; set; }
 
     public int BaseDamage;
 
     public int Additive;
-
-    public bool IsCancelled;
+    public int FinalDamage => BaseDamage + Additive;
 
     public DamageContext(CharacterRuntime attacker, CharacterRuntime defender, int baseDamage)
     {
         Attacker = attacker;
         Defender = defender;
         BaseDamage = baseDamage;
-        IsCancelled = false;
-    }
-
-    public int FinalDamage
-    {
-        get
-        {
-            int value = BaseDamage + Additive;
-            return value;
-        }
     }
 }

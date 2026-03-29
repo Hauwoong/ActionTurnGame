@@ -1,4 +1,6 @@
 
+using System;
+
 public class DiceRule
 {
     public ClashResult Win;
@@ -9,12 +11,17 @@ public class DiceRule
     public (AdvanceType A, AdvanceType B) LoseAdvance;
     public (AdvanceType A, AdvanceType B) DrawAdvance;
 
-    public (ClashResult Result, AdvanceType AdvanceA, AdvanceType AdvanceB) Resolve(DiceRuntime diceA, DiceRuntime diceB)
+    public Func<ClashContext, IClashContext> WinContext;
+    public Func<ClashContext, IClashContext> LoseContext;
+    public Func<ClashContext, IClashContext> DrawContext;
+
+    public (ClashResult Result, AdvanceType AdvanceA, AdvanceType AdvanceB, IClashContext Context)
+        Resolve(ClashContext clashCtx)
     {
-        if (diceA.CurrentRoll > diceB.CurrentRoll)
-            return (Win, WinAdvance.A, WinAdvance.B);
-        if (diceA.CurrentRoll < diceB.CurrentRoll)
-            return (Lose, LoseAdvance.A, LoseAdvance.B);
-        return (Draw, DrawAdvance.A, DrawAdvance.B);
+        if (clashCtx.ModifiedRollA > clashCtx.ModifiedRollB)
+            return (Win, WinAdvance.A, WinAdvance.B, WinContext?.Invoke(clashCtx));
+        if (clashCtx.ModifiedRollA < clashCtx.ModifiedRollB)
+            return (Lose, LoseAdvance.A, LoseAdvance.B, LoseContext?.Invoke(clashCtx));
+        return (Draw, DrawAdvance.A, DrawAdvance.B, DrawContext?.Invoke(clashCtx));
     }
 }

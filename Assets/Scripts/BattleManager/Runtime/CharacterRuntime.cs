@@ -9,10 +9,13 @@ public class CharacterRuntime : IEventSink
     private readonly Dictionary<int, DiceEntry> _diceById = new();
     private int _nextDiceId = 0;
     private int _currentHp;
+    private int _currentStagger;
     private readonly List<StatusEffectRuntime> _statusEffects = new();
     private readonly Dictionary<StatusEffectType, StatusEffectRuntime> _effectMap = new();
     private readonly List<SpeedSlotRuntime> _speedSlots = new();
     private bool _dirty;
+    public bool IsDead => _currentHp <= 0;
+    public bool IsStaggered => _currentStagger <= 0;
 
     public int CharacterId => _state.CharacterId;
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => _speedSlots;
@@ -22,6 +25,7 @@ public class CharacterRuntime : IEventSink
         _state = state;
         _eventSink = eventSink;
         _currentHp = state.MaxHp;
+        _currentStagger = state.MaxStagger;
         CreateSpeedSlots();
     }
 
@@ -32,6 +36,18 @@ public class CharacterRuntime : IEventSink
         _currentHp -= amount;
         if (_currentHp < 0)
             _currentHp = 0;
+    }
+    public void TakeStagger(int amount)
+    {
+        _currentStagger -= amount;
+        if (_currentStagger < 0)
+            _currentStagger = 0;
+    }
+    public void RecoverStagger(int amount)
+    {
+        _currentStagger += amount;
+        if (_currentStagger > _state.MaxStagger)
+            _currentStagger = _state.MaxStagger;
     }
 
     // ¡÷ªÁ¿ß
@@ -92,6 +108,13 @@ public class CharacterRuntime : IEventSink
             effect.OnAfterDamage(ctx);
         FlushExpired();
     }
+    public void TriggerBeforeClash(ClashContext ctx, bool isOwnerA)
+    {
+        EnsureSorted();
+        foreach (var effect in _statusEffects)
+            effect.OnBeforeClash(ctx, isOwnerA);
+        FlushExpired();
+    }
 
     public void TriggerDiceClash()
     {
@@ -105,6 +128,21 @@ public class CharacterRuntime : IEventSink
     {
         foreach (var effect in _statusEffects)
             effect.OnTurnEnd();
+        FlushExpired();
+    }
+    public void TriggerBeforeStagger(StaggerContext ctx)
+    {
+        EnsureSorted();
+        foreach (var effect in _statusEffects)
+            effect.OnBeforeStagger(ctx);
+        FlushExpired();
+    }
+
+    public void TriggerAfterStagger(StaggerContext ctx)
+    {
+        EnsureSorted();
+        foreach (var effect in _statusEffects)
+            effect.OnAfterStagger(ctx);
         FlushExpired();
     }
 

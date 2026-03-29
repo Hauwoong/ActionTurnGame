@@ -6,7 +6,7 @@ public class BleedEffect : StatusEffectRuntime
 
     public override void OnDiceClash()
     {
-        Owner.EnqueueEvent(new DamageEvent(Owner.CharacterId, Stack));
+        Owner.EnqueueEvent(new StatusDamageEvent(Owner.CharacterId, Stack));
         Stack = Stack / 2;
         if (Stack <= 0)
             IsExpired = true;
@@ -21,11 +21,10 @@ public class BurnEffect : StatusEffectRuntime
 
     public override void OnTurnEnd()
     {
-        Owner.EnqueueEvent(new DamageEvent(Owner.CharacterId, Stack));
+        Owner.EnqueueEvent(new StatusDamageEvent(Owner.CharacterId, Stack));
         Stack = Stack / 2;
         if (Stack <= 0)
             IsExpired = true;
-        // Duration 기반 만료는 쓰지 않음
     }
 }
 
@@ -35,10 +34,12 @@ public class StrengthEffect : StatusEffectRuntime
     public StrengthEffect(CharacterRuntime owner, int stack)
         : base(owner, stack, priority: 2) { }
 
-    public override void OnBeforeDamage(DamageContext ctx)
+    public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
     {
-        if (ctx.Attacker == Owner)
-            ctx.Additive += Stack;
+        if (isOwnerA)
+            ctx.ModifiedRollA += Stack;
+        else
+            ctx.ModifiedRollB += Stack;
     }
 }
 
@@ -48,9 +49,11 @@ public class ParalysisEffect : StatusEffectRuntime
     public ParalysisEffect(CharacterRuntime owner, int stack)
         : base(owner, stack, priority: 3) { }
 
-    public override void OnBeforeDamage(DamageContext ctx)
+    public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
     {
-        if (ctx.Attacker == Owner)
-            ctx.Additive -= Stack;
+        if (isOwnerA)
+            ctx.ModifiedRollA -= Stack;
+        else
+            ctx.ModifiedRollB -= Stack;
     }
 }

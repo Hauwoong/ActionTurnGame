@@ -19,6 +19,9 @@ public abstract class StatusEffectRuntime
     public virtual void OnTurnStart(TurnStartContext ctx) { }
     public virtual void OnBeforeDamage(DamageContext ctx) { }
     public virtual void OnAfterDamage(DamageContext ctx) { }
+    public virtual void OnBeforeStagger(StaggerContext ctx) { }  // 추가
+    public virtual void OnAfterStagger(StaggerContext ctx) { }   // 추가
+    public virtual void OnBeforeClash(ClashContext ctx, bool IsOwnerA) { } 
     public virtual void OnDiceClash() { }
     public virtual void OnTurnEnd()
     {

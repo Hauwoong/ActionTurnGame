@@ -2069,3 +2069,319 @@ DiceRuleTable 완성
 DamageContext 트리거 위치 확정
 CombatLog 구조 설계
 EventBuffer 구현 (Unity 연동용)
+
+## 2026-03-29
+
+### 오늘 한 것
+
+[Combat System Refactoring - Vol.2]
+
+--------------------------------------------------
+Dice Rule System 재설계
+--------------------------------------------------
+
+DiceRule 구조를 delegate 기반으로 재설계하였다.
+
+기존
+
+- WinContext / LoseContext / DrawContext 개별 객체 생성
+
+변경
+
+- Func<ClashContext, IClashContext> 방식으로 통합
+
+Resolve 시그니처
+
+Resolve(ClashContext ctx)
+
+비김(Draw) 처리
+
+- 전부 null 반환 방식으로 통일
+
+Dice 상호작용 규칙 확정
+
+- Attack vs Evade
+  - Evade 승리 시 Reuse
+  - 나머지 경우 전부 Destroy
+
+- Block vs Evade
+- Evade vs Evade
+
+  → 승패와 관계없이 전부 Destroy
+
+3 x 3 모든 DiceType 조합 규칙 완성
+
+
+--------------------------------------------------
+ClashContext 도입
+--------------------------------------------------
+
+DiceRuntime에서 값 수정 책임을 분리하였다.
+
+ClashContext 포함 데이터
+
+- ModifiedRollA
+- ModifiedRollB
+
+특징
+
+- 상태이상 적용된 최종 값 보관
+- 초기값은 CurrentRoll
+- OnBeforeClash()에서 값 수정
+
+승패 판정 기준
+
+- ModifiedRoll 기반으로 변경
+
+
+--------------------------------------------------
+Context 시스템 확장
+--------------------------------------------------
+
+IClashContext 인터페이스 도입
+
+공통 데이터
+
+- Attacker
+- Defender
+- IsCancelled
+
+DamageContext
+
+- HP 피해 처리
+- BaseDamage + Additive = FinalDamage
+
+StaggerContext
+
+- 흐트러짐 처리
+- BaseValue + Additive = FinalValue
+- IsRecover 플래그
+
+데미지 계산 방식
+
+- (이긴 주사위 값 - 진 주사위 값)
+
+
+--------------------------------------------------
+StatusEffectRuntime 확장
+--------------------------------------------------
+
+이벤트 Hook 추가
+
+- OnBeforeClash(ClashContext ctx, bool isOwnerA)
+- OnBeforeStagger(StaggerContext ctx)
+- OnAfterStagger(StaggerContext ctx)
+
+구현 예시
+
+- StrengthEffect
+- ParalysisEffect
+
+특징
+
+- isOwnerA 플래그로 A/B 구분
+- ModifiedRoll 직접 수정
+
+
+--------------------------------------------------
+CharacterRuntime 확장
+--------------------------------------------------
+
+이벤트 트리거 함수 추가
+
+- TriggerBeforeClash(ClashContext, bool isOwnerA)
+- TriggerBeforeStagger(StaggerContext)
+- TriggerAfterStagger(StaggerContext)
+
+상태 처리 추가
+
+- IsDead → _currentHp <= 0
+- IsStaggered → _currentStagger <= 0
+
+Stagger 처리
+
+- TakeStagger(int amount)
+- RecoverStagger(int amount)
+
+초기값
+
+- _currentStagger = state.MaxStagger
+
+
+--------------------------------------------------
+전투 이벤트 흐름 정리
+--------------------------------------------------
+
+Damage 처리 흐름
+
+DamageContext 생성
+→ TriggerBeforeDamage
+→ TakeDamage
+→ TriggerAfterDamage
+
+Stagger 처리 흐름
+
+StaggerContext 생성
+→ TriggerBeforeStagger
+→ TakeStagger / RecoverStagger
+→ TriggerAfterStagger
+
+특징
+
+- IsCancelled로 이벤트 취소 가능
+
+
+--------------------------------------------------
+이벤트 시스템 재정리
+--------------------------------------------------
+
+구조 변경
+
+- CombatEventBuffer 제거
+- BattleRuntime._eventQueue로 통합
+
+이벤트 추가
+
+- DiceDestroyedEvent (characterId 기반)
+- DiceConsumedEvent (characterId 기반)
+- StatusDamageEvent (공격자 없음)
+
+특징
+
+- 상태이상 피해는 독립 처리
+- Reuse는 이벤트 없이 null 체크로 처리
+
+헬퍼 함수
+
+- ToAdvanceEvent() 추가
+
+
+--------------------------------------------------
+CombatExecutor 정리
+--------------------------------------------------
+
+함수 수정
+
+- ResolveUnopposedDice(characterId, targetId)
+- ResolveDiceClash() → ClashContext 기반으로 재작성
+- ResolveCombat() → targetId 전달 구조 수정
+
+변경 사항
+
+- AdvanceDice() 직접 호출 제거
+- 이벤트 기반 처리로 변경
+
+
+--------------------------------------------------
+StatusEffect 수정
+--------------------------------------------------
+
+- BleedEffect
+- BurnEffect
+
+변경 내용
+
+- DamageEvent → StatusDamageEvent로 변경
+- 공격자 없이 방어자에게 직접 피해 적용
+
+
+--------------------------------------------------
+CharacterData 분리
+--------------------------------------------------
+
+Character(MonoBehaviour)에서 데이터 분리
+
+CharacterData 포함 데이터
+
+- MaxHp
+- MaxStagger
+- MaxEnergy
+- MinSpeed
+- MaxSpeed
+- BaseSpeedSlotCount
+
+감정 시스템 관련 값
+
+- EmotionGainOnDamageDealt 등
+
+추가
+
+- PassiveData 리스트
+
+구조 변경
+
+- CharacterState → CharacterData 참조하도록 수정
+
+
+--------------------------------------------------
+Passive 시스템 도입
+--------------------------------------------------
+
+구조
+
+abstract PassiveData
+
+추가
+
+- PassiveType enum (SpeedSlot 등)
+
+설계 변경
+
+- SpeedSlot을 패시브로 관리
+
+기본 규칙
+
+- 기본 슬롯 1개
+- 감정 단계에 따라 슬롯 추가
+
+
+--------------------------------------------------
+현재 엔진 상태
+--------------------------------------------------
+
+완료
+
+- DiceRuleTable (3x3 완성)
+- ClashContext 기반 전투 처리
+- Damage / Stagger Context 시스템
+- StatusEffect 이벤트 확장
+- EventQueue 통합
+- CombatExecutor 구조 정리
+- CharacterData / Passive 구조 도입
+
+전투 엔진이
+
+"Rule + Context + Event 기반 구조"
+
+로 완전히 전환된 상태이다.
+
+
+--------------------------------------------------
+다음 작업
+--------------------------------------------------
+
+- TurnStartContext 구조 완성
+- 감정 단계 시스템 구현
+- SpeedSlot Passive 시스템 구현
+- CombatLog 전체 정리
+- BattleRuntime.Step() 실시간 처리 완성
+- Unity EventBuffer 연동
+
+
+--------------------------------------------------
+설계 핵심 요약
+--------------------------------------------------
+
+1. DiceRule을 delegate 기반으로 추상화
+2. ClashContext로 계산 책임 분리
+3. Context 기반 이벤트 시스템 확립
+4. StatusEffect Hook 구조 강화
+5. EventQueue 단일화
+6. Executor → 이벤트 기반 처리로 전환
+7. CharacterData / Passive 구조 분리
+
+전투 엔진이
+
+"확장 가능한 Rule Engine 구조"
+
+로 진화한 단계이다.

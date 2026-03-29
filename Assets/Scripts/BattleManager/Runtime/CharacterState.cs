@@ -1,4 +1,3 @@
-using UnityEngine;
 
 public sealed class CharacterState
 {
@@ -6,6 +5,7 @@ public sealed class CharacterState
 
     public int CharacterId { get; }
     public int MaxHp { get; }
+    public int MaxStagger { get; }
     public int SpeedSlotCount { get; }
     public int MinSpeed { get; }
     public int MaxSpeed { get; }
@@ -15,6 +15,7 @@ public sealed class CharacterState
         Source = source;
         CharacterId = id;
         MaxHp = source.MaxHP;
+        MaxStagger = source.MaxStagger;
         SpeedSlotCount = source.diceCount;
         MinSpeed = source.MinSpeed;
         MaxSpeed = source.MaxSpeed;

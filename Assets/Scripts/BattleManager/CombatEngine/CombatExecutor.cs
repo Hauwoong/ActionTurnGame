@@ -4,13 +4,11 @@ public class CombatExecutor
 {
     private readonly BattleRuntime _runtime;
     private readonly DiceRuleTable _ruleTable;
-    private readonly CombatEventBuffer _eventBuffer;
     private readonly IRng _rng;
 
     public CombatExecutor(IRng rng, BattleRuntime runtime)
     {
         _ruleTable = new DiceRuleTable();
-        _eventBuffer = new();
         _rng = rng;
         _runtime = runtime;
     }
@@ -66,18 +64,11 @@ public class CombatExecutor
             {
                 visited.Add(slot);
                 visited.Add(targetSlot);
-
-                _eventBuffer.Push(new CombatEvent { Type = CombatEventType.UseAction, Action = action });
-                _eventBuffer.Push(new CombatEvent { Type = CombatEventType.UseAction, Action = opponent });
-
                 ResolveCombat(action, opponent);
             }
             else
             {
                 visited.Add(slot);
-
-                _eventBuffer.Push(new CombatEvent { Type = CombatEventType.UseAction, Action = action });
-
                 ResolveCombat(action, null);
             }
         }
@@ -90,21 +81,21 @@ public class CombatExecutor
 
         while (true)
         {
-            var entryA = _runtime.PeekDice(idA);
-            var entryB = b != null ? _runtime.PeekDice(idB) : null;
+            var diceA = _runtime.PeekDice(idA);
+            var diceB = b != null ? _runtime.PeekDice(idB) : null;
 
-            if (entryA == null) break;
+            if (diceA == null) break;
 
-            if (entryB != null)
+            if (diceB != null)
                 ResolveDiceClash(idA, idB);
             else
-                ResolveUnopposedDice(idA);
+                ResolveUnopposedDice(idA, idB);
         }
 
         if (b != null)
         {
             while (_runtime.PeekDice(idB) != null)
-                ResolveUnopposedDice(idB);
+                ResolveUnopposedDice(idB, idA);
         }
     }
 
@@ -113,38 +104,51 @@ public class CombatExecutor
         var entryA = _runtime.PeekDice(idA).Value;
         var entryB = _runtime.PeekDice(idB).Value;
 
+        var charA = _runtime.GetCharacterRuntime(idA);
+        var charB = _runtime.GetCharacterRuntime(idB);
+
         entryA.Dice.Roll(_rng);
         entryB.Dice.Roll(_rng);
 
+        var clashCtx = new ClashContext(entryA.Dice, entryB.Dice, charA, charB);
+
+        charA.TriggerBeforeClash(clashCtx, isOwnerA: true);
+        charB.TriggerBeforeClash(clashCtx, isOwnerA: false);
+
         var rule = _ruleTable.GetRule(entryA.Dice.Type, entryB.Dice.Type);
-        var (result, advanceA, advanceB) = rule.Resolve(entryA.Dice, entryB.Dice);
+        var (result, advanceA, advanceB, ctx) = rule.Resolve(clashCtx);
 
         _runtime.AddLog(new DiceClashLog(
-        entryA.Handle, entryB.Handle,
-        entryA.Dice.CurrentRoll, entryB.Dice.CurrentRoll,
-        result, advanceA, advanceB
+            entryA.Handle, entryB.Handle,
+            entryA.Dice.CurrentRoll, entryB.Dice.CurrentRoll,
+            result, advanceA, advanceB
         ));
 
-        _runtime.GetCharacterRuntime(idA).TriggerDiceClash();
-        _runtime.GetCharacterRuntime(idB).TriggerDiceClash();
+        charA.TriggerDiceClash();
+        charB.TriggerDiceClash();
 
-        _runtime.AdvanceDice(idA, advanceA);
-        _runtime.AdvanceDice(idB, advanceB);
+        if (ctx != null)
+            _runtime.EnqueueEvent(new ClashContextEvent(ctx));
+
+        var eventA = ToAdvanceEvent(idA, advanceA);
+        var eventB = ToAdvanceEvent(idB, advanceB);
+
+        if (eventA != null) _runtime.EnqueueEvent(eventA);
+        if (eventB != null) _runtime.EnqueueEvent(eventB);
     }
 
-    void ResolveUnopposedDice(int characterId)
+    void ResolveUnopposedDice(int characterId, int targetId)
     {
         var entry = _runtime.PeekDice(characterId).Value;
 
         if (entry.Dice.Type == DiceType.Attack)
         {
-            _eventBuffer.Push(new DamageEvent(entry.Handle));
-            _runtime.AdvanceDice(characterId, AdvanceType.Destroy);
+            _runtime.EnqueueEvent(new DamageEvent(characterId, targetId, entry.Dice.CurrentRoll));
+            _runtime.EnqueueEvent(new DiceDestroyedEvent(characterId));
         }
         else
         {
-            _eventBuffer.Push(new DiceConsumedEvent(entry.Handle));
-            _runtime.AdvanceDice(characterId, AdvanceType.Consume);
+            _runtime.EnqueueEvent(new DiceConsumedEvent(characterId));
         }
     }
 
@@ -159,4 +163,15 @@ public class CombatExecutor
 
     bool IsTargetStaggered(SpeedSlot slot)
         => _runtime.GetCharacterRuntime(slot.CharacterId).IsStaggered;
+
+    ICombatEvent ToAdvanceEvent(int characterId, AdvanceType type)
+    {
+        return type switch
+        {
+            AdvanceType.Destroy => new DiceDestroyedEvent(characterId),
+            AdvanceType.Consume => new DiceConsumedEvent(characterId),
+            AdvanceType.Reuse => null, // Reuse는 아무것도 안 함
+            _ => null
+        };
+    }
 }
