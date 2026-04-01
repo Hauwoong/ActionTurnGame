@@ -3,12 +3,9 @@ using System.Collections.Generic;
 public class BattleSnapShot 
 {
     public int Seed;
-
     public int CharacterId = 0;
-
     private readonly List<CharacterState> _characterStates;
     public IReadOnlyList<CharacterState> CharacterStates => _characterStates;
-
     public BattleSnapShot(IEnumerable<Character> characters, int seed)
     {
         Seed = seed;
@@ -19,7 +16,7 @@ public class BattleSnapShot
         {
             int id = CharacterId++;
 
-            _characterStates.Add(new CharacterState(character, id));
+            _characterStates.Add(new CharacterState(character.CharacterData, id));
 
         }
 

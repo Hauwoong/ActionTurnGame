@@ -2385,3 +2385,290 @@ abstract PassiveData
 "확장 가능한 Rule Engine 구조"
 
 로 진화한 단계이다.
+
+## 2026-04-02
+
+### 오늘 한 것
+
+[Combat System Refactoring - Vol.3]
+
+--------------------------------------------------
+감정 단계 시스템 구현
+--------------------------------------------------
+
+감정 단계 시스템을 CharacterRuntime 기반 유동값으로 구현하였다.
+
+관리 값
+
+- EmotionStack
+- EmotionLevel
+
+구조
+
+- CharacterRuntime에서 직접 관리
+
+동작
+
+- GainEmotionStack(int amount)
+  → MaxEmotionStack 초과 시 누적 제한
+
+- LevelUpEmotion()
+  → EmotionLevel +1
+  → EmotionStack 초기화
+
+이벤트
+
+- EmotionLevelUpEvent 추가
+- TriggerTurnEnd()에서 스택 최대 도달 시 발생
+
+설계 결정
+
+- 감정 단계는 감소하지 않음
+- 스택 누적 기반 성장 구조
+
+
+--------------------------------------------------
+CharacterData 확장
+--------------------------------------------------
+
+감정 시스템 관련 데이터 추가
+
+- MaxEmotionStack
+- MaxEmotionLevel
+
+감정 획득 조건
+
+- EmotionGainOnDamageDealt
+- EmotionGainOnDamageReceived
+- EmotionGainOnBlockSuccess
+- EmotionGainOnEvadeSuccess
+
+설계 결정
+
+- 감정 획득 조건은 Passive가 아닌 CharacterData 고정값으로 관리
+
+추가
+
+- BaseSpeedSlotCount (기본값 1)
+
+
+--------------------------------------------------
+CharacterState 정리
+--------------------------------------------------
+
+구조 변경
+
+- Character(MonoBehaviour) 참조 제거
+- CharacterData 참조 구조로 변경
+
+포함 데이터
+
+- MaxEmotionStack
+- MaxEmotionLevel
+- 감정 획득 조건
+
+추가
+
+- Passives 목록 보유
+
+설계 역할
+
+- CharacterState = 고정 스냅샷
+- CharacterRuntime = 유동 상태
+
+BattleSnapshot 수정
+
+- CharacterData 기반으로 CharacterState 생성
+
+
+--------------------------------------------------
+Passive 시스템 구축
+--------------------------------------------------
+
+구조
+
+- PassiveData (abstract)
+- PassiveEffect (abstract)
+
+설계
+
+- StatusEffectRuntime과 동일한 패턴
+
+추가
+
+- PassiveType enum (SpeedSlot, AttackBoost)
+
+생성
+
+- PassiveFactory를 통해 타입 기반 생성
+
+초기화
+
+- CharacterRuntime 생성자에서 Passive 초기화
+
+설계 결정
+
+- Passive = 고정 효과
+- StatusEffect = 동적 효과
+
+
+--------------------------------------------------
+AttackBoostPassive 구현
+--------------------------------------------------
+
+구조
+
+- AttackBoostData → 공격 위력 +N
+- AttackBoostPassive → 실행 로직
+
+동작
+
+- OnBeforeClash()에서 ModifiedRoll 수정
+
+조건
+
+- DiceType.Attack일 때만 적용
+
+구현
+
+- isOwnerA 플래그로 A/B 구분
+- ModifiedRollA / ModifiedRollB 직접 수정
+
+설계 변경
+
+- DiceRuntime 직접 수정 방식 제거
+- ClashContext 수정 방식 채택
+
+이유
+
+- 로그 / 리플레이 안정성 확보
+
+
+--------------------------------------------------
+SpeedSlotPassive 구현
+--------------------------------------------------
+
+구조
+
+- SpeedSlotPassiveData
+- SpeedSlotPassive
+
+동작
+
+- OnTurnStart()에서 슬롯 수 결정
+
+계산식
+
+targetCount
+= BaseSpeedSlotCount + EmotionLevel
+
+구현
+
+- SetSpeedSlotCount() 사용
+
+설계 결정
+
+- AddSpeedSlot() 대신 Set 방식 사용
+- 중복 활성화 방지
+
+관리 값
+
+- ActiveSpeedSlotCount → CharacterRuntime에서 관리
+
+
+--------------------------------------------------
+TurnStartContext 완성
+--------------------------------------------------
+
+포함 데이터
+
+- Owner
+- EmotionLevel
+
+실행 흐름
+
+TriggerTurnStart()
+→ StatusEffect
+→ PassiveEffect
+
+설계 결정
+
+- 감정 단계 기반 슬롯 활성화 시점으로 확정
+
+
+--------------------------------------------------
+CharacterRuntime 확장
+--------------------------------------------------
+
+추가 필드
+
+- _emotionStack
+- _emotionLevel
+- _activeSpeedSlotCount
+- _passives 리스트
+
+추가 프로퍼티
+
+- BaseSpeedSlotCount
+
+추가 함수
+
+- SetSpeedSlotCount()
+- GainEmotionStack()
+- LevelUpEmotion()
+
+이벤트 확장
+
+- TriggerTurnStart()에서 Passive 실행 포함
+
+
+--------------------------------------------------
+현재 엔진 상태
+--------------------------------------------------
+
+구현 완료
+
+- Emotion 시스템
+- CharacterData 확장
+- CharacterState 정리
+- Passive 시스템 구축
+- AttackBoostPassive
+- SpeedSlotPassive
+- TurnStartContext
+- CharacterRuntime 감정/슬롯 구조
+
+전투 엔진이
+
+"Emotion + Passive 기반 확장 구조"
+
+로 확장된 상태이다.
+
+
+--------------------------------------------------
+다음 작업
+--------------------------------------------------
+
+- CombatLog 전체 정리
+- BattleRuntime.Step() 실시간 처리 완성
+- GainEmotion 호출 위치 확정
+  (DamageEvent, ClashContextEvent 등)
+- EventBuffer Unity 연동
+- Character(MonoBehaviour) → CharacterData 연결
+
+
+--------------------------------------------------
+설계 핵심 요약
+--------------------------------------------------
+
+1. Emotion을 Runtime 유동값으로 관리
+2. CharacterData에 감정 획득 조건 고정
+3. Passive / StatusEffect 역할 분리
+4. Dice 수정 → Context 수정 방식 전환
+5. SpeedSlot을 Passive 기반으로 확장
+6. TurnStartContext로 초기화 타이밍 통일
+
+전투 엔진이
+
+"상태 기반 성장 시스템 + 확장형 Passive 구조"
+
+로 진화한 단계이다.

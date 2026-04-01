@@ -8,14 +8,13 @@ public class CharacterData
     public int MaxEnergy { get; }
     public int MinSpeed { get; }
     public int MaxSpeed { get; }
-    public int BaseSpeedSlotCount { get; } // ±‚∫ª Ω∫««µÂ ΩΩ∑‘ ºˆ (µ∆˙∆Æ 1)
-
-    // ∞®¡§ ¥‹∞Ë »πµÊ ¡∂∞«
-    public int EmotionGainOnDamageDealt { get; }    // «««ÿ∏¶ ¡Ÿ ∂ß
-    public int EmotionGainOnDamageReceived { get; } // «««ÿ∏¶ πﬁ¿ª ∂ß
-    public int EmotionGainOnBlockSuccess { get; }   // πÊæÓ º∫∞¯ Ω√
-    public int EmotionGainOnEvadeSuccess { get; }   // »∏«« º∫∞¯ Ω√
-    public int MaxEmotionLevel { get; }             // ∞®¡§ ¥‹∞Ë √÷¥Îƒ°
+    public int BaseSpeedSlotCount { get; }
+    public int MaxEmotionLevel { get; }      // ÏµúÎåÄ Í∞êÏ†ï Îã®Í≥Ñ
+    public int MaxEmotionStack { get; }      // Í∞êÏ†ï Ïä§ÌÉù ÏµúÎåÄÏπò Í∞êÏ†ï Ïä§ÌÉù 10 -> Í∞êÏ†ï Î†àÎ≤® +1
+    public int EmotionGainOnDamageDealt { get; }
+    public int EmotionGainOnDamageReceived { get; }
+    public int EmotionGainOnBlockSuccess { get; }
+    public int EmotionGainOnEvadeSuccess { get; }
     public IReadOnlyList<PassiveData> Passives { get; }
 
     public CharacterData(
@@ -26,6 +25,12 @@ public class CharacterData
         int minSpeed,
         int maxSpeed,
         int baseSpeedSlotCount = 1,
+        int maxEmotionLevel = 5,
+        int maxEmotionStack = 10,
+        int emotionGainOnDamageDealt = 0,
+        int emotionGainOnDamageReceived = 0,
+        int emotionGainOnBlockSuccess = 0,
+        int emotionGainOnEvadeSuccess = 0,
         List<PassiveData> passives = null)
     {
         Name = name;
@@ -35,6 +40,12 @@ public class CharacterData
         MinSpeed = minSpeed;
         MaxSpeed = maxSpeed;
         BaseSpeedSlotCount = baseSpeedSlotCount;
+        MaxEmotionLevel = maxEmotionLevel;
+        MaxEmotionStack = maxEmotionStack;
+        EmotionGainOnDamageDealt = emotionGainOnDamageDealt;
+        EmotionGainOnDamageReceived = emotionGainOnDamageReceived;
+        EmotionGainOnBlockSuccess = emotionGainOnBlockSuccess;
+        EmotionGainOnEvadeSuccess = emotionGainOnEvadeSuccess;
         Passives = passives ?? new List<PassiveData>();
     }
 }

@@ -13,5 +13,6 @@ public abstract class PassiveData
 public enum PassiveType
 {
     SpeedSlot,      // 스피드 슬롯 관련
+    AttackBoost,
     // 나중에 추가
 }

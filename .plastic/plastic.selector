@@ -1,0 +1,4 @@
+repository "Turn Game 2026-01-24_18-03-38/ActionTurnGame@14569699539350@cloud"
+  path "/"
+    br "/main"
+    co "/main"

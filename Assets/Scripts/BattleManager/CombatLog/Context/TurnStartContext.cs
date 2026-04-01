@@ -1,9 +1,13 @@
-public sealed class TurnStartContext
-{
-    public CharacterRuntime Character { get; }
+using System.Collections.Generic;
 
-    public TurnStartContext(CharacterRuntime character)
+public class TurnStartContext
+{
+    public CharacterRuntime Owner { get; }
+    public int EmotionLevel { get; }
+
+    public TurnStartContext(CharacterRuntime owner)
     {
-        Character = character;
+        Owner = owner;
+        EmotionLevel = owner.EmotionLevel;
     }
 }
