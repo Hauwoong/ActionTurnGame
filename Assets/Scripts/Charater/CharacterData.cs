@@ -13,8 +13,8 @@ public class CharacterData
     public int MaxEmotionStack { get; }      // 감정 스택 최대치 감정 스택 10 -> 감정 레벨 +1
     public int EmotionGainOnDamageDealt { get; }
     public int EmotionGainOnDamageReceived { get; }
-    public int EmotionGainOnBlockSuccess { get; }
-    public int EmotionGainOnEvadeSuccess { get; }
+    public int EmotionGainOnStagger { get; }
+    public int EmotionGainOnStaggered { get; }
     public IReadOnlyList<PassiveData> Passives { get; }
 
     public CharacterData(
@@ -29,8 +29,8 @@ public class CharacterData
         int maxEmotionStack = 10,
         int emotionGainOnDamageDealt = 0,
         int emotionGainOnDamageReceived = 0,
-        int emotionGainOnBlockSuccess = 0,
-        int emotionGainOnEvadeSuccess = 0,
+        int emotionGainOnStagger = 0,
+        int emotionGainOnStaggered = 0,
         List<PassiveData> passives = null)
     {
         Name = name;
@@ -44,8 +44,8 @@ public class CharacterData
         MaxEmotionStack = maxEmotionStack;
         EmotionGainOnDamageDealt = emotionGainOnDamageDealt;
         EmotionGainOnDamageReceived = emotionGainOnDamageReceived;
-        EmotionGainOnBlockSuccess = emotionGainOnBlockSuccess;
-        EmotionGainOnEvadeSuccess = emotionGainOnEvadeSuccess;
+        EmotionGainOnStagger = emotionGainOnStagger;
+        EmotionGainOnStaggered = emotionGainOnStaggered;
         Passives = passives ?? new List<PassiveData>();
     }
 }

@@ -7,34 +7,23 @@ public class BattleManager : MonoBehaviour
     private BattleRuntime _runtime;
     public BattleRuntime Runtime => _runtime;
 
-    public void CreateBattle(IEnumerable<Character> characters)
+    public void CreateBattle(IEnumerable<Character> Characters)
     {
         int seed = new System.Random().Next();
+        var snapShot = new BattleSnapShot(Characters, seed);
+        _runtime = new BattleRuntime(snapShot);
 
-        var snapshot = new BattleSnapShot(characters, seed);
-
-        _runtime = new BattleRuntime(snapshot);
-
-        _runtime.RollSpeedDice();
     }
-
-    public void StartBattle(BattleInput input)
+    public void StartTurn()
     {
-        _runtime.Start(input);
+        // 모든 캐릭터 턴 시작 트리거
+        foreach (var character in _runtime.Characters.Values)
+            _runtime.EnqueueEvent(new TurnStartEvent(character.CharacterId));
     }
-
-    /*public void SubmitInput(BattleInput input)
+    public void EndTurn()
     {
-        if (_runtime == null) return;
-
-        _runtime.EnqueueEvent(new ClashResolveEvent(input.BoutGraph));
-    }
-    */
-    public bool Step()
-    {
-        if (_runtime == null) return false;
-
-        _runtime.Step();
-        return true;
+        // 모든 캐릭터 턴 종료 트리거
+        foreach (var character in _runtime.Characters.Values)
+            _runtime.EnqueueEvent(new TurnEndEvent(character.CharacterId));
     }
 }

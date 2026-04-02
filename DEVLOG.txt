@@ -2672,3 +2672,104 @@ CharacterRuntime 확장
 "상태 기반 성장 시스템 + 확장형 Passive 구조"
 
 로 진화한 단계이다.
+
+================================================================
+ 개발 로그 - Combat System Refactoring Vol.4
+ 2026-04-03
+================================================================
+
+[ GainEmotion 호출 위치 확정 ]
+
+- ClashContextEvent.Apply()에서 감정 스택 획득 호출
+- DamageContext → Attacker.GainEmotionStack(EmotionGainOnDamageDealt)
+- DamageContext → Defender.GainEmotionStack(EmotionGainOnDamageReceived)
+- StaggerContext → Attacker.GainEmotionStack(EmotionGainOnStagger)
+- StaggerContext → Defender.GainEmotionStack(EmotionGainOnStaggered)
+- StatusDamageEvent → 감정 스택 획득 없음으로 확정
+- CharacterRuntime에 감정 획득 조건 프로퍼티 노출
+- EmotionGainOnBlockSuccess, EmotionGainOnEvadeSuccess 제거
+  → EmotionGainOnStagger, EmotionGainOnStaggered로 통합
+
+----------------------------------------------------------------
+
+[ EmotionLevelUp 완성 ]
+
+- TriggerTurnEnd()에서 스택 최대치 도달 시 EmotionLevelUpEvent 발생
+- EmotionLevelUpEvent.Apply() → LevelUpEmotion() 호출
+- LevelUpEmotion() → EmotionLevel +1, EmotionStack 초기화
+- EmotionLevel 최대치 초과 방지
+
+----------------------------------------------------------------
+
+[ IStatModifierPassive 인터페이스 추가 ]
+
+- 자원 수정 패시브 전용 인터페이스 추가
+- Apply(CharacterStateBuilder builder) 메서드 보유
+- CharacterState 생성 시 IStatModifierPassive 구현체만 자동 적용
+- 새 자원 수정 패시브 추가 시 CharacterState 수정 불필요 (확장성 확보)
+- CharacterStateBuilder → 자원 수정값 임시 보관 후 CharacterState 초기화
+
+----------------------------------------------------------------
+
+[ 패시브 구현체 추가 ]
+
+- EmotionOnAttackPassiveData → 공격 시 감정 스택 추가 획득
+  (IStatModifierPassive 구현)
+- MaxHpBoostPassiveData → MaxHp 증가
+  (IStatModifierPassive 구현)
+- 둘 다 CharacterState 생성 시 수치 수정 후 런타임 패시브 불필요
+- PassiveType enum에 EmotionOnAttack, MaxHpBoost 추가
+
+----------------------------------------------------------------
+
+[ BattleRuntime.Step() 실시간 처리 ]
+
+- EnqueueEvent() → 즉시 Step() 호출 방식으로 변경
+- 외부에서 Step() 수동 호출 불필요
+- 이벤트 중첩 호출 가능 (큐 방식으로 순서 보장)
+- 타이밍 문제 생기면 나중에 개선 예정
+
+----------------------------------------------------------------
+
+[ BattleManager 정리 ]
+
+- Step() API 제거 (EnqueueEvent에서 즉시 처리)
+- StartTurn() 추가 → 모든 캐릭터 TurnStartEvent 발생
+- EndTurn() 추가 → 모든 캐릭터 TurnEndEvent 발생
+- 턴 관리는 BattleManager, 상태 관리는 BattleRuntime으로 역할 분리
+
+----------------------------------------------------------------
+
+[ TurnStartEvent / TurnEndEvent 추가 ]
+
+- TurnStartEvent → TriggerTurnStart() 호출, TurnStartLog 기록
+- TurnEndEvent → TriggerTurnEnd(), ResetDiceForNextTurn() 호출,
+                 TurnEndLog 기록
+
+----------------------------------------------------------------
+
+[ DiceRecoverEvent 추가 ]
+
+- 합 끝날 때 Consumed 주사위 → Ready로 복구
+- ResolveCombat() 끝에서 호출
+
+----------------------------------------------------------------
+
+[ ResolveCombat() 안정화 ]
+
+- idB → int?로 변경 (nullable)
+- idA, targetId 명시적으로 외부에서 넘기도록 변경
+- 일방 공격 시 타겟 id 항상 보장
+- ResolveUnopposedDice(int characterId, int targetId) → nullable 제거
+- 마법의 숫자 -1 제거
+
+----------------------------------------------------------------
+
+[ 다음 작업 예정 ]
+
+- CombatLog 전체 정리
+- LogDispatcher Unity 연동
+- EventBuffer Unity 연동
+- Character(MonoBehaviour)에 CharacterData 연동
+
+================================================================

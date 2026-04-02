@@ -1,4 +1,6 @@
 
+using UnityEditor;
+
 public class ClashContextEvent : ICombatEvent
 {
     private readonly IClashContext _ctx;
@@ -21,6 +23,11 @@ public class ClashContextEvent : ICombatEvent
                 {
                     dmg.Defender.TakeDamage(dmg.FinalDamage);
                     runtime.AddLog(new DamageLog(dmg.Defender.CharacterId, dmg.FinalDamage));
+
+                    //감정 스택 추가
+                    dmg.Attacker.GainEmotionStack(dmg.Attacker.EmotionGainOnDamageDealt);
+                    dmg.Defender.GainEmotionStack(dmg.Defender.EmotionGainOnDamageReceived);
+
                     dmg.Attacker.TriggerAfterDamage(dmg);
                     dmg.Defender.TriggerAfterDamage(dmg);
                 }
@@ -40,6 +47,11 @@ public class ClashContextEvent : ICombatEvent
                         stagger.FinalValue,
                         stagger.IsRecover
                     ));
+
+                    // 감정 스택 추가
+                    stagger.Attacker.GainEmotionStack(stagger.Attacker.EmotionGainOnStagger);
+                    stagger.Defender.GainEmotionStack(stagger.Defender.EmotionGainOnStaggered);
+
                     stagger.Attacker.TriggerAfterStagger(stagger);
                     stagger.Defender.TriggerAfterStagger(stagger);
                 }

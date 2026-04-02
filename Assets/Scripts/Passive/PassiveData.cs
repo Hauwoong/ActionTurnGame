@@ -14,5 +14,7 @@ public enum PassiveType
 {
     SpeedSlot,      // 스피드 슬롯 관련
     AttackBoost,
+    EmotionOnAttack,
+    MaxHpBoost,
     // 나중에 추가
 }

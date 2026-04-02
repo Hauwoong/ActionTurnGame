@@ -64,39 +64,43 @@ public class CombatExecutor
             {
                 visited.Add(slot);
                 visited.Add(targetSlot);
-                ResolveCombat(action, opponent);
+                ResolveCombat(action, opponent, slot.CharacterId, targetSlot.CharacterId);
             }
             else
             {
                 visited.Add(slot);
-                ResolveCombat(action, null);
+                ResolveCombat(action, null, slot.CharacterId, targetSlot.CharacterId);
             }
         }
     }
 
-    void ResolveCombat(ActionInstance a, ActionInstance b)
+    void ResolveCombat(ActionInstance a, ActionInstance b, int idA, int targetId)
     {
-        int idA = a.SourceSlot.CharacterId;
-        int idB = b?.SourceSlot.CharacterId ?? -1;
+        int? idB = b?.SourceSlot.CharacterId;
 
         while (true)
         {
             var diceA = _runtime.PeekDice(idA);
-            var diceB = b != null ? _runtime.PeekDice(idB) : null;
+            var diceB = idB.HasValue ? _runtime.PeekDice(idB.Value) : null;
 
             if (diceA == null) break;
 
             if (diceB != null)
-                ResolveDiceClash(idA, idB);
+                ResolveDiceClash(idA, idB.Value);
             else
-                ResolveUnopposedDice(idA, idB);
+                ResolveUnopposedDice(idA, idB.Value);
         }
 
         if (b != null)
         {
-            while (_runtime.PeekDice(idB) != null)
-                ResolveUnopposedDice(idB, idA);
+            while (_runtime.PeekDice(idB.Value) != null)
+                ResolveUnopposedDice(idB.Value, idA);
         }
+
+        // 합 끝나면 Consumed 주사위 회복
+        _runtime.EnqueueEvent(new DiceRecoverEvent(idA));
+        if (b != null)
+            _runtime.EnqueueEvent(new DiceRecoverEvent(idB.Value));
     }
 
     void ResolveDiceClash(int idA, int idB)

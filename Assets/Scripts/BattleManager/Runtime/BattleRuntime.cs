@@ -61,7 +61,10 @@ public class BattleRuntime : IEventSink
 
     // 이벤트
     public void EnqueueEvent(ICombatEvent ev)
-        => _eventQueue.Enqueue(ev);
+    {
+        _eventQueue.Enqueue(ev);
+        Step();
+    }
 
     public void Step()
     {

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 
 public class CharacterRuntime : IEventSink
 {
@@ -26,6 +25,11 @@ public class CharacterRuntime : IEventSink
     public int BaseSpeedSlotCount => _state.SpeedSlotCount;
     public int EmotionLevel => _emotionLevel;   
     public int EmotionStack => _emotionStack;
+
+    public int EmotionGainOnDamageDealt => _state.EmotionGainOnDamageDealt;
+    public int EmotionGainOnDamageReceived => _state.EmotionGainOnDamageReceived;
+    public int EmotionGainOnStagger => _state.EmotionGainOnStagger;
+    public int EmotionGainOnStaggered => _state.EmotionGainOnStaggered;
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => _speedSlots;
 
     public CharacterRuntime(CharacterState state, IEventSink eventSink)
@@ -72,6 +76,14 @@ public class CharacterRuntime : IEventSink
         if (_emotionStack >= _state.MaxEmotionStack)
         _emotionStack = _state.MaxEmotionStack;
     }
+
+    public void EmotionLevelUp()
+    {
+        if (_emotionStack < _state.MaxEmotionStack) return;
+
+        _emotionLevel++;
+        _emotionStack = 0;
+    }
     public void SetSpeedSlotCount(int count)
     {
         while (_speedSlots.Count < count)
@@ -100,7 +112,6 @@ public class CharacterRuntime : IEventSink
     public void RecoverDice() => _dicePool.Recover();
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
 
-    // �����̻�
     public void AddStatus(StatusEffectType type, int stack)
     {
         if (_effectMap.TryGetValue(type, out var effect))
@@ -172,9 +183,9 @@ public class CharacterRuntime : IEventSink
             effect.OnTurnEnd();
         FlushExpired();
 
-        if (_emotionStack == _state.MaxEmotionStack)
+        if (_emotionStack >= _state.MaxEmotionStack && _emotionLevel < _state.MaxEmotionLevel)
         {
-            EnqueueEvent(); //감정 레벨 올리는 이벤트 만들기
+            EnqueueEvent(new EmotionLevelUpEvent(CharacterId)); //감정 레벨 올리는 이벤트 만들기
         }
     }
     public void TriggerBeforeStagger(StaggerContext ctx)
