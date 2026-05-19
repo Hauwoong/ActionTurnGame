@@ -1,0 +1,3182 @@
+# Development Log
+
+이 문서는 프로젝트 개발 과정과 문제 해결 과정을 기록합니다.
+
+---
+
+##  2026-01-25
+
+###  오늘 한 것
+- TurnManager / Player 기본 구조 설계
+- 턴 시스템 기본 로직 구현
+- 플레이어 에너지 시스템 추가
+
+### 문제
+- Player 스크립트에서 TurnManager.Instance 접근 시 컴파일 에러 발생
+- 싱글톤 패턴 사용 여부에 대한 구조적 고민 발생
+
+###  해결
+- TurnManager 싱글톤 구조 원인 분석
+- Instance 방식 대신 Inspector 참조 방식 사용 방향으로 전환 검토
+
+###  배운 점
+- 싱글톤 패턴은 편리하지만 결합도를 높일 수 있음
+- 컴포넌트 참조 방식이 구조적으로 더 안정적임
+- 초기 구조 설계가 이후 개발에 큰 영향을 줌
+
+---
+
+## 2026-01-26
+
+### 오늘 한 것
+-TurnManager에 TurnState(enum) 기반 턴 시스템 구조 완성
+-턴 변경 이벤트(OnTurnChanged) 구현 및 UI 연동
+-TurnUI / HPUI 스크립트 분리 및 구조화
+-플레이어 HP / Energy 캡슐화 적용
+-UI 자동 갱신 시스템 설계 및 테스트
+-RectTransform Anchor / Pivot 기반 UI 배치 학습
+
+###문제
+-TurnManager 이벤트 인식 오류(CS1061) 발생
+-UI 위치 이동 시 좌표 변경이 정상적으로 적용되지 않음
+-에너지 / 체력 UI 갱신 구조 설계에 대한 혼란
+-UI 통합 관리 vs 개별 관리 구조 고민 발생
+
+###해결
+-TurnManager에 이벤트(Action<TurnState>) 직접 선언 및 연결
+-RectTransform Anchor Preset(Shift + Alt) 방식으로 UI 재배치
+-이벤트 기반 UI 갱신 구조로 전환
+-UI 기능별 스크립트 분리로 책임 명확화
+-Awake() 초기화 → UI 최초 갱신 안정화
+
+
+---
+
+## 2026-01-27
+
+###오늘 한 것
+-TurnManager에 TurnState(enum) 기반 턴 시스템 구조 완성
+-턴 변경 이벤트(OnTurnChanged) 구현 및 UI 연동
+-TurnUI / HPUI 스크립트 분리 및 역할 분담
+-Player HP / Energy 캡슐화 적용 (Getter + Private Setter)
+-이벤트 기반 UI 자동 갱신 시스템 설계 및 테스트
+-RectTransform Anchor / Pivot 기반 UI 배치 방식 학습
+
+###문제
+-TurnManager 이벤트 미구현으로 CS1061 오류 발생
+-UI 위치 이동 시 좌표값이 정상적으로 반영되지 않음
+-HP / Energy UI 갱신 타이밍 구조에 대한 혼란
+-UI 통합 관리 vs 개별 관리 구조 설계 고민 발생
+-Awake / Start 실행 순서로 인한 초기 UI 동기화 문제
+
+###해결
+-TurnManager에 Action<TurnState> 이벤트 직접 선언 및 연결
+-RectTransform Anchor Preset(Shift + Alt) 방식으로 UI 재배치
+-이벤트 기반 UI 갱신 구조로 전환하여 Update() 의존 제거
+-HPUI / EnergyUI / TurnUI 기능별 스크립트 분리
+-Start()에서 초기 UI 강제 갱신으로 동기화 안정화
+
+###배운 점
+-이벤트 패턴을 사용하면 Update() 남용을 줄일 수 있다
+-캡슐화를 적용하면 데이터 보호와 유지보수가 쉬워진다
+-UI 배치는 좌표보다 Anchor 구조가 훨씬 중요하다
+-UI를 기능별로 분리하면 확장성과 가독성이 크게 좋아진다
+-실행 순서(Awake → Start → Event)는 구조 설계에 매우 중요하다
+
+---
+
+## 2026-01-28
+
+### 오늘 한 것
+- ScriptableObject 기반 카드 데이터(CardData) 구조 설계
+- 카드 비용 / 데미지 / 설명 / 이미지 데이터 분리
+- Card UI 프리팹 제작 및 자동 생성 시스템 구현
+- Horizontal Layout Group 기반 카드 정렬 구조 완성
+- CardUIManager를 통한 카드 관리 구조 설계
+- 카드 클릭 → BattleManager → 전투 처리 흐름 연동
+- TextMeshPro 한글 폰트 적용 및 UI 텍스트 정상 출력 처리
+
+### 문제
+- CardUI 프리팹 Missing 오류로 카드가 생성되지 않음
+- 카드 클릭 시 Player / Enemy 참조 구조 혼란 발생
+- 이벤트(Player.OnHandChanged) 직접 호출 시 컴파일 오류 발생
+- TextMeshPro 기본 폰트에서 한글 출력 불가 문제 발생
+- UI Layout 적용 후 카드 위치가 예상과 다르게 배치됨
+
+### 해결
+- CardUI 프리팹 재연결 및 Inspector 구조 정리
+- 카드 사용 로직을 BattleManager 중심 구조로 재설계
+- 이벤트 구조 수정(Invoke → 내부 호출 방식으로 변경)
+- 한글 지원 폰트(SDF) 적용으로 텍스트 깨짐 해결
+- Layout Group + RectTransform 설정 재조정
+
+### 배운 점
+- ScriptableObject는 데이터와 로직 분리에 매우 효과적이다
+- 카드 시스템은 중앙 관리자(BattleManager) 중심 구조가 안정적이다
+- 이벤트는 외부에서 직접 호출하면 구조가 깨질 수 있다
+- UI 자동 배치는 Layout 시스템 이해가 필수이다
+- 폰트 세팅도 UI 품질에 큰 영향을 준다
+
+---
+
+## 2026-01-29
+
+### 오늘 한 것
+- ScriptableObject 기반 CardData 추상 클래스 구조 설계
+- 주사위(DiceData) 기반 카드 효과 처리 구조 설계
+- 카드 → 주사위 → 전투 처리 흐름 설계
+- Library of Ruina 스타일 카드 구조 방향성 확정
+- enum 기반 카드 타입 제거 → 상속/데이터 중심 구조로 전환
+- BattleContext 기반 전투 정보 전달 구조 설계
+- CardUI ↔ BattleManager ↔ CardData 연동 구조 개선
+- 카드 효과 처리 로직 설계 및 테스트
+
+### 문제
+- CardData 추상 클래스와 virtual / abstract 혼용으로 컴파일 오류 발생
+- BattleContext 전달 구조 설계 미흡으로 UseCard 호출 오류 발생
+- CardData.Use / Resolve 구조 혼란으로 인한 타입 불일치 오류
+- 다이스 타입(DiceType) 처리 방식 설계 혼란
+- 카드 효과 책임 분리 기준에 대한 구조적 고민 발생
+
+### 해결
+- CardData 구조를 추상 기반 공통 처리 + 데이터 중심 구조로 재설계
+- 카드 사용 시 BattleContext를 통해 전투 정보 전달하도록 구조 수정
+- 카드 타입 분류(enum) 제거 → 주사위 데이터 중심 구조로 통합
+- 기본 카드와 특수 카드 상속 구조 방향 정립
+- 카드 역할을 주사위 조합으로 표현하는 방식 확정
+
+### 배운 점
+- 카드 시스템의 핵심은 “카드 타입”이 아니라 “행동 데이터”이다
+- ScriptableObject + 데이터 중심 구조는 확장성이 매우 높다
+- abstract / virtual은 역할이 명확할 때만 사용하는 것이 좋다
+- BattleContext 같은 컨텍스트 객체는 시스템 결합도를 낮춰준다
+- 중복 구조를 의심하고 제거하는 설계가 장기 유지보수에 중요하다
+
+---
+
+##2026-01-30
+
+###오늘 한 것
+
+-ScriptableObject 기반 CardData 추상 클래스 구조 설계
+-주사위(DiceData) 기반 카드 효과 처리 구조 설계
+-카드 → 주사위 → 전투 처리 흐름 구조 완성
+-Library of Ruina 스타일 카드 시스템 방향성 확정
+-enum 기반 카드 타입 제거 → 상속 / 데이터 중심 구조로 전환
+-BattleContext 기반 전투 정보 전달 구조 설계
+-CardUI ↔ BattleManager ↔ CardData 연동 구조 개선
+-카드 효과 처리 로직 구현 및 테스트
+-DiceData 직렬화 구조 정리 및 Inspector 연동 문제 해결
+
+###문제
+-CardData 추상 클래스와 virtual / abstract 혼용으로 컴파일 오류 발생
+-BattleContext 전달 구조 미흡으로 UseCard 호출 오류 발생
+-CardData.Use / Resolve 구조 혼란으로 타입 불일치 문제 발생
+-DiceData 선언 위치 오류로 Inspector 표시 실패
+-abstract 클래스 인스턴스 생성 불가로 카드 생성 실패
+-카드 효과 책임 분리에 대한 구조적 혼란 발생
+
+###해결
+-CardData 구조를 추상 기반 공통 처리 구조로 재설계
+-카드 사용 시 BattleContext 기반 처리 방식으로 통합
+-카드 타입(enum) 제거 → 주사위 데이터 중심 구조로 통합
+-기본 카드 / 특수 카드 상속 구조 방향 정립
+-DiceData에 [System.Serializable] 정확히 적용
+-추상 클래스 → 하위 카드 클래스 생성 방식으로 전환
+-카드 효과를 주사위 조합으로 표현하는 구조로 확정
+
+###배운 점
+-카드 시스템의 핵심은 “카드 타입”이 아니라 “행동 데이터 구조”이다
+-ScriptableObject + 데이터 중심 설계는 확장성이 매우 높다
+-abstract / virtual은 책임이 명확할 때만 사용해야 유지보수가 쉽다
+-BattleContext 구조는 시스템 결합도를 크게 낮춰준다
+-Unity 직렬화 구조 이해는 필수이다
+-초기 구조 설계가 콘텐츠 확장 속도를 결정한다
+
+##2026-02-01
+
+###오늘 한 것
+
+-BattleContext 구조 확장 (주사위 결과 / 가드 / 데미지 정보 관리)
+-DiceData / DiceResult 기반 전투 판정 구조 구현
+-카드 → 주사위 굴림 → 결과 저장 구조 설계
+-플레이어 / 적 주사위 충돌(Clash) 로직 구현
+-BattleManager 전투 해석(ResolveBattle) 구조 설계
+-적 카드 사용 구조 기초 설계 시작
+-속도 주사위 시스템 구조 설계 착수
+-전투 흐름 다이어그램 기반 구조 정리
+
+###문제
+
+-카드 사용 시 주사위 결과 처리 타이밍 혼란 발생
+-공격 / 방어 주사위 결과 누적 방식 설계 어려움
+-플레이어 / 적 주사위 리스트 관리 구조 혼동
+-BattleContext 책임 범위에 대한 구조적 고민 발생
+-List.Clear 오타(Claer)로 인한 컴파일 에러 발생
+-상속 구조(Character → Enemy)에서 Awake 경고 발생
+
+###해결
+
+-DiceResult 리스트를 BattleContext에 통합 관리하도록 구조 수정
+-주사위 결과 저장 → 충돌 판정 → 데미지 적용 단계 분리
+-플레이어 / 적 주사위 결과 분리 저장 방식 확정
+-전투 판정 로직을 BattleManager 중심으로 재정렬
+-List.Clear() 정확한 메서드명으로 수정
+-Character.Awake → virtual / Enemy.Awake → override 구조로 개선
+
+###배운 점
+
+-전투 시스템은 “결과 저장 → 비교 → 처리” 구조가 가장 안정적이다
+-BattleContext는 데이터 전달용 컨테이너로 유지하는 것이 유지보수에 유리하다
+-주사위 기반 시스템은 순서 관리가 핵심 설계 요소이다
+-상속 구조에서 virtual / override 패턴은 필수이다
+-사소한 오타 하나도 구조 개발에서는 큰 시간 손실로 이어진다
+
+##2026-02-03
+
+###오늘 한 것
+
+-전투 시스템에서 속도 주사위 → 행동 순서 처리 구조 고민 및 설계
+-SpeedDice / SpeedDiceResult 구조 개선 시도
+-BattleContext 구조 재정리 (속도 결과 / 주사위 관리)
+-카드 사용 → DiceResult 생성 → BattleContext에 저장 구조 구현
+-Use / CanUse / PayCost / ResolveCard 흐름 정리
+-주사위 충돌(ResolveBattle / ResolveDiceClash) 로직 점검
+-owner / TakeDamage / 타입 오류 디버깅
+-List 기반 충돌 구조의 문제점 분석
+
+###문제
+
+-DiceResult에 owner 필드가 없어 참조 오류 발생
+-Character 클래스에 TakeDamage 미구현으로 컴파일 에러
+-allDice를 2개씩 묶어서 충돌시키는 방식의 구조적 문제 발견
+-옆에 있는 주사위가 같은 소유자일 수 있는 구조적 위험
+-BattleContext 재생성 시점에 대한 혼란
+-SpeedDiceResult를 어디서 관리할지 방향성 불명확
+
+###해결
+
+-전투 흐름 구조를 속도 → 행동 → 주사위 → 충돌 단계로 재정리
+-DiceResult에 owner 참조 구조 추가 방향 검토
+-Character에 TakeDamage 구현 필요성 인식 및 구조 수정 계획 수립
+-List 기반 충돌 방식 대신 Stack(LIFO) 구조 적용 방향 설정
+-BattleContext 생명주기 관리 방식 재검토
+-SpeedDiceResult 관리 책임을 BattleManager 중심으로 재설계 검토
+
+###배운 점
+
+-단순 List / 배열 기반 충돌 구조는 안정성이 낮다
+-전투 시스템은 데이터 구조 설계가 핵심이다
+-속도 → 행동 → 주사위 → 충돌 흐름이 명확해야 한다
+-LIFO(Stack) 구조는 충돌 처리에 더 논리적이다
+-“보장이 없는 구조”는 결국 버그로 이어진다
+
+###다음 목표
+
+-Stack 기반 주사위 충돌 시스템 구현
+-SpeedDiceResult 관리 구조 확정
+-BattleContext 생명주기 명확화
+-속도 기반 행동 우선권 시스템 완성
+-전투 흐름 전체 리팩토링
+-버그 최소화를 위한 구조 테스트 강화
+
+##2026-02-04
+
+###오늘 한 것
+
+-전투 시스템 구조 재설계 진행
+-SpeedDice → SpeedQueue → ActionSlot 흐름 고민
+-속도 기반 행동 처리 구조 설계
+-SpeedDiceResult / ActionSlot 구조 설계 시도
+-owner / speed / card / target 개념 정리
+-속도는 “순서용 데이터”로만 사용하기로 방향 설정
+-BattleContext 역할 재검토
+-전투 전체 상태 관리용 컨텍스트로 유지
+-턴마다 새로 생성하면 안 된다는 구조적 문제 인식
+-주사위 충돌(합) 시스템 구조 고민
+-List 기반 2개씩 처리 방식 문제점 파악
+-서로 다른 오너 보장 안 되는 구조 개선 필요성 확인
+-Stack 기반 LIFO 구조 아이디어 도입
+-DiceResult / Character 구조 개선 시도
+-owner, TakeDamage 구조 오류 디버깅
+-Character → Player/Enemy 오버라이드 구조 이해
+-카드 처리 구조 정리
+-CanUse / PayCost / Use / ResolveCard 흐름 구현
+-카드 사용 → Dice 생성 → 스택 저장 구조 정리
+-SpeedQueue 기반 턴 처리 흐름 설계
+-RollSpeed → BuildQueue → Sort → ResolveBattle 구조 확립
+-다대다 전투 확장 가능 구조 고려
+
+###문제
+
+-DiceResult에 owner 누락으로 컴파일 오류 발생
+-Character에 TakeDamage 미구현으로 호출 불가 문제
+-BattleContext 중복 생성으로 상태 꼬일 위험
+-속도 주사위 충돌 구조의 불안정성 인식
+-ActionSlot에 어떤 정보까지 넣어야 하는지 혼란
+
+###해결
+
+-DiceResult에 owner 참조 구조 추가 방향 확정
+-Character에 TakeDamage 구현 구조 설계 및 적용
+-BattleContext 단일 인스턴스 유지 구조로 재정렬
+-속도 주사위 충돌 로직을 실행 단계 중심으로 재설계
+-ActionSlot 필수 정보(actor / target / card / speed) 기준 확립
+-Stack 기반 충돌 처리 방식 적용 방향 확정
+
+###배운 점
+
+-속도 주사위는 “정렬용 데이터”일 뿐 전투 객체가 아니다
+-ActionSlot에는 actor / target / card / speed 만 있으면 충분하다
+-합(충돌)은 실행 단계에서 처리하는 게 가장 안정적이다
+-전투 상태는 BattleContext 하나로 유지해야 한다
+-Stack 구조가 합 시스템 구현에 가장 적합하다
+
+###다음 목표
+
+- ResolveBattle 구조 완성 및 합 기능 구현화
+
+##2026-02-06
+
+###오늘 한 것
+
+-BattleManager 중심 전투 구조 설계
+-TurnManager 역할 재검토 및 통합 방향 고민
+-속도 주사위 기반 행동 시스템 구현
+-SpeedDice → ActionSlot 흐름 정리
+-카드 선택 → 행동 등록 구조 설계
+-RegisterAction() 시스템 구현
+-BattleContext 구조 재정비
+-Player / Enemy 공통 전투 흐름 설계
+
+###문제
+
+-StartBattle() 시점에 BuildSpeedQueue 호출로 카드 선택 전 처리됨
+-card / target이 null 상태로 처리되는 오류 발생
+-TurnManager / BattleManager 역할 중복으로 흐름 분산
+-diceStack / BattleContext 초기화 시점 혼란
+-구조 설명과 실제 코드 불일치 발생
+-TurnManager 삭제 후 Visual Scripting(Bolt) 노드 오류 다수 발생
+
+###해결
+
+-입력 중심 구조로 전투 흐름 재설계
+-속도 선택 → 카드 선택 → 타겟 선택 → ActionSlot 생성 → Resolve 흐름 확정
+-ActionSlot 구조 정리 및 책임 명확화
+-BattleManager 중심 구조로 전투 흐름 통합
+-TurnManager 최소화 / 제거 방향 설정
+-리소스 관리 책임 분리 (Energy / Dice / Stack / TurnFlow)
+
+###배운 점
+
+-입력 → 처리 → 결과 흐름이 명확해야 시스템이 안정된다
+-관리 주체가 불분명하면 구조가 쉽게 꼬인다
+-ActionSlot 기반 구조는 LOR 스타일에 매우 적합하다
+-설계 → 구현 → 리팩토링 사이클이 중요하다
+-구조 단순화가 유지보수성을 크게 높인다
+
+##2026-02-08
+
+###오늘 한 것
+
+-슬롯 기반 전투 구조 재설계
+-SpeedSlot / Target / Bout 관계 정리
+-Intercept(합 가로채기) 로직 초안 구현
+-동일 타겟 슬롯 간 우선순위 비교 로직 실험
+-BuildInterceptCandidates() 기반 후보 리스트 생성
+-속도 기반 합 우선 구조 검증
+-LOR 실제 구조와 비교하며 설계 방향 수정
+-“가장 빠른 슬롯 = 합 독점” 구조 한계 인식
+-“마지막 타겟 지정 우선” 구조로 방향 전환 논의
+-예비 합(Bout) 리스트 구조 필요성 도출
+
+###문제
+
+-Intercept 로직이 속도 기준으로만 고정되는 구조적 한계
+-가장 빠른 슬롯이 항상 합을 가져가는 문제 발생
+-LOR 실제 시스템과 다른 동작 방식 확인
+-마지막 타겟 지정 개념 반영 불가
+-다중 슬롯 타겟 시 합 독점 문제 발생
+-슬롯 상태 디버깅 가시성 부족
+-합 / 타겟 / 우선순위 흐름 파악 어려움
+
+###해결
+
+-LOR 합 구조 재정의 방향 설정
+-“마지막으로 타겟한 슬롯” 기준 구조 도입 검토
+-속도를 가로채기 우선권 개념으로 재해석
+-우선순위 구조 초안 정립
+-타겟 변경 시 실시간 Bout 갱신 구조 설계
+-슬롯별 예비 합(pendingBouts) 관리 구조 구상
+-UI 기반 디버깅 도입 필요성 인식
+
+###배운 점
+
+-LOR 시스템은 단순 속도 비교 구조가 아니다
+-합 시스템은 관계 그래프 구조에 가깝다
+-우선순위는 단일 기준으로 해결할 수 없다
+-디버깅용 UI는 필수가 된다
+-구조를 코드보다 먼저 정리하는 것이 중요하다
+
+###다음 목표
+
+-예비 Bout 리스트 구조 실제 구현
+-타겟 변경 시 Bout 갱신 로직 적용
+-Slot / Bout 상태 시각화 UI 제작
+-Intercept 우선순위 로직 고도화
+-합 처리 전체 흐름 재검증
+-로직 + UI 병행 개발 체계 확립
+
+##2026-02-11
+
+###오늘 한 것
+
+-카드 UI에 Button 컴포넌트 적용 완료
+-기존 PlayerActionInput 스크립트 구조 재확인
+-카드 선택 → 슬롯 등록 구조 점검
+-카드 사용 로직 미구현 상태 확인
+-UI 텍스트(턴 / 에너지 / HP 등) 정상 출력 확인
+
+###문제
+
+-SpeedSlot UI에 Button 연결 미완성
+-카드 클릭 시 전투 행동으로 이어지지 않음
+-Slot → Card → BattleManager 흐름 미완성
+
+###해결
+
+-입력 구조를 UI 래퍼 스크립트 중심으로 정리하기로 방향 설정
+-CardUI / SlotUI 분리 구조 적용 계획 수립
+-Button → 중간 UI 스크립트 → 로직 연결 방식 확정
+-입력 흐름 디버깅을 위한 Debug.Log 활용 강화
+
+###배운 점
+
+-카드 / 슬롯 입력 로직은 이미 설계되어 있었다
+-현재 문제는 로직 부족이 아니라 UI 연결 부족이다
+-Unity Button은 직접 인자 전달이 어려워 중간 계층이 필요하다
+-입력 시스템과 전투 로직 분리는 유지보수에 매우 유리하다
+
+###개선 아이디어 / 메모 (Notes)
+
+-SlotUI / CardUI 래퍼 스크립트로 입력 구조 통일하기
+-입력 로그(Debug.Log) 적극 활용해서 흐름 추적
+-슬롯 선택 시 시각적 강조(색상/테두리) 추가 고려
+
+##2026-02-12
+
+###오늘 한 것
+
+-SpeedSlot 기반 전투 구조 유지 및 구조 재정비
+-ActionSlot 제거 후 슬롯 중심 구조로 전환
+-Intercept / Bout 구조 설계 방향 재검토
+-BuildInterceptMap 로직 수정 및 테스트
+-디버깅용 Slot UI 시스템 구축
+-SlotDebugPanel 구현
+-SlotDebugItem 구현
+-SpeedSlot 정보 시각화 구현
+-소유자 / 속도 / 타겟 / 카드 / Intercept 후보 / Bout 상태 표시
+-Slot 클릭 → PlayerActionInput 연동
+-Button → SpeedSlot 연결 구조 테스트
+-카드 UI Button 정상 동작 확인
+-PlayerActionInput 구조 재활용 및 연동
+
+###문제
+
+-Intercept 로직이 “가장 빠른 슬롯 우선” 구조로 잘못 구현됨
+-LOR 실제 구조와 다르게 동작하는 문제 발생
+-합(Bout) 기본 / 가로채기 우선순위 불명확
+-마지막 타겟 기준 구조 미반영
+-SpeedSlot 버튼 연결 실패
+-OnClick 이벤트 미작동
+-PlayerActionInput 참조 오류 발생
+-SlotDebugItem Init / Bind 구조 충돌
+-메서드 누락으로 컴파일 에러 발생
+-Inspector에서 Player / BattleManager 연결 문제 발생
+
+###해결
+
+-SpeedSlot 중심 전투 구조로 완전 전환
+-ActionSlot 사용 중단 및 구조 단순화
+-Intercept / Bout 우선순위 구조 재정의 방향 설정
+-디버그 UI 체계 구축으로 상태 가시성 확보
+-SpeedSlot → SlotDebugItem → SlotDebugPanel 구조 확립
+-Button → 중간 UI → PlayerActionInput 연결 방식 재정비
+-SlotDebugItem 메서드 구조 수정 및 오류 해결
+-Inspector 컴포넌트 연결 구조 점검 및 수정
+
+###배운 점
+
+-전투 구조는 하나의 기준 객체로 통일해야 안정적이다
+-Debug UI는 복잡한 시스템 개발에서 필수 도구이다
+-LOR 합 구조는 단순 속도 비교로 구현할 수 없다
+-입력 → 로직 → 디버그 흐름이 연결되어야 개발 속도가 빨라진다
+-가시성이 부족하면 설계 오류를 발견하기 어렵다
+
+###다음 목표
+
+-Intercept / Bout 우선순위 로직 완성
+-마지막 타겟 기준 합 구조 구현
+-SpeedSlot 버튼 입력 구조 안정화
+-디버그 UI 정보 확장
+-합 처리 전체 흐름 재검증
+-전투 실행 단계 로직 고도화
+
+##2026-02-13
+
+###오늘 한 것
+
+-SpeedSlot & Turn 구조 디버깅 진행
+-IndexOutOfRangeException 원인 추적
+-SpeedSlot → owner.rolledSpeeds[index] 의존 구조 점검
+-usedSlot[index] 접근 범위 초과 가능성 확인
+-IsSlotUsed() 방어 코드 필요성 분석
+-RollSpeedDice() / OnTurnStart() 호출 순서 검증
+-슬롯과 배열 기반 상태 관리 강결합 문제 인지
+-카드 선택 로직 점검
+-슬롯 선택 후 카드 선택 미적용 문제 분석
+-CardUI의 targetSlot 미설정 구조적 문제 발견
+-선택 상태 분산 설계 문제 확인
+-LOR 스타일 입력 구조 재설계 방향 확립
+-버튼 기반 입력 → 드래그 기반 입력 전환 필요성 인식
+-상태 머신 구조 도입 결정
+
+###문제
+
+-IndexOutOfRangeException 발생
+-usedSlot[index] 범위 초과 가능성 존재
+-슬롯 개수와 배열 길이 불일치 위험
+-배열 의존 설계로 인한 구조 취약성
+-카드 선택 시 targetSlot이 null 상태
+-선택 상태가 여러 객체에 분산됨
+-UI 객체가 로직 상태를 직접 보유하는 구조적 문제
+
+###해결
+
+-배열 접근 시 범위 방어 코드 필요성 명확화
+-슬롯 상태를 배열이 아닌 객체 중심 구조로 개선 방향 설정
+-입력 상태를 PlayerActionInput에 중앙 집중 관리하기로 결정
+-UI는 이벤트 전달만 수행하도록 책임 분리 방향 확정
+-드래그 기반 입력 구조 도입 계획 수립
+-RegisterAction을 입력 상태 기반 구조로 리팩토링 예정
+
+###배운 점
+
+-배열 인덱스 기반 상태 관리는 항상 위험하다
+-“항상 유효하다”는 가정은 게임 로직에서 깨진다
+-입력 상태는 반드시 한 곳에서만 관리해야 한다
+-UI와 로직을 분리하지 않으면 디버깅이 어려워진다
+-LOR 스타일 UI는 단순 버튼 구조로 구현할 수 없다
+-상태 머신 사고방식이 필요하다
+
+###다음 목표
+
+-PlayerActionInput에 드래그 상태 변수 추가
+-CardUI에 IBeginDragHandler / IDragHandler / IEndDragHandler 적용
+-SlotUI에 IDropHandler 구현
+-RegisterAction 입력 상태 기반으로 리팩토링
+-배열 기반 슬롯 구조 → 객체 상태 기반 구조로 점진적 개선
+-입력 상태 흐름 다이어그램 정리
+
+##2026-02-14
+
+###오늘 한 것
+
+-카드 UI 드래그 기능 구현
+-CardUI에 IBeginDragHandler / IDragHandler / IEndDragHandler 적용
+-드래그 시작 시 PlayerActionInput.StartDraggingCard() 호출
+-CanvasGroup.blocksRaycasts = false 처리
+-드래그 종료 시 원위치 복귀 로직 구현
+-EndDraggingCard() 호출 구조 완성
+-CardUIManager 동적 생성 구조 점검
+-Player.OnHandChanged 구독 구조 확인
+-RefreshUI() 기반 카드 재생성 확인
+-cardUI.Setup(card, input) 연결 정상 동작 확인
+-카드 드래그 미작동 원인 디버깅 진행
+
+###문제
+
+-OnBeginDrag 로그 출력되지 않음
+-카드 클릭 / 드래그 이벤트 자체가 호출되지 않음
+-이벤트 시스템 정상인데 입력이 전달되지 않음
+-투명 UI 오브젝트가 Raycast를 차단하고 있었음
+-SlotDebugPanel이 화면 전체를 덮고 이벤트를 가로막는 문제 발생
+
+###해결
+
+-CardPrefab 구조 점검 (Image / Raycast Target 확인)
+-EventSystem 및 Input Module 점검
+-LayoutGroup 영향 여부 확인
+-Raycast 차단 오브젝트 추적
+-SlotDebugPanel의 Raycast Target 비활성화
+-또는 CanvasGroup.blocksRaycasts OFF 처리
+-카드 드래그 정상 동작 확인
+
+###배운 점
+
+-UI가 반응하지 않으면 Raycast 차단 여부를 가장 먼저 확인해야 한다
+-투명 Image도 입력을 막는다
+-Layout 문제와 이벤트 문제는 구분해서 접근해야 한다
+-디버깅은 “코드 → 시스템 → 구조 → 레이캐스트” 순으로 좁혀가는 것이 효율적이다
+
+###다음 목표
+
+-카드 → 슬롯 드롭 구조 완성
+-IDropHandler 기반 슬롯 입력 처리 구현
+-RegisterAction 드래그 기반 구조로 연결
+-드래그 중 시각적 피드백 추가
+-슬롯 선택 시 강조 UI 적용
+
+##2026-02-XX
+
+###오늘 한 것
+
+-기존 ExecutionSystem 구조 전면 점검
+-LOR 방식의 합(Clash) / 인터셉트(Intercept) 구조 정확화
+-PriorityQueue 기반 실행 순서 설계
+-O(n²) BoutBuilder 구조 제거 결정
+-증분 업데이트 기반 BoutGraph 설계
+-전투 구조를 Character 중심에서 SpeedSlot 중심으로 재정렬
+-RegisterActions 리스트 기반 흐름 문제 분석
+-Resolve 단계 PriorityQueue 빌드 방식 검토
+-TryFindBout 정면합 검사 구조 분석
+-Intercept 별도 로직 구조 재검토
+-턴 마지막 O(n²) 전체 스캔 방식의 비효율성 확인
+-실시간 합 반영 불가능 구조 문제 인식
+-슬롯 단위 전투 처리 구조 확정
+-PriorityQueue<ActionInstance, int> 구조 도입
+-우선순위 = Action.Speed 기준 정리
+-MaxHeap 기반 속도 우선 실행 설계
+-ExecutionSystem 속도 순 처리 구조 확립
+-O(n²) BoutBuilder 완전 폐기 결정
+-UI 실시간 반영 불가능 문제 해결 방향 수립
+-슬롯 취소 시 재계산 비효율 제거
+-증분 업데이트 기반 BoutGraph 채택
+-Action 등록 시점에 관계 업데이트 구조 도입
+-핵심 자료구조 설계
+-Dictionary<SpeedSlot, ActionInstance> actionBySlot
+-Dictionary<SpeedSlot, List<ActionInstance>> targetMap
+-Dictionary<SpeedSlot, SpeedSlot> edges
+-Intercept 우선순위 규칙 LOR 기준으로 재정의
+-Intercept는 Direct Clash보다 우선 규칙 확정
+-속도가 높은 슬롯만 인터셉트 가능 구조 확정
+-같은 속도일 경우 마지막 지정(RegisterOrder) 우선 규칙 확정
+-속도 비교 기준을 슬롯 속도 기준으로 확정
+-Action.Speed 프로퍼티 유지로 확장성 확보
+-버프 / 디버프 / 속도 변형 대비 구조 정리
+-Intercept 처리 로직 구현 구조 확정
+-Disconnect / Connect 기반 그래프 유지 방식 설계
+-슬롯 취소 대비 가능 구조 확보
+-합 생성과 실행 단계 분리 구조 확정
+-Action 등록(UI 단계) → BoutGraph 실시간 관계 유지 → 턴 종료 시 ExecutionSystem 처리 구조 확립
+-BoutBuilder 역할 완전 재정의 및 폐기
+-Execution은 그래프 기반 처리 구조 확정
+
+###문제
+
+-합이 실시간 반영되지 않는 구조적 한계
+-Resolve 시 전체 스캔 방식 비효율
+-슬롯이 아닌 Character 기준 매핑 구조 문제
+-Intercept 우선순위가 속도 기준으로 잘못 설계됨
+-마지막 지정 우선 규칙 미반영
+-O(n²) 전체 반복 구조
+-UI 실시간 합 표시 불가능
+-슬롯 취소 시 재계산 비효율
+-속도 비교 기준 혼란 (slot.speed vs action.Speed)
+
+###해결
+
+-Character 중심 구조 폐기 → SpeedSlot 중심 구조로 전환
+-PriorityQueue 기반 실행 순서 도입
+-증분 업데이트 기반 BoutGraph 설계
+-Action 등록 시 관계 즉시 업데이트 구조 채택
+-actionBySlot / targetMap / edges 자료구조 확립
+-Intercept 우선순위 규칙 LOR 기준으로 재정의
+-속도 높은 슬롯만 인터셉트 가능 구조 확정
+-동속일 경우 마지막 지정 우선 규칙 구현
+-슬롯 속도 기준 비교 확정
+-확장성 고려하여 Action.Speed 프로퍼티 유지
+-합 생성과 실행 단계 완전 분리
+-O(n²) BoutBuilder 완전 폐기
+
+###배운 점
+
+-LOR 전투는 캐릭터 중심이 아니라 슬롯 중심이다
+-합 시스템은 그래프 구조로 보는 것이 가장 자연스럽다
+-실시간 반영이 안 되는 구조는 결국 재설계하게 된다
+-O(n²) 구조는 초기에는 쉬워 보여도 확장에서 무너진다
+-우선순위는 단일 기준이 아니라 규칙 집합이다
+-합 생성과 실행은 반드시 분리해야 한다
+-확장성을 고려한 프로퍼티 설계는 미래 비용을 줄인다
+-전투 엔진이 구조적으로 한 단계 상승했다
+
+###현재 엔진 상태
+
+-슬롯 기반 전투 구조 확립
+-증분 업데이트 그래프 적용
+-인터셉트 우선순위 구현
+-마지막 지정 우선 구현
+-속도 비교 기준 확정
+-확장성 고려 설계 완료
+
+###다음 목표
+
+-Indirect Clash 설계
+-합 변경(Tab 키) 시스템 구현
+-Resolve 순서 LOR 완전 재현
+-UI 합 실시간 표시 연동
+-Speed 변형 상태이상 시스템 설계
+-그래프 기반 전투 흐름 전체 통합 테스트
+
+=======================================================================
+개발 로그 - 전투 그래프 구조 철학 확정
+
+구조 철학 재정립
+
+절대 금지 원칙 확립
+전체 액션 정렬 후 일괄 계산 방식 사용 금지
+
+이유
+LOR는 행동을 지정하는 순간마다 합 그래프가 즉시 갱신되어야 한다
+Resolve 직전에만 일괄 계산이 가능하다
+평상시에는 반드시 증분 업데이트 구조여야 한다
+
+확정 사항
+전체 재계산 금지
+변경된 부분만 재평가
+그래프는 항상 현재 상태를 유지한다
+=====================================
+BattleState 와 BoutGraph 책임 분리
+
+기존 문제
+BattleState와 BoutGraph 모두 액션을 저장하고 있었다
+구조적 중복이 발생하고 있었다
+
+역할 재정의
+
+BattleState
+ActionBySlot 보관
+Units 보관
+현재 등록된 ActionInstance 보관
+데이터 소유 책임
+
+BoutGraph
+edges (확정된 합 관계)
+targetMap
+interceptCandidates
+계산 전용 시스템
+
+private IReadOnlyDictionary<SpeedSlot, ActionInstance> actionBySlot
+=> state.ActionBySlot;
+
+정리
+데이터는 BattleState가 소유
+계산은 BoutGraph가 담당
+======================
+슬롯 중심 구조 확정
+
+기존 구조
+Character 중심
+
+변경 구조
+SpeedSlot 중심
+
+변경 이유
+LOR는 슬롯 단위 전투 구조이다
+한 캐릭터는 여러 슬롯을 가질 수 있다
+합은 슬롯 대 슬롯 관계이다
+
+Dictionary<SpeedSlot, SpeedSlot> edges;
+
+슬롯 기반 구조로 완전 전환 완료
+===========================
+전투 우선순위 체계 확정
+
+우선순위
+Intercept
+Direct
+Unopposed
+
+핵심 규칙
+Intercept가 이미 성립한 경우 Direct는 무시한다
+
+if (edges.ContainsKey(target)) return;
+
+Direct 차단 로직 확정
+============================
+Intercept 판정 로직 확정
+
+논쟁 포인트
+action.Speed 사용 여부
+source.speed 사용 여부
+target.speed 사용 여부
+
+최종 결정
+슬롯의 고정 속도를 사용한다
+
+if (source.speed > targetAction.SourceSlot.speed)
+
+결정 이유
+LOR는 슬롯 속도를 비교한다
+상태이상은 슬롯 생성 시 반영한다
+UI도 슬롯 기준으로 표시한다
+===============================
+RegisterOrder 도입
+
+문제
+동일 속도의 슬롯이 여러 개 존재할 수 있다
+마지막 지정이 우선권을 가져야 한다
+
+해결
+
+if (action.RegisterOrder > currentAction.RegisterOrder)
+
+동속일 경우 마지막 지정 우선 규칙 구현 완료
+=================================
+Cancel 증분 구조 설계
+
+핵심 문제
+추가는 쉽지만 삭제는 복잡하다
+하나 제거하면 연결 관계가 연쇄적으로 흔들릴 수 있다
+
+Cancel 처리 흐름
+
+RemoveFromTargetMap(action);
+RemoveEdgesInvolving(action);
+RemoveInterceptCandidate(action);
+ReevaluateAffectedSlots(action);
+
+재계산 범위
+취소한 슬롯
+그 타겟
+그 타겟을 노리던 슬롯
+기존 합 상대
+
+전체 재계산 금지
+영향 집합만 재계산
+========================================
+InterceptCandidate 분리
+
+Dictionary<SpeedSlot, List<SpeedSlot>> interceptCandidates;
+
+분리 이유
+edges는 확정된 합 관계
+후보는 UI 표시용 선택 가능 상태
+계산 그래프와 UI 상태를 분리한다
+==========================================
+edges 구조 결정
+
+양방향 구조 유지
+
+edges[a] = b;
+edges[b] = a;
+
+이유
+합은 쌍 개념이다
+Connect와 Disconnect가 단순해진다
+구조 안정성이 높다
+==============================================
+파생 데이터 개념 도입
+
+원본 데이터
+ActionBySlot
+TargetMap
+
+파생 데이터
+edges
+interceptCandidates
+
+취소 시 원칙
+원본을 수정한다
+파생 데이터는 국소 재계산한다
+
+이 개념은 엔진 확장성에 매우 중요하다
+==============================================
+성능 검토
+
+최대 가정
+10명
+1인당 최대 5 슬롯
+총 50 슬롯
+
+국소 재계산으로 충분하다
+O(n^2) 전체 재계산은 필요 없다
+
+##2026-02-20
+
+###오늘 한 것
+
+-기존 ExecutionSystem 구조 전면 점검
+-LOR 방식의 합(Clash) / 인터셉트(Intercept) 구조 정확화
+-PriorityQueue 기반 실행 순서 설계
+-O(n²) BoutBuilder 구조 제거 결정
+-증분 업데이트 기반 BoutGraph 설계
+-전투 구조를 Character 중심에서 SpeedSlot 중심으로 재정렬
+-RegisterActions 리스트 기반 흐름 문제 재분석
+-Resolve 단계 PriorityQueue 빌드 방식 재검토
+-TryFindBout 정면합 검사 구조 세부 분석
+-Intercept 별도 로직 구조적 한계 확인
+-턴 마지막 O(n²) 전체 스캔 방식의 비효율성 명확화
+-실시간 합 반영 불가능 구조 문제 확정
+-슬롯 단위 전투 처리 구조 최종 확정
+-PriorityQueue<ActionInstance, int> 구조 도입
+-우선순위 기준을 Action.Speed로 명확화
+-MaxHeap 기반 속도 우선 실행 구조 설계
+-ExecutionSystem 속도 순 처리 흐름 확립
+-O(n²) BoutBuilder 완전 폐기 확정
+-UI 실시간 합 반영 가능 구조 방향 수립
+-슬롯 취소 시 재계산 비효율 제거 전략 정리
+-증분 업데이트 기반 BoutGraph 구조 채택
+-Action 등록 시점 관계 즉시 업데이트 구조 도입
+-핵심 자료구조 설계 및 확정
+-Dictionary<SpeedSlot, ActionInstance> actionBySlot
+-Dictionary<SpeedSlot, List<ActionInstance>> targetMap
+-Dictionary<SpeedSlot, SpeedSlot> edges
+-Intercept 우선순위 규칙 LOR 기준으로 재정의
+-Intercept는 Direct Clash보다 우선 규칙 확정
+-속도가 높은 슬롯만 인터셉트 가능 구조 확정
+-동일 속도일 경우 마지막 지정(RegisterOrder) 우선 규칙 확정
+-속도 비교 기준을 슬롯 속도로 확정
+-확장성 확보를 위해 Action.Speed 프로퍼티 유지
+-버프 / 디버프 / 속도 변형 대응 구조 정리
+-Disconnect / Connect 기반 그래프 유지 방식 설계
+-슬롯 취소 대비 가능 구조 확보
+-합 생성 단계와 실행 단계 완전 분리 확정
+-Action 등록(UI 단계) → BoutGraph 실시간 관계 유지 → 턴 종료 시 ExecutionSystem 처리 구조 확립
+-BoutBuilder 역할 재정의 후 완전 폐기
+-Execution은 그래프 기반 처리 구조 확정
+
+###문제
+
+-합이 실시간 반영되지 않는 구조적 한계
+-Resolve 시 전체 스캔 방식의 비효율
+-슬롯이 아닌 Character 기준 매핑 구조 문제
+-Intercept 우선순위가 단순 속도 기준으로 잘못 설계됨
+-마지막 지정 우선 규칙 미반영 상태
+-O(n²) 전체 반복 구조 유지 문제
+-UI 실시간 합 표시 불가능 구조
+-슬롯 취소 시 전체 재계산 필요 구조
+-속도 비교 기준 혼란 (slot.speed vs action.Speed)
+
+###해결
+
+-Character 중심 구조 폐기 → SpeedSlot 중심 구조로 전환
+-PriorityQueue 기반 실행 순서 도입
+-증분 업데이트 기반 BoutGraph 설계
+-Action 등록 시 관계 즉시 갱신 구조 채택
+-actionBySlot / targetMap / edges 자료구조 확립
+-Intercept 우선순위 규칙 LOR 기준으로 재정의
+-속도 높은 슬롯만 인터셉트 가능 구조 확정
+-동속일 경우 마지막 지정 우선 규칙 구현
+-슬롯 속도 기준 비교로 통일
+-확장성 고려하여 Action.Speed 프로퍼티 유지
+-합 생성과 실행 단계 완전 분리
+-O(n²) BoutBuilder 완전 제거
+
+###배운 점
+
+-LOR 전투는 캐릭터 중심이 아니라 슬롯 중심 구조다
+-합 시스템은 리스트가 아니라 그래프 구조로 보는 것이 자연스럽다
+-실시간 반영이 안 되는 구조는 결국 재설계하게 된다
+-O(n²) 구조는 초기 구현은 쉽지만 확장에서 무너진다
+-우선순위는 단일 기준이 아니라 규칙 집합이다
+-합 생성과 실행은 반드시 분리해야 안정적이다
+-확장성을 고려한 프로퍼티 설계는 미래 리팩토링 비용을 줄인다
+-전투 엔진 구조가 한 단계 상승했다
+
+###현재 엔진 상태
+
+-슬롯 기반 전투 구조 확립
+-증분 업데이트 그래프 구조 적용
+-Intercept 우선순위 구현 완료
+-마지막 지정 우선 규칙 구현 완료
+-속도 비교 기준 확정
+-확장성 고려 설계 완료
+
+###다음 목표
+
+-Indirect Clash 설계
+-합 변경(Tab 키) 시스템 구현
+-Resolve 순서 LOR 완전 재현
+-UI 합 실시간 표시 연동
+-Speed 변형 상태이상 시스템 설계
+-그래프 기반 전투 흐름 통합 테스트
+
+##2026-02-25
+
+###오늘 한 것
+
+-전투 구조를 Card Dice 중심에서 Character DiceQueue 중심 구조로 전환 결정
+-Clash 이후 CharacterRuntime 재생성 방식 완전 제거
+-DiceQueue 기반 통합 Resolve 루프 재설계
+-합 / 일방공격을 동일한 Dice 소비 흐름 안에서 처리하도록 구조 단순화
+-CombatLog를 Turn 전체 공유 구조로 확정
+-CombatEvent 기반 전투 기록 구조 채택
+-RNG 외부 주입 필요성 확인 (리플레이 / 동기화 대비 설계 방향 확정)
+-ResolutionSystem God Script화 방지 → ClashEngine 분리 방향 확정
+-Slot을 전투 주체가 아닌 행동 순서 결정자로 역할 재정의
+-CharacterRuntime을 전투 흐름의 중심 객체로 확정
+
+-전투 중심 객체를 CharacterRuntime으로 고정
+-Slot은 전투 시작 전 매칭 / 속도 결정 전용 구조로 분리
+-DiceEngine은 계산 전용, 상태 변경은 CombatEngine이 담당하도록 책임 분리 확정
+
+###문제
+
+-Clash 이후 CharacterRuntime을 새로 생성하는 구조로 인해 상태 일관성 붕괴 위험
+-합과 일방공격 로직이 분리되어 코드 중복 및 유지보수 부담 증가
+-Dice 저장 구조가 단순 Queue 자료구조에 머물러 설계 의도 불명확
+-ResolutionSystem에 책임이 과도하게 집중되는 God Script화 위험
+-RNG 내부 생성 방식으로 인해 리플레이 / 동기화 확장성 부족
+
+###해결
+
+-CharacterRuntime 재생성 방식 제거 → 동일 객체 유지 구조로 안정화
+-DiceQueue 기반 단일 Resolve 루프 설계로 합 / 일방공격 통합
+-“상대 Dice 존재 여부”에 따른 분기 처리 구조 확정
+-CombatLog를 Turn 단위 단일 리스트로 통합 관리
+-CombatEvent 기반 이벤트 기록 구조 채택
+-RNG 외부 주입 방식 설계 방향 확정
+-ResolutionSystem에서 ClashEngine 분리 설계
+-DiceEngine은 계산 전용, CombatEngine은 상태 변경 담당으로 역할 명확화
+
+###배운 점
+
+-전투 시스템의 핵심은 “Dice 이동”이 아니라 “Dice 소비 흐름”이다
+-합과 일방공격은 다른 시스템이 아니라 동일 루프의 분기다
+-전투 중심 객체는 카드가 아니라 CharacterRuntime이다
+-슬롯은 전투 객체가 아니라 순서 결정자이다
+-로그 기반 설계는 디버깅과 확장성 모두에 유리하다
+-엔진이 커질수록 계산 시스템과 상태 변경 시스템을 분리해야 한다
+
+###구조적 결론
+
+-전투 중심 = CharacterRuntime
+-슬롯 = 전투 전 매칭 / 속도 결정 전용
+-로그 = Turn 단위 단일 리스트
+-Dice = 이동 개념이 아니라 소비 기록 개념
+
+##2026-02-26
+
+###오늘 한 것
+
+-전투 구조를 Slot 중심에서 Character 중심 구조로 완전 재정렬
+-BattleState가 Dictionary<Character, CharacterRuntime> 보유하도록 구조 확정
+-턴 시작 시 InitializeRuntime()에서 Runtime 생성 구조로 확정
+-Resolve 단계에서 Runtime 생성 제거
+-전투 도중 Runtime 생명주기 변동 제거
+-참조 안정성 확보
+
+-Dice 처리 구조를 Queue 기반에서 Cursor 기반으로 전환 확정
+-내부 List<DiceRuntime> + int DiceCursor 구조 도입
+-CurrentDice / Advance() / IsFinished 인터페이스 정리
+-승리 Dice 유지 구조 반영
+-회피 연속 합 대응 구조 설계
+-Dequeue 기반 소비 구조 완전 폐기
+-LOR 스타일 “패배한 쪽만 커서 이동” 구조 확정
+
+-합(Clash) Resolve 루프 구조 확정
+-while (!a.IsFinished && !b.IsFinished) 반복 구조 채택
+-DiceEngine.ResolveClash 호출 구조 정리
+-Destroy된 쪽만 Advance() 처리
+-승리 Dice 유지 기반 연속 합 구조 완성
+-1:1 매칭 구조 폐기
+-소비 기반 매칭 구조 폐기
+-상태 기반 반복 구조로 단순화
+
+-ResolveOpposedDice 구조 추가
+-일방 공격 처리 구조 분리
+-공격 주사위만 실행
+-비공격 주사위는 Skip 후 유지
+-Cleanup 단계에서 잔여 주사위 정리
+-방어/회피 주사위 소실 문제 제거
+-합 종료 후 잔여 Dice 자연 처리 구조 확정
+
+-CombatLog 시스템 도입
+-CombatLog를 Turn 전체 공유 구조로 확정
+-BattleState가 List<CombatLog> 보유
+-Resolve의 1차 목적을 상태 변경이 아닌 로그 생성으로 전환
+-Resolve → Log 생성 → 연출 시스템 소비 구조 확정
+-전투 계산과 연출 시스템 완전 분리
+
+-BattleState 구조 정리
+-Units / ActionBySlot / BoutGraph / CharacterRuntimes / CombatLogs 구조 확정
+-StartNewTurn → Clear → RollSpeedDice → InitializeRuntime 흐름 정리
+-턴 시작 시 Runtime 초기화 고정
+-Resolve는 상태 변경만 수행
+-로그는 턴 단위 누적 구조 확정
+
+###문제
+
+-Resolve 중 Runtime 생성으로 참조 불안정 발생 가능성
+-Queue 기반 Dice 소비 구조가 승리 유지 구조와 충돌
+-1:1 매칭 기반 합 구조의 확장성 한계
+-슬롯 중심 설계와 실제 Dice 소비 흐름 간 괴리
+-전투 로직과 연출 로직이 섞일 위험
+
+###해결
+
+-CharacterRuntime을 턴 시작 시 고정 생성 구조로 변경
+-Resolve 단계에서 객체 생성 완전 제거
+-Queue 제거 → Cursor 기반 진행 구조 도입
+-패배한 쪽만 Advance() 하는 구조 확정
+-상태 기반 반복 Resolve 루프 설계
+-일방 공격 처리 로직 분리
+-CombatLog 중심 전투 흐름으로 전환
+-전투 계산 시스템과 연출 시스템 완전 분리
+
+###배운 점
+
+-전투는 소비가 아니라 “진행” 구조로 보는 것이 맞다
+-Dice는 제거되는 객체가 아니라 상태를 따라 이동하는 흐름이다
+-승리 Dice 유지 구조는 Queue 모델로는 자연스럽지 않다
+-Resolve는 계산기이며, 연출은 로그를 소비하는 별도 시스템이다
+-객체 생명주기를 고정하면 참조 안정성이 크게 향상된다
+-슬롯 중심 설계는 전투 시작 전 단계에만 적합하다
+
+###현재 구조 상태
+
+-CharacterRuntime 중심 구조 안정화 완료
+-Cursor 기반 Dice 순환 구조 확정
+-Clash / Unopposed 분리 완료
+-CombatLog 기반 전투 흐름 확립
+-Resolve 단계 객체 생성 제거 완료
+-전투 계산과 연출 완전 분리 완료
+
+###다음 목표
+
+-ResolveClash 세부 처리 디테일 정리
+-사망 / 스태거 중간 개입 처리 구조 설계
+-CombatLog 세부 타입 확장
+-전투 종료 조건 처리 정리
+-전체 Turn 흐름 통합 테스트 진행
+
+##2026-02-28
+
+###오늘 한 것
+
+-Resolve 중 객체 생성 제거를 목표로 구조 철학 재정립
+-책임 계층 분리 및 설계도 / 실행 데이터 분리 확정
+-이벤트 기반 전투 구조 방향 확정
+
+-계층 구조를 Character → CharacterState → CharacterRuntime 3단 구조로 재정의
+-Character를 마스터 데이터(불변) 계층으로 확정
+-CharacterState를 전투 시작 스냅샷(불변 설계 데이터)으로 분리
+-CharacterRuntime을 실행 전용 객체(동적 상태 보유)로 확정
+-설계 계층과 실행 계층 완전 분리 성공
+
+-DiceEntry 구조 도입
+-DiceEntry = DiceRuntime + DiceHandle 구조 확정
+-다이스 아이덴티티와 동작 데이터 결합
+-DiceRuntime 생성 책임을 CharacterRuntime으로 고정
+-NextDiceId를 CharacterRuntime 책임으로 확정
+-DiceById 딕셔너리 기반 ID 추적 구조 도입
+-List와 Dictionary가 동일 참조 공유하도록 구조 정리
+-Runtime 단일 생성 원칙 확정
+
+-Queue 기반 Dice 구조 폐기
+-List + Cursor 기반 순회 구조 확정
+-IsFinished = DiceCursor >= DicePool.Count 구조 정리
+-InsertRange 기반 중간 삽입 가능 구조 확보
+-파괴된 Dice 스킵 가능 구조 확보
+-ID 기반 접근과 자연스럽게 결합
+
+-null 반환 방식 제거
+-TryGetCurrentDice(out DiceEntry dice) 패턴 도입
+-null 기반 제어 제거
+-명시적 성공 / 실패 반환 방식으로 엔진 안정성 강화
+
+-카드 → Dice 생성 흐름 확정
+-ResolutionSystem → CharacterRuntime.UseCard() → CreateDiceEntry() → DicePool.InsertRange() 흐름 정리
+-Dice의 출처는 카드로 고정
+-CharacterState는 Dice 생성에 개입하지 않도록 책임 분리
+-패시브 Dice는 StatusEffectRuntime 이벤트 개입 방식으로 설계 방향 확정
+
+-StatusEffect 설계 방향 확정
+-이벤트 기반 개입 구조 채택
+-StatusEffect에 Priority 부여
+-직접 제거 금지 원칙 확정
+-제거 요청 후 Runtime이 일괄 정리하는 방식 채택
+-CharacterRuntime을 Aggregate Root로 유지
+-상태 효과와의 결합도 최소화
+
+###문제
+
+-Resolve 중 객체 생성으로 인한 생명주기 혼란 가능성
+-설계 데이터와 실행 데이터 혼합 구조 문제
+-Dice 아이덴티티 부재로 인한 추적 어려움
+-Queue 기반 Dice 구조의 확장성 한계
+-null 반환 기반 제어 흐름의 불안정성
+-StatusEffect가 Runtime을 직접 조작할 가능성
+
+###해결
+
+-3계층 구조 도입으로 설계 / 실행 데이터 완전 분리
+-CharacterState 도입으로 전투 시작 스냅샷 고정
+-DiceEntry 도입으로 다이스 단위 완전 보장
+-CharacterRuntime이 Dice 생성 및 ID 관리 전담
+-List + Cursor 구조로 확장성 확보
+-Try 패턴 적용으로 안정성 강화
+-StatusEffect는 이벤트 개입만 허용하도록 규칙 확정
+-Aggregate Root를 CharacterRuntime으로 고정
+
+###배운 점
+
+-설계 데이터와 실행 데이터는 반드시 분리해야 한다
+-아이덴티티가 없는 객체는 추적과 확장에서 한계를 가진다
+-Queue는 단순하지만 확장성에서는 제약이 많다
+-null 반환은 단기적으로 편하지만 장기적으로 위험하다
+-Aggregate Root를 명확히 하면 구조가 안정된다
+-이벤트 기반 구조는 확장을 자연스럽게 만든다
+
+###현재 구조 상태
+
+-Character / CharacterState / CharacterRuntime 3계층 구조 확정
+-DiceEntry 기반 다이스 단위 구조 완성
+-Cursor 기반 Dice 순환 구조 적용
+-Try 패턴 적용 완료
+-이벤트 기반 StatusEffect 설계 방향 확정
+-Resolve 중 객체 생성 제거 완료
+
+###다음 목표
+
+-StatusEffectRuntime 이벤트 세부 인터페이스 정의
+-CombatEvent 세부 타입 정교화
+-DiceResolve 루프와 StatusEffect 개입 통합
+-전투 흐름 전체 통합 테스트 진행
+
+## 2026-03-01 ~ 07
+
+### 오늘 한 것
+
+[전투 엔진 아키텍처 대규모 재구성]
+
+초기 전투 구조에서 발견된 문제를 해결하기 위해
+전투 엔진의 전체 구조를 Runtime 중심 아키텍처로 재설계하였다.
+
+발견된 문제
+
+- Runtime 객체와 State 객체 역할 혼동
+- DiceRuntime / DiceHandle / DiceEntry 역할 혼동
+- Character 객체의 설계도 / 실행 상태 구분 불명확
+- 이벤트가 Runtime을 직접 수정하는 구조의 불안정성
+- Deterministic Replay를 고려하지 않은 RNG 구조
+
+
+--------------------------------------------------
+설계 목표
+--------------------------------------------------
+
+- 설계 데이터 / 실행 상태 완전 분리
+- Runtime 중심 전투 처리
+- Handle 기반 객체 추적
+- Deterministic RNG 구조
+- Effect 개입 가능한 이벤트 시스템
+
+
+--------------------------------------------------
+Dice 시스템 구조 확정
+--------------------------------------------------
+
+Dice 구조를 다음 3개의 객체로 분리하였다.
+
+DiceRuntime
+- 실제 전투 중 변화하는 주사위 상태
+- 포함 데이터
+  - Type
+  - Min
+  - Max
+  - IsDestroyed
+
+DiceHandle
+- 이벤트 시스템이 Dice를 추적하기 위한 ID 객체
+- 포함 데이터
+  - CharacterHandle Owner
+  - DiceId
+
+특징
+- DiceRuntime을 직접 참조하지 않음
+- 이벤트는 Handle만 전달
+- Runtime에서 Handle로 DiceRuntime 조회
+
+DiceEntry
+- DiceRuntime + DiceHandle 묶음
+- CharacterRuntime 내부 DicePool에서 사용
+
+목적
+- DiceRuntime
+- DiceHandle
+
+두 객체를 하나의 단위로 관리
+
+
+--------------------------------------------------
+CharacterRuntime 구조 확정
+--------------------------------------------------
+
+CharacterRuntime은 전투 중 캐릭터의 실제 상태를 관리한다.
+
+포함 데이터
+
+- CharacterState state
+- CurrentHp
+- DicePool
+- DiceById
+- DiceCursor
+- StatusEffectRuntime 목록
+
+
+--------------------------------------------------
+Dice 관리 구조
+--------------------------------------------------
+
+Dice는 다음 구조로 관리된다.
+
+DicePool (List)
+DiceById (Dictionary)
+
+두 컬렉션은 동일한 DiceRuntime 객체를 공유한다.
+
+Dice 생성 흐름
+
+DiceRuntime 생성
+→ DiceById 등록
+→ DiceEntry 생성
+→ DicePool 삽입
+
+따라서
+
+- Dictionary 수정
+- List 접근
+
+둘 모두 같은 DiceRuntime을 수정한다.
+
+
+--------------------------------------------------
+Dice Cursor 구조
+--------------------------------------------------
+
+DicePool은 Queue 대신
+
+List + Cursor
+
+구조를 사용한다.
+
+Cursor 조건
+
+IsFinished
+= DiceCursor >= DicePool.Count
+
+장점
+
+- InsertRange 가능
+- Dice 추가 비용 감소
+- 반복 처리 비용 감소
+
+
+--------------------------------------------------
+Dice 생성 책임
+--------------------------------------------------
+
+CardData → DiceRuntime 생성 책임은
+
+CharacterRuntime
+
+으로 확정하였다.
+
+흐름
+
+ResolutionSystem
+→ UseCard
+→ CharacterRuntime
+→ DiceRuntime 생성
+
+정리
+
+CardData = 설계 데이터  
+DiceRuntime = 실행 데이터
+
+
+--------------------------------------------------
+Handle 기반 Runtime 조회 구조
+--------------------------------------------------
+
+이벤트는 Runtime 객체를 직접 들고 있지 않는다.
+
+대신 Handle을 사용한다.
+
+조회 흐름
+
+DiceHandle
+→ BattleRuntime.GetDice(handle)
+→ CharacterRuntime.GetDice(id)
+→ DiceRuntime
+
+장점
+
+- 이벤트 직렬화 가능
+- 전투 로그 재생 가능
+- 객체 참조 안정성 확보
+
+
+--------------------------------------------------
+StatusEffectRuntime 구조 설계
+--------------------------------------------------
+
+StatusEffect는 Runtime 객체로 구현하였다.
+
+기본 구조
+
+public abstract class StatusEffectRuntime
+{
+    protected readonly CharacterRuntime Owner;
+    public int Priority { get; }
+
+    public bool IsExpired { get; protected set; }
+
+    public virtual void OnTurnStart(TurnStartContext ctx) { }
+
+    public virtual void OnBeforeDamage(DamageContext ctx) { }
+
+    public virtual void OnAfterDamage(DamageContext ctx) { }
+}
+
+특징
+
+- Owner CharacterRuntime 참조
+- Priority 기반 실행 순서
+- 이벤트 Hook 방식
+
+
+--------------------------------------------------
+StatusEffect 실행 방식
+--------------------------------------------------
+
+Effect 실행 흐름
+
+TurnStart
+→ CharacterRuntime
+→ StatusEffectRuntime
+
+장점
+
+- 시간 복잡도 감소
+- 이벤트 브로드캐스트 제거
+- 디버깅 용이
+
+
+--------------------------------------------------
+Dice Rule vs Effect 개입 규칙
+--------------------------------------------------
+
+Dice 충돌
+
+Rule Engine 처리
+
+DiceEngine
+ClashResolver
+
+
+Damage 발생
+
+StatusEffect 개입 가능
+
+DamageContext 생성
+→ OnBeforeDamage
+→ HP 감소
+→ OnAfterDamage
+
+
+--------------------------------------------------
+Runtime / Snapshot 구조 도입
+--------------------------------------------------
+
+Deterministic Simulation을 위해 Snapshot 시스템을 도입하였다.
+
+
+BattleSnapshot
+
+포함 데이터
+
+- Seed
+- CharacterState 목록
+
+역할
+
+Runtime 초기 상태 저장
+
+
+BattleRuntime
+
+Snapshot을 기반으로 Runtime 생성
+
+포함 데이터
+
+- CharacterRuntime Dictionary
+- RNG
+- CombatLog
+
+
+Runtime 생성 흐름
+
+BattleManager
+→ BattleSnapshot 생성
+→ BattleRuntime 생성
+
+
+--------------------------------------------------
+RNG 구조 확정
+--------------------------------------------------
+
+Deterministic simulation을 위해
+
+Seed 기반 RNG
+
+구조를 사용한다.
+
+흐름
+
+BattleManager
+→ Seed 생성
+→ BattleSnapshot 저장
+→ BattleRuntime RNG 생성
+
+동일 Seed 사용 시
+
+전투 결과 완전 재현 가능
+
+
+--------------------------------------------------
+BattleState 역할 재정의
+--------------------------------------------------
+
+기존 BattleState는 Runtime 데이터와 혼합되어 있었기 때문에
+역할을 다음과 같이 재정의하였다.
+
+BattleState
+
+전투 입력(Input)
+
+포함 데이터
+
+- Units
+- ActionBySlot
+- BoutGraph
+- Rules
+
+정리
+
+BattleState는 플레이어 행동 입력을 관리한다.
+
+
+--------------------------------------------------
+최종 전투 아키텍처
+--------------------------------------------------
+
+BattleManager
+→ BattleState (Input)
+→ BattleSnapshot
+→ BattleRuntime
+→ CharacterRuntime
+→ DiceRuntime
+→ StatusEffectRuntime
+
+
+--------------------------------------------------
+전투 실행 흐름
+--------------------------------------------------
+
+BattleManager
+→ BattleState 생성
+→ 플레이어 Action 등록
+→ BattleSnapshot 생성
+→ BattleRuntime 생성
+→ Resolution Loop 실행
+→ CombatResult 생성
+→ 게임 상태 반영
+
+
+--------------------------------------------------
+현재 엔진 상태
+--------------------------------------------------
+
+완료된 시스템
+
+- DiceRuntime
+- DiceHandle
+- DiceEntry
+- CharacterRuntime
+- BattleRuntime
+- BattleSnapshot
+- StatusEffectRuntime 기본 구조
+
+다음 작업
+
+- StatusEffect 이벤트 디버깅
+- DamageContext 완성
+- Resolution Loop 통합
+- Modifier System 설계
+- CombatLog 확장
+
+
+--------------------------------------------------
+현재 설계 특징
+--------------------------------------------------
+
+현재 전투 엔진 특징
+
+- Deterministic Simulation
+- Runtime 중심 구조
+- Handle 기반 객체 참조
+- Effect Hook 시스템
+- Snapshot 기반 전투 재현
+
+이 구조는 다음 게임의 전투 엔진 구조와 유사하다
+
+Library of Ruina
+Slay the Spire
+Darkest Dungeon
+
+## 2026-03-08 ~ 16
+
+### 전투 엔진 실행 구조 정리 (CombatExecutor / Dice Runtime / Rule System)
+
+--------------------------------------------------
+전투 실행 구조
+--------------------------------------------------
+
+BattleManager
+→ BattleRuntime.Start(BattleInput)
+→ CombatExecutor.Execute(BoutGraph)
+→ PriorityQueue 기반 행동 실행
+→ ResolveCombat (Dice 전투)
+→ CombatLog 생성
+→ BattleRuntime Step 적용
+
+핵심 원칙
+
+CombatExecutor = 전투 계산 담당
+BattleRuntime = 상태 적용 및 로그 처리
+
+정리
+
+Runtime = 상태
+Executor = 계산
+
+
+--------------------------------------------------
+BattleInput / BoutGraph 구조
+--------------------------------------------------
+
+BattleInput 포함 데이터
+
+- BoutGraph
+- ActionBySlot
+
+BoutGraph 내부 정보
+
+- SpeedSlot → ActionInstance 매핑
+- SlotRuntime (속도 정보)
+- edges (공격 대상 관계)
+
+SpeedSlot 의미
+
+SpeedSlot은 행동 턴이 아니라 카드 사용권이다.
+
+Character
+- SpeedSlot1 → 카드
+- SpeedSlot2 → 카드
+- SpeedSlot3 → 카드
+
+따라서 SpeedSlot은 행동 순서의 단위이지만
+Dice나 전투 객체의 소유자는 아니다.
+
+
+--------------------------------------------------
+ActionInstance 설계 원칙
+--------------------------------------------------
+
+ActionInstance 포함 데이터
+
+- SourceSlot
+- TargetSlot
+- RegisterOrder
+
+설계 결정
+
+ActionInstance의 Target은 절대 변경하지 않는다.
+
+이유
+
+플레이어 행동은 취소 후 다시 생성할 수 있지만
+적 행동은 Target을 변경하면 원래 타겟을 추적할 수 없게 된다.
+
+예
+
+A → B 공격
+
+전투 도중 B가 사망하더라도
+원래 타겟을 기억해야 한다.
+
+정리
+
+ActionInstance = 불변 행동 기록
+
+
+--------------------------------------------------
+CombatExecutor 설계
+--------------------------------------------------
+
+CombatExecutor 구조
+
+Execute
+→ BuildQueue
+→ RunQueue
+
+
+--------------------------------------------------
+BuildQueue
+--------------------------------------------------
+
+행동 순서를 결정하기 위해 PriorityQueue 사용
+
+우선순위 기준
+
+1. Speed
+2. RegisterOrder
+
+SpeedSlot 속도와 카드 등록 순서를 기준으로
+행동 순서를 결정한다.
+
+
+--------------------------------------------------
+RunQueue
+--------------------------------------------------
+
+실제 행동 실행 루프
+
+처리 순서
+
+1. Queue에서 ActionInstance dequeue
+2. 행동 유효성 검사
+3. Target 존재 여부 확인
+4. 합 여부 판단
+5. 행동 실행
+
+visited Set을 통해
+SpeedSlot은 한 번만 행동하도록 보장한다.
+
+
+--------------------------------------------------
+행동 유효성 검증
+--------------------------------------------------
+
+행동 실행 전 검증 항목
+
+- Actor 사망 여부
+- Actor Stagger 여부
+- Target 사망 여부
+- Target Stagger 여부
+
+검증 함수
+
+- IsValidAction
+- IsTargetAlive
+- IsTargetStaggered
+
+이를 통해
+큐에 남아있는 무효 행동을 안전하게 무시한다.
+
+
+--------------------------------------------------
+UseAction 실행 구조
+--------------------------------------------------
+
+행동 실행 시 CombatExecutor는 Dice를 직접 생성하지 않는다.
+
+구조
+
+CombatExecutor
+→ BattleRuntime.UseAction
+→ CharacterRuntime.CreateDice
+
+선택 이유
+
+- 전투 로그 기록 필요
+- 상태 변경은 Runtime에서 관리
+- Executor는 계산만 담당
+
+정리
+
+Executor = 명령
+Runtime = 상태 변경
+
+
+--------------------------------------------------
+Dice 생성 구조
+--------------------------------------------------
+
+Dice는 SpeedSlot이 아니라 CharacterRuntime에 속한다.
+
+구조
+
+CharacterRuntime
+→ DicePool
+
+DiceRuntime 포함 데이터
+
+- DiceData
+- ActionInstance
+- DiceHandle
+- CurrentRoll
+- IsDestroyed
+
+Dice는 Action 실행 시 생성되며
+CharacterRuntime의 DicePool에 저장된다.
+
+DicePool은 Cursor 기반 구조를 사용한다.
+
+
+--------------------------------------------------
+Dice 생성 타이밍
+--------------------------------------------------
+
+Dice 생성 시점
+
+Action 실행 시
+
+UseAction
+→ CharacterRuntime
+→ Dice 생성
+
+Roll은 생성 시 하지 않는다.
+
+Roll 수행 시점
+
+ResolveDiceClash 시점
+
+이 구조의 장점
+
+- 실제 사용되는 Dice만 Roll
+- RNG 소비 최소화
+- Determinism 유지
+- 전투 리플레이 안정성 확보
+
+
+--------------------------------------------------
+Combat 처리 방식
+--------------------------------------------------
+
+기존 구조
+
+ResolveClash
+ResolveUnopposed
+
+설계 변경 이유
+
+LOR 전투에서는 일방 공격도 실제로 Dice 전투가 발생한다.
+
+예
+
+상대 카드 Dice 소진 후
+캐릭터 남은 Dice 사용
+
+따라서 일방 공격 / 합 공격 구분은 의미가 없다.
+
+새로운 개념
+
+ResolveCombat
+
+Combat은 Dice Pool 기반 전투로 처리한다.
+
+
+--------------------------------------------------
+Dice Rule System
+--------------------------------------------------
+
+Dice 충돌 규칙은 if문으로 처리하지 않는다.
+
+RuleTable 구조 사용
+
+이유
+
+DiceType이 늘어날 경우
+
+if문 방식은
+
+N × N
+
+규칙이 필요하다.
+
+RuleTable 구조
+
+DiceType Pair
+→ IDiceRule
+
+Resolve 시
+
+RuleTable에서 규칙을 가져와 처리한다.
+
+
+--------------------------------------------------
+RNG 구조
+--------------------------------------------------
+
+Dice Roll 방식
+
+DiceRuntime.Roll(IRng)
+
+Roll 호출 시점
+
+ResolveDiceClash 시점
+
+장점
+
+- RNG 소비 순서 안정
+- 전투 재현 가능
+- Replay 시스템 구현 가능
+
+BattleSnapshot Seed와 결합하면
+
+동일 Seed → 동일 전투 결과
+
+
+--------------------------------------------------
+현재 전투 엔진 상태
+--------------------------------------------------
+
+구현 완료
+
+- BattleRuntime
+- CombatExecutor
+- PriorityQueue 행동 실행
+- ActionInstance 구조
+- SpeedSlot 시스템
+- DiceRuntime 구조
+- Character DicePool
+- UseAction → Dice 생성
+- ResolveCombat 개념
+- RuleTable 기반 Dice 규칙
+
+전투 엔진 핵심 구조는 대부분 확정된 상태이다.
+
+
+--------------------------------------------------
+다음 구현 예정
+--------------------------------------------------
+
+- ResolveCombat 상세 구현
+- Dice Clash Rule
+- Damage Rule
+- Effect System
+- CombatLog 이벤트 정의
+
+이후 BattleRuntime Step 시스템과 결합하여
+완전한 전투 시뮬레이션을 구성할 예정이다.
+
+
+--------------------------------------------------
+설계 핵심 요약
+--------------------------------------------------
+
+1. Executor와 Runtime 분리
+2. ActionInstance 불변 구조
+3. SpeedSlot = 카드 사용권
+4. Dice는 Character 소유
+5. Dice Roll은 Resolve 시점
+6. RuleTable 기반 Dice 규칙
+7. Combat = Dice Pool 기반 전투
+
+---------------------------------------------------
+
+♟️ Combat System Refactoring - DicePool & Character Runtime
+개요
+전투 시스템의 핵심 구조를 리팩토링하고 상태이상 시스템 기반을 구축했습니다.
+
+DicePool 리팩토링
+
+List<DiceEntry> + Cursor 조합으로 단순화
+_injected, _injectCursor, IsInjectedConsumed 제거
+Inject() → List.Insert(_cursor) 방식으로 교체
+Advance(AdvanceType) — dice 파라미터 제거, 내부에서 cursor 주사위 직접 참조
+AdvanceType : Consume(합 단위 임시 사용), Destroy(영구 제거), Reuse(cursor 유지)
+Recover() — Consumed 상태만 Ready로 복구
+ResetForNextTurn() — Destroyed 제외 전부 Destroy 처리, cursor 초기화
+
+
+DiceRuntime 정리
+
+DiceHandle 제거 → DiceEntry가 단독 소유
+Reset() — Consumed 상태만 Ready로 복구
+
+
+DiceEntry / DiceHandle
+
+DicePool이 DiceEntry 기반으로 관리하도록 변경
+DiceHandle(CharacterHandle, DiceId) — 이벤트 타겟팅용 식별자로 유지
+
+
+CharacterRuntime 리팩토링
+
+DicePool 클래스 직접 소유
+_diceById — 이벤트에서 id 기반 주사위 추적용
+IEventSink 주입 — 순환 참조 방지
+TriggerDiceClash() 추가 — 출혈 등 합 단위 상태이상 트리거
+TriggerTurnEnd() 추가
+FlushExpired() — _effectMap도 같이 정리하도록 수정
+CharacterId 프로퍼티 노출
+TakeDamage() 추가
+
+
+BattleRuntime 리팩토링
+
+IEventSink 구현
+PeekDice(characterId), AdvanceDice(characterId, type) 래핑 메서드 추가
+GetDice(DiceHandle) 제거
+GetDicePool() 제거
+SlotRuntimeMap → IReadOnlyDictionary로 캡슐화
+네이밍 컨벤션 _camelCase로 통일
+
+
+CombatExecutor 리팩토링
+
+ResolveCombat() — Enumerator 순회 → PeekDice()/AdvanceDice() 방식으로 교체
+ResolveDiceClash(), ResolveUnopposedDice() — DiceEntry 파라미터 → characterId 기반으로 변경
+PushLog() → AddLog()로 통일
+단방향 공격 버그 수정 (opponent → action)
+네이밍 컨벤션 _camelCase로 통일
+
+
+상태이상 시스템 구축
+
+IEventSink 인터페이스 도입 — 의존성 역전으로 순환 참조 해결
+StatusEffectRuntime — OnDiceClash() 추가
+구현체 4개 추가:
+
+BleedEffect — 합마다 스택 피해 + 스택 절반 감소
+BurnEffect — 턴 종료 시 스택 피해 + 스택 절반 감소
+StrengthEffect — 데미지 계산 전 스택만큼 증가
+ParalysisEffect — 데미지 계산 전 스택만큼 감소
+
+
+StatusFactory — 타입 기반 생성
+StatusEffectType enum 추가
+
+
+다음 작업 예정
+
+DiceRuleTable 완성
+DamageContext 트리거 위치 확정
+CombatLog 구조 설계
+EventBuffer 구현 (Unity 연동용)
+
+## 2026-03-29
+
+### 오늘 한 것
+
+[Combat System Refactoring - Vol.2]
+
+--------------------------------------------------
+Dice Rule System 재설계
+--------------------------------------------------
+
+DiceRule 구조를 delegate 기반으로 재설계하였다.
+
+기존
+
+- WinContext / LoseContext / DrawContext 개별 객체 생성
+
+변경
+
+- Func<ClashContext, IClashContext> 방식으로 통합
+
+Resolve 시그니처
+
+Resolve(ClashContext ctx)
+
+비김(Draw) 처리
+
+- 전부 null 반환 방식으로 통일
+
+Dice 상호작용 규칙 확정
+
+- Attack vs Evade
+  - Evade 승리 시 Reuse
+  - 나머지 경우 전부 Destroy
+
+- Block vs Evade
+- Evade vs Evade
+
+  → 승패와 관계없이 전부 Destroy
+
+3 x 3 모든 DiceType 조합 규칙 완성
+
+
+--------------------------------------------------
+ClashContext 도입
+--------------------------------------------------
+
+DiceRuntime에서 값 수정 책임을 분리하였다.
+
+ClashContext 포함 데이터
+
+- ModifiedRollA
+- ModifiedRollB
+
+특징
+
+- 상태이상 적용된 최종 값 보관
+- 초기값은 CurrentRoll
+- OnBeforeClash()에서 값 수정
+
+승패 판정 기준
+
+- ModifiedRoll 기반으로 변경
+
+
+--------------------------------------------------
+Context 시스템 확장
+--------------------------------------------------
+
+IClashContext 인터페이스 도입
+
+공통 데이터
+
+- Attacker
+- Defender
+- IsCancelled
+
+DamageContext
+
+- HP 피해 처리
+- BaseDamage + Additive = FinalDamage
+
+StaggerContext
+
+- 흐트러짐 처리
+- BaseValue + Additive = FinalValue
+- IsRecover 플래그
+
+데미지 계산 방식
+
+- (이긴 주사위 값 - 진 주사위 값)
+
+
+--------------------------------------------------
+StatusEffectRuntime 확장
+--------------------------------------------------
+
+이벤트 Hook 추가
+
+- OnBeforeClash(ClashContext ctx, bool isOwnerA)
+- OnBeforeStagger(StaggerContext ctx)
+- OnAfterStagger(StaggerContext ctx)
+
+구현 예시
+
+- StrengthEffect
+- ParalysisEffect
+
+특징
+
+- isOwnerA 플래그로 A/B 구분
+- ModifiedRoll 직접 수정
+
+
+--------------------------------------------------
+CharacterRuntime 확장
+--------------------------------------------------
+
+이벤트 트리거 함수 추가
+
+- TriggerBeforeClash(ClashContext, bool isOwnerA)
+- TriggerBeforeStagger(StaggerContext)
+- TriggerAfterStagger(StaggerContext)
+
+상태 처리 추가
+
+- IsDead → _currentHp <= 0
+- IsStaggered → _currentStagger <= 0
+
+Stagger 처리
+
+- TakeStagger(int amount)
+- RecoverStagger(int amount)
+
+초기값
+
+- _currentStagger = state.MaxStagger
+
+
+--------------------------------------------------
+전투 이벤트 흐름 정리
+--------------------------------------------------
+
+Damage 처리 흐름
+
+DamageContext 생성
+→ TriggerBeforeDamage
+→ TakeDamage
+→ TriggerAfterDamage
+
+Stagger 처리 흐름
+
+StaggerContext 생성
+→ TriggerBeforeStagger
+→ TakeStagger / RecoverStagger
+→ TriggerAfterStagger
+
+특징
+
+- IsCancelled로 이벤트 취소 가능
+
+
+--------------------------------------------------
+이벤트 시스템 재정리
+--------------------------------------------------
+
+구조 변경
+
+- CombatEventBuffer 제거
+- BattleRuntime._eventQueue로 통합
+
+이벤트 추가
+
+- DiceDestroyedEvent (characterId 기반)
+- DiceConsumedEvent (characterId 기반)
+- StatusDamageEvent (공격자 없음)
+
+특징
+
+- 상태이상 피해는 독립 처리
+- Reuse는 이벤트 없이 null 체크로 처리
+
+헬퍼 함수
+
+- ToAdvanceEvent() 추가
+
+
+--------------------------------------------------
+CombatExecutor 정리
+--------------------------------------------------
+
+함수 수정
+
+- ResolveUnopposedDice(characterId, targetId)
+- ResolveDiceClash() → ClashContext 기반으로 재작성
+- ResolveCombat() → targetId 전달 구조 수정
+
+변경 사항
+
+- AdvanceDice() 직접 호출 제거
+- 이벤트 기반 처리로 변경
+
+
+--------------------------------------------------
+StatusEffect 수정
+--------------------------------------------------
+
+- BleedEffect
+- BurnEffect
+
+변경 내용
+
+- DamageEvent → StatusDamageEvent로 변경
+- 공격자 없이 방어자에게 직접 피해 적용
+
+
+--------------------------------------------------
+CharacterData 분리
+--------------------------------------------------
+
+Character(MonoBehaviour)에서 데이터 분리
+
+CharacterData 포함 데이터
+
+- MaxHp
+- MaxStagger
+- MaxEnergy
+- MinSpeed
+- MaxSpeed
+- BaseSpeedSlotCount
+
+감정 시스템 관련 값
+
+- EmotionGainOnDamageDealt 등
+
+추가
+
+- PassiveData 리스트
+
+구조 변경
+
+- CharacterState → CharacterData 참조하도록 수정
+
+
+--------------------------------------------------
+Passive 시스템 도입
+--------------------------------------------------
+
+구조
+
+abstract PassiveData
+
+추가
+
+- PassiveType enum (SpeedSlot 등)
+
+설계 변경
+
+- SpeedSlot을 패시브로 관리
+
+기본 규칙
+
+- 기본 슬롯 1개
+- 감정 단계에 따라 슬롯 추가
+
+
+--------------------------------------------------
+현재 엔진 상태
+--------------------------------------------------
+
+완료
+
+- DiceRuleTable (3x3 완성)
+- ClashContext 기반 전투 처리
+- Damage / Stagger Context 시스템
+- StatusEffect 이벤트 확장
+- EventQueue 통합
+- CombatExecutor 구조 정리
+- CharacterData / Passive 구조 도입
+
+전투 엔진이
+
+"Rule + Context + Event 기반 구조"
+
+로 완전히 전환된 상태이다.
+
+
+--------------------------------------------------
+다음 작업
+--------------------------------------------------
+
+- TurnStartContext 구조 완성
+- 감정 단계 시스템 구현
+- SpeedSlot Passive 시스템 구현
+- CombatLog 전체 정리
+- BattleRuntime.Step() 실시간 처리 완성
+- Unity EventBuffer 연동
+
+
+--------------------------------------------------
+설계 핵심 요약
+--------------------------------------------------
+
+1. DiceRule을 delegate 기반으로 추상화
+2. ClashContext로 계산 책임 분리
+3. Context 기반 이벤트 시스템 확립
+4. StatusEffect Hook 구조 강화
+5. EventQueue 단일화
+6. Executor → 이벤트 기반 처리로 전환
+7. CharacterData / Passive 구조 분리
+
+전투 엔진이
+
+"확장 가능한 Rule Engine 구조"
+
+로 진화한 단계이다.
+
+## 2026-04-02
+
+### 오늘 한 것
+
+[Combat System Refactoring - Vol.3]
+
+--------------------------------------------------
+감정 단계 시스템 구현
+--------------------------------------------------
+
+감정 단계 시스템을 CharacterRuntime 기반 유동값으로 구현하였다.
+
+관리 값
+
+- EmotionStack
+- EmotionLevel
+
+구조
+
+- CharacterRuntime에서 직접 관리
+
+동작
+
+- GainEmotionStack(int amount)
+  → MaxEmotionStack 초과 시 누적 제한
+
+- LevelUpEmotion()
+  → EmotionLevel +1
+  → EmotionStack 초기화
+
+이벤트
+
+- EmotionLevelUpEvent 추가
+- TriggerTurnEnd()에서 스택 최대 도달 시 발생
+
+설계 결정
+
+- 감정 단계는 감소하지 않음
+- 스택 누적 기반 성장 구조
+
+
+--------------------------------------------------
+CharacterData 확장
+--------------------------------------------------
+
+감정 시스템 관련 데이터 추가
+
+- MaxEmotionStack
+- MaxEmotionLevel
+
+감정 획득 조건
+
+- EmotionGainOnDamageDealt
+- EmotionGainOnDamageReceived
+- EmotionGainOnBlockSuccess
+- EmotionGainOnEvadeSuccess
+
+설계 결정
+
+- 감정 획득 조건은 Passive가 아닌 CharacterData 고정값으로 관리
+
+추가
+
+- BaseSpeedSlotCount (기본값 1)
+
+
+--------------------------------------------------
+CharacterState 정리
+--------------------------------------------------
+
+구조 변경
+
+- Character(MonoBehaviour) 참조 제거
+- CharacterData 참조 구조로 변경
+
+포함 데이터
+
+- MaxEmotionStack
+- MaxEmotionLevel
+- 감정 획득 조건
+
+추가
+
+- Passives 목록 보유
+
+설계 역할
+
+- CharacterState = 고정 스냅샷
+- CharacterRuntime = 유동 상태
+
+BattleSnapshot 수정
+
+- CharacterData 기반으로 CharacterState 생성
+
+
+--------------------------------------------------
+Passive 시스템 구축
+--------------------------------------------------
+
+구조
+
+- PassiveData (abstract)
+- PassiveEffect (abstract)
+
+설계
+
+- StatusEffectRuntime과 동일한 패턴
+
+추가
+
+- PassiveType enum (SpeedSlot, AttackBoost)
+
+생성
+
+- PassiveFactory를 통해 타입 기반 생성
+
+초기화
+
+- CharacterRuntime 생성자에서 Passive 초기화
+
+설계 결정
+
+- Passive = 고정 효과
+- StatusEffect = 동적 효과
+
+
+--------------------------------------------------
+AttackBoostPassive 구현
+--------------------------------------------------
+
+구조
+
+- AttackBoostData → 공격 위력 +N
+- AttackBoostPassive → 실행 로직
+
+동작
+
+- OnBeforeClash()에서 ModifiedRoll 수정
+
+조건
+
+- DiceType.Attack일 때만 적용
+
+구현
+
+- isOwnerA 플래그로 A/B 구분
+- ModifiedRollA / ModifiedRollB 직접 수정
+
+설계 변경
+
+- DiceRuntime 직접 수정 방식 제거
+- ClashContext 수정 방식 채택
+
+이유
+
+- 로그 / 리플레이 안정성 확보
+
+
+--------------------------------------------------
+SpeedSlotPassive 구현
+--------------------------------------------------
+
+구조
+
+- SpeedSlotPassiveData
+- SpeedSlotPassive
+
+동작
+
+- OnTurnStart()에서 슬롯 수 결정
+
+계산식
+
+targetCount
+= BaseSpeedSlotCount + EmotionLevel
+
+구현
+
+- SetSpeedSlotCount() 사용
+
+설계 결정
+
+- AddSpeedSlot() 대신 Set 방식 사용
+- 중복 활성화 방지
+
+관리 값
+
+- ActiveSpeedSlotCount → CharacterRuntime에서 관리
+
+
+--------------------------------------------------
+TurnStartContext 완성
+--------------------------------------------------
+
+포함 데이터
+
+- Owner
+- EmotionLevel
+
+실행 흐름
+
+TriggerTurnStart()
+→ StatusEffect
+→ PassiveEffect
+
+설계 결정
+
+- 감정 단계 기반 슬롯 활성화 시점으로 확정
+
+
+--------------------------------------------------
+CharacterRuntime 확장
+--------------------------------------------------
+
+추가 필드
+
+- _emotionStack
+- _emotionLevel
+- _activeSpeedSlotCount
+- _passives 리스트
+
+추가 프로퍼티
+
+- BaseSpeedSlotCount
+
+추가 함수
+
+- SetSpeedSlotCount()
+- GainEmotionStack()
+- LevelUpEmotion()
+
+이벤트 확장
+
+- TriggerTurnStart()에서 Passive 실행 포함
+
+
+--------------------------------------------------
+현재 엔진 상태
+--------------------------------------------------
+
+구현 완료
+
+- Emotion 시스템
+- CharacterData 확장
+- CharacterState 정리
+- Passive 시스템 구축
+- AttackBoostPassive
+- SpeedSlotPassive
+- TurnStartContext
+- CharacterRuntime 감정/슬롯 구조
+
+전투 엔진이
+
+"Emotion + Passive 기반 확장 구조"
+
+로 확장된 상태이다.
+
+
+--------------------------------------------------
+다음 작업
+--------------------------------------------------
+
+- CombatLog 전체 정리
+- BattleRuntime.Step() 실시간 처리 완성
+- GainEmotion 호출 위치 확정
+  (DamageEvent, ClashContextEvent 등)
+- EventBuffer Unity 연동
+- Character(MonoBehaviour) → CharacterData 연결
+
+
+--------------------------------------------------
+설계 핵심 요약
+--------------------------------------------------
+
+1. Emotion을 Runtime 유동값으로 관리
+2. CharacterData에 감정 획득 조건 고정
+3. Passive / StatusEffect 역할 분리
+4. Dice 수정 → Context 수정 방식 전환
+5. SpeedSlot을 Passive 기반으로 확장
+6. TurnStartContext로 초기화 타이밍 통일
+
+전투 엔진이
+
+"상태 기반 성장 시스템 + 확장형 Passive 구조"
+
+로 진화한 단계이다.
+
+================================================================
+ 개발 로그 - Combat System Refactoring Vol.4
+ 2026-04-03
+================================================================
+
+[ GainEmotion 호출 위치 확정 ]
+
+- ClashContextEvent.Apply()에서 감정 스택 획득 호출
+- DamageContext → Attacker.GainEmotionStack(EmotionGainOnDamageDealt)
+- DamageContext → Defender.GainEmotionStack(EmotionGainOnDamageReceived)
+- StaggerContext → Attacker.GainEmotionStack(EmotionGainOnStagger)
+- StaggerContext → Defender.GainEmotionStack(EmotionGainOnStaggered)
+- StatusDamageEvent → 감정 스택 획득 없음으로 확정
+- CharacterRuntime에 감정 획득 조건 프로퍼티 노출
+- EmotionGainOnBlockSuccess, EmotionGainOnEvadeSuccess 제거
+  → EmotionGainOnStagger, EmotionGainOnStaggered로 통합
+
+----------------------------------------------------------------
+
+[ EmotionLevelUp 완성 ]
+
+- TriggerTurnEnd()에서 스택 최대치 도달 시 EmotionLevelUpEvent 발생
+- EmotionLevelUpEvent.Apply() → LevelUpEmotion() 호출
+- LevelUpEmotion() → EmotionLevel +1, EmotionStack 초기화
+- EmotionLevel 최대치 초과 방지
+
+----------------------------------------------------------------
+
+[ IStatModifierPassive 인터페이스 추가 ]
+
+- 자원 수정 패시브 전용 인터페이스 추가
+- Apply(CharacterStateBuilder builder) 메서드 보유
+- CharacterState 생성 시 IStatModifierPassive 구현체만 자동 적용
+- 새 자원 수정 패시브 추가 시 CharacterState 수정 불필요 (확장성 확보)
+- CharacterStateBuilder → 자원 수정값 임시 보관 후 CharacterState 초기화
+
+----------------------------------------------------------------
+
+[ 패시브 구현체 추가 ]
+
+- EmotionOnAttackPassiveData → 공격 시 감정 스택 추가 획득
+  (IStatModifierPassive 구현)
+- MaxHpBoostPassiveData → MaxHp 증가
+  (IStatModifierPassive 구현)
+- 둘 다 CharacterState 생성 시 수치 수정 후 런타임 패시브 불필요
+- PassiveType enum에 EmotionOnAttack, MaxHpBoost 추가
+
+----------------------------------------------------------------
+
+[ BattleRuntime.Step() 실시간 처리 ]
+
+- EnqueueEvent() → 즉시 Step() 호출 방식으로 변경
+- 외부에서 Step() 수동 호출 불필요
+- 이벤트 중첩 호출 가능 (큐 방식으로 순서 보장)
+- 타이밍 문제 생기면 나중에 개선 예정
+
+----------------------------------------------------------------
+
+[ BattleManager 정리 ]
+
+- Step() API 제거 (EnqueueEvent에서 즉시 처리)
+- StartTurn() 추가 → 모든 캐릭터 TurnStartEvent 발생
+- EndTurn() 추가 → 모든 캐릭터 TurnEndEvent 발생
+- 턴 관리는 BattleManager, 상태 관리는 BattleRuntime으로 역할 분리
+
+----------------------------------------------------------------
+
+[ TurnStartEvent / TurnEndEvent 추가 ]
+
+- TurnStartEvent → TriggerTurnStart() 호출, TurnStartLog 기록
+- TurnEndEvent → TriggerTurnEnd(), ResetDiceForNextTurn() 호출,
+                 TurnEndLog 기록
+
+----------------------------------------------------------------
+
+[ DiceRecoverEvent 추가 ]
+
+- 합 끝날 때 Consumed 주사위 → Ready로 복구
+- ResolveCombat() 끝에서 호출
+
+----------------------------------------------------------------
+
+[ ResolveCombat() 안정화 ]
+
+- idB → int?로 변경 (nullable)
+- idA, targetId 명시적으로 외부에서 넘기도록 변경
+- 일방 공격 시 타겟 id 항상 보장
+- ResolveUnopposedDice(int characterId, int targetId) → nullable 제거
+- 마법의 숫자 -1 제거
+
+----------------------------------------------------------------
+
+[ 다음 작업 예정 ]
+
+- CombatLog 전체 정리
+- LogDispatcher Unity 연동
+- EventBuffer Unity 연동
+- Character(MonoBehaviour)에 CharacterData 연동
+
+
+================================================================
+ 개발 로그 - Combat System Refactoring Vol.5
+ 날짜: 2026-04-05
+================================================================
+
+[ CombatLog 전체 정리 ]
+
+■ 로그 구현체 확정
+- BoutStartLog    : 합 시작 (카메라 포커스용)
+- BoutEndLog      : 합 종료
+- DiceClashLog    : 주사위 합 결과
+- DamageLog       : 공격으로 인한 HP 피해
+- StatusDamageLog : 상태이상으로 인한 HP 피해
+- StaggerLog      : 흐트러짐 피해/회복
+- UnopposedLog    : 일방 공격
+- DiceDestroyedLog: 주사위 파괴
+- DiceConsumedLog : 주사위 소비
+- DiceRecoverLog  : 주사위 회복
+- EmotionStackLog : 감정 스택 획득
+- EmotionLevelUpLog: 감정 레벨업
+- TurnStartLog    : 턴 시작
+- TurnEndLog      : 턴 종료
+- StaggeredLog    : 흐트러짐 상태 진입
+- DeathLog        : 사망
+- BattleEndLog    : 전투 종료
+
+■ ClashResolveEvent 제거
+- 합 시작/종료는 이벤트 대신 BoutStartLog, BoutEndLog로 처리
+- 카메라 무빙 등 Unity 연동은 LogDispatcher에서 처리
+
+----------------------------------------------------------------
+
+[ 이벤트 시스템 추가 ]
+
+■ DeathEvent 추가
+- TakeDamage()에서 _isDead 플래그 체크 후 자동 발생
+- 중복 사망 방지를 위해 _isDead 플래그 별도 관리
+- DeathEvent.Apply()에서 IsBattleOver() 체크 후 BattleEndEvent 발생
+
+■ StaggeredEvent 추가
+- TakeStagger()에서 _isStaggered 플래그 체크 후 자동 발생
+- 중복 흐트러짐 방지를 위해 _isStaggered 플래그 별도 관리
+- RecoverStagger()에서 _isStaggered 플래그 해제
+
+■ BattleEndEvent 추가
+- IsBattleOver() → 살아있는 캐릭터 1명 이하면 전투 종료
+- BattleEndLog 기록
+
+■ GainEmotionStackEvent 추가
+- 감정 스택 획득을 이벤트로 처리 (패시브 적용 추적 가능)
+- EmotionStackLog 기록
+
+----------------------------------------------------------------
+
+[ ClashContextEvent 수정 ]
+
+■ 로그 순서 확정
+- 로그 먼저 → 상태 변경 → TriggerAfter → 감정 스택 이벤트 순서로 확정
+- TriggerAfter가 상태 변경 직후 발동하도록 수정
+- 감정 스택 획득은 TriggerAfter 이후 마지막에 처리
+
+----------------------------------------------------------------
+
+[ PassiveEffect 확장 ]
+
+■ OnAfterDamage, OnAfterStagger 트리거 추가
+- 흡혈 등 파생 이벤트 발생 가능하도록 구조 확장
+- CharacterRuntime.TriggerAfterDamage/Stagger에서 패시브도 트리거
+
+----------------------------------------------------------------
+
+[ 다음 작업 예정 ]
+
+- Counter 주사위 타입 추가 및 DiceRuleTable 규칙 추가
+- LogDispatcher Unity 연동
+- EventBuffer Unity 연동
+- Character(MonoBehaviour)에 CharacterData 연동
+
+================================================================
+ 개발 로그 - Combat System Refactoring Vol.6
+ 날짜: 2026-04-07
+================================================================
+
+[ 코드 리뷰 및 버그 수정 ]
+
+■ DicePool
+- Peek()에서 Used 상태 주사위도 반환하도록 수정
+  (Reuse된 주사위가 건너뛰어지는 버그 수정)
+
+■ CombatExecutor
+- ResolveUnopposedDice() 호출 시 idB.Value 대신 targetId 넘기도록 수정
+  (일방 공격 시 idB가 null일 때 에러 방지)
+- Counter 주사위는 일방 공격 불가로 확정 (Consume 처리)
+
+■ CharacterRuntime
+- TriggerBeforeDamage()에 패시브 트리거 추가
+- TriggerBeforeStagger()에 패시브 트리거 추가
+- FlushExpired()에서 _effectMap 제거 로직 개선
+  (FirstOrDefault 방식 → Type 프로퍼티 기반으로 변경)
+
+■ StatusEffectRuntime
+- Type 프로퍼티 추가 (StatusEffectType)
+- 생성자에 type 파라미터 추가
+- 구현체 4개 (Bleed, Burn, Strength, Paralysis) 생성자 수정
+
+----------------------------------------------------------------
+
+[ 흐트러짐 시스템 완성 ]
+
+■ 흐트러짐 지속 시간 추가
+- _staggeredTurnsRemaining → 흐트러짐 남은 턴 수 관리
+- 흐트러짐 발생 시 2턴 지속 (이번 턴 + 다음 턴)
+- TriggerTurnEnd()에서 턴마다 감소, 0이 되면 StaggerRecoverEvent 발생
+
+■ StaggerRecoverEvent 추가
+- Apply()에서 RecoverFromStagger() 호출 후 StaggerRecoverLog 기록
+- 상태 변경은 이벤트에서 처리하는 방식으로 통일
+
+■ RecoverFromStagger() 추가
+- _isStaggered = false
+- _currentStagger = MaxStagger (게이지 전부 회복)
+
+■ StaggerRecoverLog 추가
+
+----------------------------------------------------------------
+
+[ Counter 주사위 추가 ]
+
+■ DiceType에 Counter 추가
+■ DiceRuleTable 3x3 → 4x4로 확장
+■ Counter 관련 규칙 추가
+- Counter vs Attack  : 이기면 Reuse + 데미지, 지면 Destroy + 데미지
+- Counter vs Block   : 이기면 Reuse + 데미지, 지면 Destroy + 흐트러짐 피해
+- Counter vs Evade   : 이기면 Reuse + 데미지, 지면 Destroy + 회피 흐트러짐 회복
+- Counter vs Counter : 이기면 Reuse + 데미지, 지면 Destroy + 데미지
+- 대칭 조합 전부 추가
+- Counter는 일방 공격 불가 (Consume 처리)
+
+----------------------------------------------------------------
+
+[ DiceState.Used 추가 ]
+
+■ Reuse된 주사위 → Used 상태로 변경
+■ DicePool.DestroyUsed() → 합 끝날 때 Used 주사위 전부 Destroy
+■ DiceDestroyUsedEvent, DiceDestroyUsedLog 추가
+■ ResolveCombat() 끝에서 DiceDestroyUsedEvent 호출
+
+----------------------------------------------------------------
+
+[ 다음 작업 예정 ]
+
+- LogDispatcher Unity 연동
+- EventBuffer Unity 연동
+- Character(MonoBehaviour)에 CharacterData 연동
+- 추가 패시브/상태이상 구현
+
+================================================================
+ 개발 로그 - Combat System Refactoring Vol.7
+ 날짜: 2026-04-19
+================================================================
+
+[ ClashContextEvent 디스패처 패턴 적용 ]
+
+■ ClashContextEvent의 역할 축소
+- 직접 상태 변경하던 로직 → 파생 이벤트 발생만 담당
+- DamageContext → DamageEvent 발생
+- StaggerContext → StaggerEvent 발생
+- ClashContextEvent는 단순 디스패처 역할만 수행
+
+■ DamageEvent 통합
+- 기존 DamageContext 받는 구조로 통일
+- 합 / 일방 공격 / 상태이상 모두 DamageEvent 또는 StatusDamageEvent로 처리
+- 일관된 흐름: TriggerBeforeDamage → 로그 → TakeDamage → TriggerAfterDamage → 사망 체크 → 감정 스택
+
+■ StaggerEvent 분리
+- StaggerContext 받는 별도 이벤트로 분리
+- IsHeal로 회복/피해 분기 처리
+
+----------------------------------------------------------------
+
+[ 상태 변경 패턴 일관화 ]
+
+■ TakeDamage / TakeStagger 분리
+- 기존: 상태 변경 + 이벤트 발생을 한꺼번에
+- 변경: 상태 변경만 담당, 이벤트는 외부에서 발생
+- ShouldDie() / Die() 메서드 분리
+- ShouldEnterStagger() / EnterStagger() 메서드 분리
+
+■ 이벤트 안에서 상태 변경 처리
+- DeathEvent.Apply()에서 Die() 호출
+- StaggeredEvent.Apply()에서 EnterStagger() 호출
+- StaggerExitEvent.Apply()에서 ExitStagger() 호출
+- 모든 이벤트가 자기 상태 변경을 책임지는 일관된 구조 확립
+
+----------------------------------------------------------------
+
+[ 네이밍 정리 ]
+
+■ StaggerRecoverEvent → StaggerExitEvent
+- 흐트러짐 상태 해제 의미를 명확히 함
+- StaggerRecoverLog → StaggerExitLog
+- RecoverFromStagger() → ExitStagger()
+
+■ IsRecover → IsHeal
+- StaggerContext의 게이지 회복 여부 플래그
+- StaggerLog의 IsRecover도 IsHeal로 변경
+- "Recover"(상태 해제)와 "Heal"(게이지 회복) 의미 분리
+
+■ EmotionGainOnStaggerRecover → EmotionGainOnStaggerHeal
+- IsHeal 변경에 맞춰 통일
+
+----------------------------------------------------------------
+
+[ Context 계층 재설계 ]
+
+■ IClashContext 슬림화
+- Attacker 제거 (모든 컨텍스트가 공격자를 가지지는 않음)
+- 공통 부분만 남김: Defender, IsCancelled
+
+■ IDamageContext 신설
+- IClashContext 상속
+- BaseDamage, Additive, FinalDamage 공통 정의
+
+■ DamageContext (IDamageContext 구현)
+- Attacker 자체 정의 (항상 존재)
+- 일반 공격 피해용
+
+■ StatusDamageContext 신설 (IDamageContext 구현)
+- Attacker 없음
+- 상태이상 피해 전용
+
+■ StaggerContext (IClashContext 직접 구현)
+- Attacker 자체 정의 (항상 존재)
+- BaseValue + Additive = FinalValue 구조
+- IsHeal 플래그
+
+----------------------------------------------------------------
+
+[ 트리거 시그니처 변경 ]
+
+■ StatusEffectRuntime / PassiveEffect
+- OnBeforeDamage(DamageContext) → OnBeforeDamage(IDamageContext)
+- OnAfterDamage(DamageContext) → OnAfterDamage(IDamageContext)
+- 일반 공격 / 상태이상 피해 모두 처리 가능
+- 패시브에서 ctx의 구체 타입 체크하여 분기 가능
+
+■ CharacterRuntime
+- TriggerBeforeDamage(IDamageContext) 시그니처 변경
+- TriggerAfterDamage(IDamageContext) 시그니처 변경
+
+----------------------------------------------------------------
+
+[ StatusDamageEvent 재작성 ]
+
+■ StatusDamageContext 받도록 변경
+- Attacker 없는 구조 반영
+- TriggerBeforeDamage / TriggerAfterDamage는 Defender만 호출
+- 감정 스택 획득 없음
+- 사망 체크 포함
+
+■ BleedEffect / BurnEffect 수정
+- StatusDamageContext 사용하도록 변경
+- StatusDamageEvent 발생
+
+----------------------------------------------------------------
+
+[ EmotionGainOnStaggerHeal 추가 ]
+
+■ CharacterData에 추가
+■ CharacterStateBuilder에 추가
+■ CharacterState에 추가
+■ CharacterRuntime에 프로퍼티 노출
+■ StaggerEvent에서 IsHeal 분기 처리
+
+----------------------------------------------------------------
+
+[ 코드 리뷰 ]
+
+■ DicePool.Peek() 버그 수정
+- Used 상태 주사위도 반환하도록 수정 (Reuse 동작 정상화)
+
+■ CombatExecutor 수정
+- ResolveUnopposedDice에서 idB.Value 대신 targetId 사용
+- 일방 공격 시 주사위 굴리기 추가
+- DamageEvent 호출 시 DamageContext 생성하여 전달
+
+■ FlushExpired 효율 개선
+- StatusEffectRuntime에 Type 프로퍼티 추가
+- _effectMap 제거 시 Type으로 직접 접근
+
+----------------------------------------------------------------
+
+[ 다음 작업 예정 ]
+
+- LogDispatcher Unity 연동
+- EventBuffer Unity 연동
+- Character(MonoBehaviour)에 CharacterData 연동
+- 추가 패시브/상태이상 구현
+
+================================================================
+
+================================================================
+ 개발 로그 - Combat System Refactoring Vol.7
+ 2026-05-20
+================================================================
+
+[ P0 | 컴파일 에러 수정 ]
+
+■ 빌드 차단 에러 일괄 해소
+- IRng.cs — using UnityEditor.Build 제거 (에디터 전용, 빌드 시 에러)
+- LorRuleSet.cs — BuildEvents()에 return events; 추가
+- PlayerActionInput.cs — SpeedSlot을 SpeedSlot?로 변경,
+  [SerializeField] 제거, .index → .Value.SlotIndex
+- DiceRuntime.cs — Roll()에서 Data.Max + 1 → Data.Max
+  (IRng.Range는 inclusive-inclusive 컨벤션 확정)
+- BoutResolver.cs(BoutPlanner) — 파일 삭제
+  (BoutGraph와 완전 중복, 참조 없는 데드 코드)
+- BoutGraph.cs — IsConnected() 메서드 추가
+
+----------------------------------------------------------------
+
+[ P1 | 데드 코드 / 오타 정리 ]
+
+■ 데드 코드 삭제
+- DiceQueue.cs / ActionRuntime.cs / HpChangeEvent.cs 삭제
+  (프로젝트 어디서도 참조 없음)
+
+■ 오타 일괄 수정
+- Destory → Destroy 전역 변경
+  (CombatEventType enum, LorRuleSet 등 5+ 위치)
+- 폴더명 Charater/ → Character/
+
+■ 중복 처리 제거
+- StatusDamageEvent.cs — _ctx.Defender.Die() 삭제
+  (DeathEvent.Apply()에서 이미 호출, 중복 사망 처리)
+- EmotionLevelUpEvent.cs — public 필드 → { get; } 프로퍼티
+
+----------------------------------------------------------------
+
+[ P2 | 구조 정합성 ]
+
+■ ClashContext : IClashContext 구현 추가
+- IsCancelled 프로퍼티 추가
+- IClashContext.Defender → OwnerB 명시적 구현
+
+■ IDamageContext에 Attacker 추가
+- StatusDamageContext.Attacker → Defender 반환 (자기 자신)
+  (상태이상 = 자기에게 데미지, null이면 NullRef 위험)
+
+■ PassiveFactory — IStatModifierPassive 분리
+- EmotionOnAttack / MaxHpBoost → null 반환
+  (CharacterStateBuilder에서만 적용, 런타임 패시브 불필요)
+- CharacterRuntime 생성자에서 null 체크 추가
+
+----------------------------------------------------------------
+
+[ P3 | UI → LogDispatcher 구독 전환 ]
+
+■ LogDispatcher 다중 구독 지원
+- Dictionary<Type, Action<CombatLog>> 단일 구독
+  → Dictionary<Type, List<(Delegate, Action<CombatLog>)>> 다중 구독
+- Register<T>() / Unregister<T>() / Dispatch() / DispatchAll() 재작성
+- Delegate.Equals()로 핸들러 식별 (GetHashCode 불일치 회피)
+
+■ BattleRuntime에 LogDispatcher 내장
+- AddLog() 시 자동 Dispatch
+- CharacterRuntime에 MaxEmotionStack / MaxEmotionLevel 프로퍼티 노출
+
+■ BattleManager 전투 생명주기 이벤트
+- OnBattleCreated(BattleRuntime) / OnBattleEnded 이벤트 추가
+- CreateBattle() 끝에서 Invoke → UI가 Bind 시점에 안전하게 접근 가능
+
+■ UI 공통 패턴 확립 (OnEnable / OnDisable)
+- OnEnable → BattleManager.OnBattleCreated += Bind, OnBattleEnded += Unbind
+  → Runtime이 이미 있으면 즉시 Bind (씬 로드 순서 무관)
+- OnDisable → 이벤트 해제 + Unbind()
+- Bind() 첫 줄에 Unbind() → 이중 등록 방지
+- Refresh()에서 CharacterRuntime 읽기만 (상태 변경 금지)
+
+■ 새 UI 스크립트 (LogDispatcher 구독 방식)
+- HpUI.cs       — DamageLog, StatusDamageLog, ChangeMaxHpLog, DeathLog
+- StaggerUI.cs  — StaggerLog, StaggeredLog, StaggerExitLog, ChangeMaxStaggerLog
+- EnergyUI.cs   — EnergyUseLog, ChangeMaxEnergyLog
+- EmotionUI.cs  — EmotionStackLog, EmotionLevelUpLog
+- CardHandUI.cs — DrawCardLog, UseCardLog, DiscardCardLog, ExileCardLog, EndTurnCardLog
+
+■ 옛 UI 격리
+- CardUIManager / HPBarUI / HPTextUI / EnergyUI(구) / SlotDebugPanel
+  / SlotDebugItem / SpeedSlotUI → _legacy/UI/ 폴더로 이동
+- TurnUI.cs — Player 참조 제거 후 유지
+
+----------------------------------------------------------------
+
+[ P3 | BoutStartEvent / BoutEndEvent 신설 ]
+
+■ 이벤트 기반 합 실행 전환
+- CombatExecutor.RunQueue()에서 직접 ResolveCombat 호출
+  → BoutStartEvent Enqueue로 전환
+- BoutStartEvent.Apply()
+  → 로그 생성 → runtime.Executor.ResolveCombat() → BoutEndEvent Enqueue
+- BoutEndEvent.Apply()
+  → DiceRecoverEvent + DiceDestroyUsedEvent Enqueue → 로그 생성
+- "모든 흐름은 이벤트에서 시작" 원칙 완성
+
+■ 실행 흐름
+  RunQueue() → BoutStartEvent
+    → Apply(): BoutStartLog → ResolveCombat() → BoutEndEve

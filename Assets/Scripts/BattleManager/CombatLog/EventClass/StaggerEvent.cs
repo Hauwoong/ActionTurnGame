@@ -1,0 +1,58 @@
+public class StaggerEvent : ICombatEvent
+{
+    private readonly StaggerContext _ctx;
+
+    public StaggerEvent(StaggerContext ctx)
+    {
+        _ctx = ctx;
+    }
+
+    public void Apply(BattleRuntime runtime)
+    {
+        _ctx.Attacker.TriggerBeforeStagger(_ctx);
+        _ctx.Defender.TriggerBeforeStagger(_ctx);
+
+        if(!_ctx.IsCancelled)
+        {
+            runtime.AddLog(new StaggerLog
+            (
+                _ctx.IsHeal ? _ctx.Attacker.CharacterId : _ctx.Defender.CharacterId, 
+                _ctx.FinalValue, 
+                _ctx.IsHeal
+            ));
+            if (_ctx.IsHeal)
+                _ctx.Attacker.RecoverStagger(_ctx.FinalValue);
+            else 
+                _ctx.Defender.TakeStagger(_ctx.FinalValue);
+            
+            _ctx.Attacker.TriggerAfterStagger(_ctx);
+            _ctx.Defender.TriggerAfterStagger(_ctx);
+
+            // AfterStagger »ƒø° »Â∆Æ∑Ø¡¸ ¡¯¿‘ √º≈©
+            if (!_ctx.IsHeal && _ctx.Defender.ShouldEnterStagger())
+            {
+                runtime.EnqueueEvent(new StaggeredEvent(_ctx.Defender.CharacterId));
+            }
+
+            if (_ctx.IsHeal)
+            {
+                runtime.EnqueueEvent(new GainEmotionStackEvent
+                (
+                    _ctx.Attacker.CharacterId,
+                    _ctx.Attacker.EmotionGainOnStaggerHeal
+                ));
+            }
+            else
+            {
+                runtime.EnqueueEvent(new GainEmotionStackEvent(
+                    _ctx.Attacker.CharacterId,
+                    _ctx.Attacker.EmotionGainOnStagger
+                ));
+                runtime.EnqueueEvent(new GainEmotionStackEvent(
+                    _ctx.Defender.CharacterId,
+                    _ctx.Defender.EmotionGainOnStaggered
+                ));
+            }
+        }
+    }
+}
