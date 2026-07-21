@@ -10,10 +10,10 @@ public class BattleManager : MonoBehaviour
     public event Action<BattleRuntime> OnBattleCreated;
     public event Action OnBattleEnded;
 
-    public void CreateBattle(IEnumerable<Character> characters)
+    public void CreateBattle(IEnumerable<Character> allies, IEnumerable<Character> enemies)
     {
         int seed = new System.Random().Next();
-        var snapShot = new BattleSnapShot(characters, seed);
+        var snapShot = new BattleSnapShot(allies, enemies, seed);
         _runtime = new BattleRuntime(snapShot);
 
         OnBattleCreated?.Invoke(_runtime);

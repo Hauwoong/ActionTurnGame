@@ -4,6 +4,7 @@ public sealed class CharacterState
 {
     public CharacterData Source { get; }
     public int CharacterId { get; }
+    public Team Team { get; }
     public int MaxHp { get; }
     public int MaxStagger { get; }
     public int MaxEnergy { get; }
@@ -20,10 +21,11 @@ public sealed class CharacterState
     public IReadOnlyList<PassiveData> Passives { get; }
     public IReadOnlyList<CardData> InitialDeck { get; }
 
-    public CharacterState(CharacterData source, int id)
+    public CharacterState(CharacterData source, int id, Team team)
     {
         Source = source;
         CharacterId = id;
+        Team = team;
 
         // builder로 자원 수정 패시브 적용
         var builder = new CharacterStateBuilder(source);

@@ -96,14 +96,30 @@ public class BattleRuntime : IEventSink
         Executor.Execute(_input.BoutGraph);
     }
 
-    public bool IsBattleOver()
+    // 한쪽 진영이 전멸하면 true. winner 는 승리 팀, 양측 동시 전멸이면 null(무승부).
+    public bool TryGetBattleResult(out Team? winner)
     {
-        int aliveCount = 0;
+        bool allyAlive = false;
+        bool enemyAlive = false;
+
         foreach (var character in _characters.Values)
         {
-            if (!character.IsDead)
-                aliveCount++;
+            if (character.IsDead) continue;
+
+            if (character.Team == Team.Ally) allyAlive = true;
+            else enemyAlive = true;
         }
-        return aliveCount <= 1;
+
+        if (allyAlive && enemyAlive)
+        {
+            winner = null;
+            return false;
+        }
+
+        if (allyAlive) winner = Team.Ally;
+        else if (enemyAlive) winner = Team.Enemy;
+        else winner = null;
+
+        return true;
     }
 }

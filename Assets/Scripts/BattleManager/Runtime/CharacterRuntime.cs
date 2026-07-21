@@ -31,6 +31,7 @@ public class CharacterRuntime : IEventSink
     private readonly CardResolver _cardResolver = new();
 
     public int CharacterId => _state.CharacterId;
+    public Team Team => _state.Team;
     public int BaseSpeedSlotCount => _state.SpeedSlotCount;
     public bool IsDead => _isDead;
     public CardManager CardManager => _cardManager;

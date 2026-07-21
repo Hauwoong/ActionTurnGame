@@ -11,7 +11,7 @@ public class DeathEvent : ICombatEvent
         character.Die();  
         runtime.AddLog(new DeathLog(CharacterId));
 
-        if (runtime.IsBattleOver())
-            runtime.EnqueueEvent(new BattleEndEvent());
+        if (runtime.TryGetBattleResult(out var winner))
+            runtime.EnqueueEvent(new BattleEndEvent(winner));
     }
 }
