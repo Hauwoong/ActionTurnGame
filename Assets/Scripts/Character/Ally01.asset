@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eef42cc2ddfca784bae9078d00152a86, type: 3}
+  m_Name: Ally01
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  _name: Ally01
+  _maxHp: 50
+  _maxStagger: 25
+  _maxEnergy: 3
+  _minSpeed: 1
+  _maxSpeed: 6
+  _baseSpeedSlotCount: 1
+  _maxEmotionLevel: 5
+  _maxEmotionStack: 10
+  _emotionGainOnDamageDealt: 0
+  _emotionGainOnDamageReceived: 0
+  _emotionGainOnStagger: 0
+  _emotionGainOnStaggered: 0
+  _emotionGainOnStaggerHeal: 0
+  _passives: []
+  _initialDeck:
+  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
+  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
+  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
