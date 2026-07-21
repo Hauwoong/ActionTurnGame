@@ -140,7 +140,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8746171b911cf0f4d88259f2c5dad71f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlotDebugItem
-  ownerText: {fileID: 2876814456796859635}
+  ownerText: {fileID: 3305289216294786075}
   speedText: {fileID: 1958093282379586347}
   targetText: {fileID: 4224077236155144673}
   cardText: {fileID: 7417965487363736883}
