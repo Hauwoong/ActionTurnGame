@@ -31,7 +31,7 @@ public class CardZone
     {
         for (int i = _cards.Count - 1; i > 0; i--)
         {
-            int j = rng.Range(0, i + 1);
+            int j = rng.Range(0, i);
             (_cards[i], _cards[j]) = (_cards[j], _cards[i]);
         }
     }
