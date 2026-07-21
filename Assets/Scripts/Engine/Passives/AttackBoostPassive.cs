@@ -1,4 +1,4 @@
-
+ï»¿
 public class AttackBoostPassive : PassiveEffect
 {
     private readonly int _amount;
@@ -11,7 +11,7 @@ public class AttackBoostPassive : PassiveEffect
 
     public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
     {
-        // °ø°İ ÁÖ»çÀ§ÀÏ ¶§¸¸ Àû¿ë
+        // ê³µê²© ì£¼ì‚¬ìœ„ì¼ ë•Œë§Œ ì ìš©
         if (isOwnerA && ctx.DiceA.Type == DiceType.Attack)
             ctx.ModifiedRollA += _amount;
         else if (!isOwnerA && ctx.DiceB.Type == DiceType.Attack)

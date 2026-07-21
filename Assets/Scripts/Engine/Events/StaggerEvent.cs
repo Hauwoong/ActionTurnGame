@@ -1,4 +1,4 @@
-public class StaggerEvent : ICombatEvent
+ï»¿public class StaggerEvent : ICombatEvent
 {
     private readonly StaggerContext _ctx;
 
@@ -28,7 +28,7 @@ public class StaggerEvent : ICombatEvent
             _ctx.Attacker.TriggerAfterStagger(_ctx);
             _ctx.Defender.TriggerAfterStagger(_ctx);
 
-            // AfterStagger ÈÄ¿¡ ÈåÆ®·¯Áü ÁøÀÔ Ã¼Å©
+            // AfterStagger í›„ì— ííŠ¸ëŸ¬ì§ ì§„ì… ì²´í¬
             if (!_ctx.IsHeal && _ctx.Defender.ShouldEnterStagger())
             {
                 runtime.EnqueueEvent(new StaggeredEvent(_ctx.Defender.CharacterId));

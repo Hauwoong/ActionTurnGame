@@ -1,4 +1,4 @@
-
+﻿
 public class TurnStartEvent : ICombatEvent
 {
     public int CharacterId { get; }
@@ -11,5 +11,8 @@ public class TurnStartEvent : ICombatEvent
         var character = runtime.GetCharacterRuntime(CharacterId);
         character.TriggerTurnStart();
         runtime.AddLog(new TurnStartLog(CharacterId));
+
+        // 턴 시작시 카드 한 장을 뽑기
+        runtime.EnqueueEvent(new DrawCardEvent(CharacterId, 1));
     }
 }

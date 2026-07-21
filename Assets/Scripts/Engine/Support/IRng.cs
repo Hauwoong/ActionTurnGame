@@ -1,4 +1,4 @@
-
+ï»¿
 public interface IRng
 {
     int Range(int min, int max);
@@ -15,7 +15,7 @@ public class DeterministicRng : IRng
         random = new System.Random(seed);
     }
 
-    public int Range(int min, int max) // max Æ÷ÇÔ 
+    public int Range(int min, int max) // max í¬í•¨ 
     {
         return random.Next(min, max + 1);
     }

@@ -1,4 +1,4 @@
-// ÁÖ»çÀ§ È¸º¹
+ï»¿// ì£¼ì‚¬ìœ„ íšŒë³µ
 public class DiceRecoverLog : CombatLog
 {
     public int CharacterId { get; }

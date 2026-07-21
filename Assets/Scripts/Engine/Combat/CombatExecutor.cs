@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 
 public class CombatExecutor
 {
@@ -143,7 +143,7 @@ public class CombatExecutor
         var attacker = _runtime.GetCharacterRuntime(characterId);
         var target = _runtime.GetCharacterRuntime(targetId);
 
-        entry.Dice.Roll(_rng); // ÁÖ»çÀ§ ±¼¸®±â Ãß°¡
+        entry.Dice.Roll(_rng); // ì£¼ì‚¬ìœ„ êµ´ë¦¬ê¸° ì¶”ê°€
 
         if (entry.Dice.Type == DiceType.Attack)
         {
@@ -175,7 +175,7 @@ public class CombatExecutor
         {
             AdvanceType.Destroy => new DiceDestroyedEvent(characterId),
             AdvanceType.Consume => new DiceConsumedEvent(characterId),
-            AdvanceType.Reuse => null, // Reuse´Â ¾Æ¹«°Íµµ ¾È ÇÔ
+            AdvanceType.Reuse => null, // ReuseëŠ” ì•„ë¬´ê²ƒë„ ì•ˆ í•¨
             _ => null
         };
     }

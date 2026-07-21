@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 
 public class CardManager
 {
@@ -42,10 +42,10 @@ public class CardManager
         for (int i = 0; i < count; i++)
         {
             var card = Draw(rng);
-            if (card == null) break; // ´õ ÀÌ»ó »ÌÀ» ¼ö ¾øÀ½
+            if (card == null) break; // ë” ì´ìƒ ë½‘ì„ ìˆ˜ ì—†ìŒ
             drawn++;
         }
-        return drawn; // ½ÇÁ¦·Î »ÌÀº ¼ö ¹ÝÈ¯
+        return drawn; // ì‹¤ì œë¡œ ë½‘ì€ ìˆ˜ ë°˜í™˜
     }
 
     public void UseCard(CardData card)

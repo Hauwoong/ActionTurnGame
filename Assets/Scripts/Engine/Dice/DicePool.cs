@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+Ôªøusing System.Collections.Generic;
 
 public class DicePool
 {
@@ -41,7 +41,7 @@ public class DicePool
         }
     }
 
-    public void Recover() // «— «’ ≥°
+    public void Recover() // Ìïú Ìï© ÎÅù
     {
         foreach (var e in _dice)
             if (e.Dice.State == DiceState.Consumed)
@@ -57,7 +57,7 @@ public class DicePool
         }
     }
 
-    public void ResetForNextTurn() // ≈œ ≥°
+    public void ResetForNextTurn() // ÌÑ¥ ÎÅù
     {
         _cursor = 0;
         foreach (var e in _dice)

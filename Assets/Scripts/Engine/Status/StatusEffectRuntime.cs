@@ -1,4 +1,4 @@
-
+ï»¿
 public abstract class StatusEffectRuntime
 {
     protected readonly CharacterRuntime Owner;
@@ -21,8 +21,8 @@ public abstract class StatusEffectRuntime
     public virtual void OnTurnStart(TurnStartContext ctx) { }
     public virtual void OnBeforeDamage(IDamageContext ctx) { }
     public virtual void OnAfterDamage(IDamageContext ctx) { }
-    public virtual void OnBeforeStagger(StaggerContext ctx) { }  // Ãß°¡
-    public virtual void OnAfterStagger(StaggerContext ctx) { }   // Ãß°¡
+    public virtual void OnBeforeStagger(StaggerContext ctx) { }  // ì¶”ê°€
+    public virtual void OnAfterStagger(StaggerContext ctx) { }   // ì¶”ê°€
     public virtual void OnBeforeClash(ClashContext ctx, bool IsOwnerA) { } 
     public virtual void OnDiceClash() { }
     public virtual void OnTurnEnd()

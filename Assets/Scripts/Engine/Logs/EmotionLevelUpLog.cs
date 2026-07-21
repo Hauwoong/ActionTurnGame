@@ -1,4 +1,4 @@
-// °¨Á¤ ·¹º§¾÷
+ï»¿// ê°ì • ë ˆë²¨ì—…
 public class EmotionLevelUpLog : CombatLog
 {
     public int CharacterId { get; }

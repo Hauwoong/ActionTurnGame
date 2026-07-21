@@ -1,4 +1,4 @@
-public class DiceRuleTable
+ï»¿public class DiceRuleTable
 {
     private readonly DiceRule[,] _table;
 
@@ -45,7 +45,7 @@ public class DiceRuleTable
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new DamageContext(
                 ctx.OwnerA, ctx.OwnerB,
-                ctx.ModifiedRollA - ctx.ModifiedRollB  // °ø°İ°ª - ¼öºñ°ª
+                ctx.ModifiedRollA - ctx.ModifiedRollB  // ê³µê²©ê°’ - ìˆ˜ë¹„ê°’
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
@@ -59,7 +59,7 @@ public class DiceRuleTable
             DrawContext = null
         };
 
-        // Block vs Attack (´ëÄª)
+        // Block vs Attack (ëŒ€ì¹­)
         _table[(int)DiceType.Block, (int)DiceType.Attack] = new DiceRule
         {
             Win = ClashResult.AWin,
@@ -94,14 +94,14 @@ public class DiceRuleTable
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerB,
                 ctx.ModifiedRollB - ctx.ModifiedRollA,
-                true  // È¸ÇÇ »ç¿ëÀÚ ÈåÆ®·¯Áü È¸º¹
+                true  // íšŒí”¼ ì‚¬ìš©ì ííŠ¸ëŸ¬ì§ íšŒë³µ
             ),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
             DrawContext = null
         };
 
-        // Evade vs Attack (´ëÄª)
+        // Evade vs Attack (ëŒ€ì¹­)
         _table[(int)DiceType.Evade, (int)DiceType.Attack] = new DiceRule
         {
             Win = ClashResult.AWin,
@@ -109,7 +109,7 @@ public class DiceRuleTable
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerA,
                 ctx.ModifiedRollA - ctx.ModifiedRollB,
-                true  // È¸ÇÇ »ç¿ëÀÚ ÈåÆ®·¯Áü È¸º¹
+                true  // íšŒí”¼ ì‚¬ìš©ì ííŠ¸ëŸ¬ì§ íšŒë³µ
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
@@ -130,7 +130,7 @@ public class DiceRuleTable
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerB,
                 ctx.ModifiedRollA - ctx.ModifiedRollB,
-                false  // Áø ÂÊ ÈåÆ®·¯Áü ÇÇÇØ
+                false  // ì§„ ìª½ ííŠ¸ëŸ¬ì§ í”¼í•´
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
@@ -152,21 +152,21 @@ public class DiceRuleTable
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerB,
                 ctx.ModifiedRollA - ctx.ModifiedRollB,
-                false  // È¸ÇÇ ÂÊ ÈåÆ®·¯Áü ÇÇÇØ
+                false  // íšŒí”¼ ìª½ ííŠ¸ëŸ¬ì§ í”¼í•´
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerB,
                 ctx.ModifiedRollB - ctx.ModifiedRollA,
-                true  // È¸ÇÇ »ç¿ëÀÚ ÈåÆ®·¯Áü È¸º¹
+                true  // íšŒí”¼ ì‚¬ìš©ì ííŠ¸ëŸ¬ì§ íšŒë³µ
             ),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
             DrawContext = null
         };
 
-        // Evade vs Block (´ëÄª)
+        // Evade vs Block (ëŒ€ì¹­)
         _table[(int)DiceType.Evade, (int)DiceType.Block] = new DiceRule
         {
             Win = ClashResult.AWin,
@@ -174,14 +174,14 @@ public class DiceRuleTable
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerA,
                 ctx.ModifiedRollA - ctx.ModifiedRollB,
-                true  // È¸ÇÇ »ç¿ëÀÚ ÈåÆ®·¯Áü È¸º¹
+                true  // íšŒí”¼ ì‚¬ìš©ì ííŠ¸ëŸ¬ì§ íšŒë³µ
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerA,
                 ctx.ModifiedRollB - ctx.ModifiedRollA,
-                false  // È¸ÇÇ ÂÊ ÈåÆ®·¯Áü ÇÇÇØ
+                false  // íšŒí”¼ ìª½ ííŠ¸ëŸ¬ì§ í”¼í•´
             ),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
@@ -196,7 +196,7 @@ public class DiceRuleTable
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerA,
                 ctx.ModifiedRollA - ctx.ModifiedRollB,
-                true  // ÀÌ±ä ÂÊ ÈåÆ®·¯Áü È¸º¹
+                true  // ì´ê¸´ ìª½ ííŠ¸ëŸ¬ì§ íšŒë³µ
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
@@ -226,7 +226,7 @@ public class DiceRuleTable
             DrawContext = null
         };
 
-        // Attack vs Counter (´ëÄª)
+        // Attack vs Counter (ëŒ€ì¹­)
         _table[(int)DiceType.Attack, (int)DiceType.Counter] = new DiceRule
         {
             Win = ClashResult.AWin,
@@ -258,7 +258,7 @@ public class DiceRuleTable
             DrawContext = null
         };
 
-        // Block vs Counter (´ëÄª)
+        // Block vs Counter (ëŒ€ì¹­)
         _table[(int)DiceType.Block, (int)DiceType.Counter] = new DiceRule
         {
             Win = ClashResult.AWin,
@@ -290,7 +290,7 @@ public class DiceRuleTable
             DrawContext = null
         };
 
-        // Evade vs Counter (´ëÄª)
+        // Evade vs Counter (ëŒ€ì¹­)
         _table[(int)DiceType.Evade, (int)DiceType.Counter] = new DiceRule
         {
             Win = ClashResult.AWin,

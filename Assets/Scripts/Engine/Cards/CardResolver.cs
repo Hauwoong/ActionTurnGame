@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 
 public class CardResolver
 {
@@ -26,7 +26,7 @@ public class CardResolver
     public List<ICombatEvent> BuildCardEffects(CardData card, CharacterRuntime user)
     {
         var events = new List<ICombatEvent>();
-        // TODO: ³ªÁß¿¡ Ä«µå È¿°ú¸¦ ±¸ÇöÇÒ ¶§, card.descriptionÀ» ÆÄ½ÌÇØ¼­ ÀÌº¥Æ®¸¦ »ı¼ºÇÏ´Â ·ÎÁ÷ÀÌ ÇÊ¿äÇÒ °ÍÀÌ´Ù.
+        // TODO: ë‚˜ì¤‘ì— ì¹´ë“œ íš¨ê³¼ë¥¼ êµ¬í˜„í•  ë•Œ, card.descriptionì„ íŒŒì‹±í•´ì„œ ì´ë²¤íŠ¸ë¥¼ ìƒì„±í•˜ëŠ” ë¡œì§ì´ í•„ìš”í•  ê²ƒì´ë‹¤.
         return events;
     }
 }

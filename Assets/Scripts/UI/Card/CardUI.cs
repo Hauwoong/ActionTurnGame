@@ -1,4 +1,4 @@
-using TMPro;
+ï»¿using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -43,7 +43,7 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
         cardNameText.text = card.cardName;
         cardCostText.text = card.cost.ToString();
 
-        cardDamageText.gameObject.SetActive(false); // ±âº»°ªÀ¸·Î ºñÈ°¼ºÈ­
+        cardDamageText.gameObject.SetActive(false); // ê¸°ë³¸ê°’ìœ¼ë¡œ ë¹„í™œì„±í™”
 
 
         if (artworkImage != null && card.artwork != null)

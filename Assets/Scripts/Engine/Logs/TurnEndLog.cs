@@ -1,4 +1,4 @@
-// ÅÏ Á¾·á
+ï»¿// í„´ ì¢…ë£Œ
 public class TurnEndLog : CombatLog
 {
     public int CharacterId { get; }

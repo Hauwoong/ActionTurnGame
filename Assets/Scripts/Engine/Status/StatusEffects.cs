@@ -1,4 +1,4 @@
-// ÃâÇ÷ - ÁÖ»çÀ§ ÇÕ¸¶´Ù ½ºÅÃ¸¸Å­ ÇÇÇØ + ½ºÅÃ Àı¹İ °¨¼Ò
+ï»¿// ì¶œí˜ˆ - ì£¼ì‚¬ìœ„ í•©ë§ˆë‹¤ ìŠ¤íƒë§Œí¼ í”¼í•´ + ìŠ¤íƒ ì ˆë°˜ ê°ì†Œ
 public class BleedEffect : StatusEffectRuntime
 {
     public BleedEffect(CharacterRuntime owner, int stack)
@@ -13,7 +13,7 @@ public class BleedEffect : StatusEffectRuntime
     }
 }
 
-// È­»ó - ÅÏ Á¾·á ½Ã ½ºÅÃ¸¸Å­ ÇÇÇØ + ½ºÅÃ Àı¹İ °¨¼Ò
+// í™”ìƒ - í„´ ì¢…ë£Œ ì‹œ ìŠ¤íƒë§Œí¼ í”¼í•´ + ìŠ¤íƒ ì ˆë°˜ ê°ì†Œ
 public class BurnEffect : StatusEffectRuntime
 {
     public BurnEffect(CharacterRuntime owner, int stack)
@@ -28,7 +28,7 @@ public class BurnEffect : StatusEffectRuntime
     }
 }
 
-// Èû - µ¥¹ÌÁö °è»ê Àü ½ºÅÃ¸¸Å­ µ¥¹ÌÁö Áõ°¡
+// í˜ - ë°ë¯¸ì§€ ê³„ì‚° ì „ ìŠ¤íƒë§Œí¼ ë°ë¯¸ì§€ ì¦ê°€
 public class StrengthEffect : StatusEffectRuntime
 {
     public StrengthEffect(CharacterRuntime owner, int stack)
@@ -43,7 +43,7 @@ public class StrengthEffect : StatusEffectRuntime
     }
 }
 
-// ¸¶ºñ - µ¥¹ÌÁö °è»ê Àü ½ºÅÃ¸¸Å­ µ¥¹ÌÁö °¨¼Ò
+// ë§ˆë¹„ - ë°ë¯¸ì§€ ê³„ì‚° ì „ ìŠ¤íƒë§Œí¼ ë°ë¯¸ì§€ ê°ì†Œ
 public class ParalysisEffect : StatusEffectRuntime
 {
     public ParalysisEffect(CharacterRuntime owner, int stack)

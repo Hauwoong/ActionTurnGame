@@ -1,4 +1,4 @@
-// ÁÖ»çÀ§ ¼Òºñ
+ï»¿// ì£¼ì‚¬ìœ„ ì†Œë¹„
 public class DiceConsumedLog : CombatLog
 {
     public DiceHandle Handle { get; }
