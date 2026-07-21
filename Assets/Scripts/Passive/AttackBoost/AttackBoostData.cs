@@ -1,10 +1,9 @@
+using UnityEngine;
+
+[CreateAssetMenu(menuName = "Game/Passive/Attack Boost")]
 public class AttackBoostData : PassiveData
 {
-    public int Amount { get; }
-
-    public AttackBoostData(int amount)
-        : base("Attack Boost", PassiveType.AttackBoost)
-    {
-        Amount = amount;
-    }
+    [SerializeField] private int amount;
+    public override PassiveType Type => PassiveType.AttackBoost;
+    public int Amount => amount;
 }

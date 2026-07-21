@@ -1,4 +1,3 @@
-
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,81 +5,73 @@ using UnityEngine.EventSystems;
 
 public class SlotDebugItem : MonoBehaviour, IDropHandler
 {
-    public TextMeshProUGUI OwnerText;
-    public TextMeshProUGUI speedText;
-    public TextMeshProUGUI targetText;
-    public TextMeshProUGUI cardText;
-    public TextMeshProUGUI interceptText;
-    public TextMeshProUGUI boutText;
-    public Button button;
+    [SerializeField] private TextMeshProUGUI ownerText;
+    [SerializeField] private TextMeshProUGUI speedText;
+    [SerializeField] private TextMeshProUGUI targetText;
+    [SerializeField] private TextMeshProUGUI cardText;
+    [SerializeField] private TextMeshProUGUI interceptText;
+    [SerializeField] private TextMeshProUGUI boutText;
+    [SerializeField] private Button button;
+    [SerializeField] private Image bg;
 
-    public Image bg;
+    private PlayerActionInput _input;
+    private SpeedSlot _slot;
 
-    public PlayerActionInput input;
-    public SpeedSlot slot;
-
-    public void Init(SpeedSlot slot, PlayerActionInput input)
+    public void Bind(SpeedSlotRuntime slotRuntime, BoutGraph graph, PlayerActionInput input)
     {
-        this.slot = slot;
-        this.input = input;
+        _slot = slotRuntime.Slot;
+        _input = input;
 
-        button.onClick.RemoveListener(Onclick);
-        button.onClick.AddListener(Onclick);
+        button.onClick.RemoveListener(OnClick);
+        button.onClick.AddListener(OnClick);
 
-        Bind(slot);
-    }
+        ownerText.text = $"ID: {_slot.CharacterId}";
+        speedText.text = $"SPD: {slotRuntime.Speed}";
 
-    public void Bind(SpeedSlot slot)
-    {
-        OwnerText.text = slot.owner.Name;
-        speedText.text = $"SPD: {slot.speed}";
+        graph.ActionBySlot.TryGetValue(_slot, out var action);
 
-        targetText.text =
-            slot.target != null
-            ? $"{slot.target.owner.Name}"
+        targetText.text = action != null
+            ? $"{action.TargetSlot.CharacterId}-{action.TargetSlot.SlotIndex}"
             : "None";
 
-        cardText.text =
-            slot.card != null
-            ? $"{slot.card.cardName}"
+        cardText.text = action?.Card != null
+            ? action.Card.cardName
             : "No Card";
 
-        interceptText.text = 
-            slot.interceptCandidates.Count > 0
-            ? $"Intercept: {slot.interceptCandidates.Count}"
-            : "Intercept: -";
+        int interceptCount = graph.interceptCandidates.TryGetValue(_slot, out var candidates)
+            ? candidates.Count
+            : 0;
+        interceptText.text = interceptCount > 0 ? $"Intercept: {interceptCount}" : "Intercept: -";
 
-        boutText.text =
-            slot.currentBout != null
-            ? $"Bout: {slot.currentBout.owner.Name}"
-            : "Bout: -";
+        bool hasBout = graph.edges.TryGetValue(_slot, out var boutPartner);
+        boutText.text = hasBout ? $"Bout: {boutPartner.CharacterId}-{boutPartner.SlotIndex}" : "Bout: -";
 
-        UpdateColor(slot);
+        UpdateColor(slotRuntime, hasBout, interceptCount);
     }
 
-    void UpdateColor(SpeedSlot slot)
+    private void UpdateColor(SpeedSlotRuntime slotRuntime, bool hasBout, int interceptCount)
     {
         if (bg == null) return;
 
-        if (slot.IsUsed)
+        if (slotRuntime.Used)
             bg.color = Color.gray;
-        else if (slot.currentBout != null)
+        else if (hasBout)
             bg.color = Color.red;
-        else if (slot.interceptCandidates.Count > 0)
+        else if (interceptCount > 0)
             bg.color = new Color(1f, 0.6f, 0f);
         else
             bg.color = Color.white;
     }
 
-    public void Onclick()
+    private void OnClick()
     {
-        input.SelectSpeedSlot(slot);
+        _input.SelectSpeedSlot(_slot);
     }
 
     public void OnDrop(PointerEventData eventData)
     {
-        if (!input.ISDraggingCard()) return;
+        if (!_input.IsDraggingCard()) return;
 
-        input.RegisterToSlot(slot);
+        _input.RegisterToSlot(_slot);
     }
 }

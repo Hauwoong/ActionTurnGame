@@ -94,7 +94,7 @@ public class BoutGraph
 
                 if (!actionBySlot.TryGetValue(current, out var currentAction)) return;
 
-                if (action.RegisterOrder > currentAction.RegisterOrder)
+                if (action.ActionId > currentAction.ActionId)
                 {
                     Disconnect(target);
                     Connect(source, target);

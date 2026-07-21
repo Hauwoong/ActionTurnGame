@@ -19,6 +19,12 @@ public class BattleRuntime : IEventSink
 
     private BattleInput _input;
 
+    private BoutGraph _boutGraph;
+    public BoutGraph BoutGraph => _boutGraph;
+
+    private int _nextActionId = 0;
+    public int NextActionId() => _nextActionId++;
+
     private readonly LogDispatcher _logDispatcher = new();
     public LogDispatcher LogDispatcher => _logDispatcher;
 
@@ -35,6 +41,7 @@ public class BattleRuntime : IEventSink
             foreach (var slot in runtime.SpeedSlots)
                 _slotRuntimeMap[slot.Slot] = slot;
         }
+        _boutGraph = new BoutGraph(new Dictionary<SpeedSlot, ActionInstance>(), _slotRuntimeMap);
     }
 
     public void RollSpeedDice()

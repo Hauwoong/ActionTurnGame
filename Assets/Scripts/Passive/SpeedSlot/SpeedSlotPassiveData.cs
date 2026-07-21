@@ -1,6 +1,7 @@
+using UnityEngine;
 
-public class SpeedSlotPassiveData : PassiveData
+[CreateAssetMenu(menuName = "Game/Passive/Speed Slot")]
+public class SpeedSlotPassvieData : PassiveData
 {
-    public SpeedSlotPassiveData()
-        : base("Speed Slot", PassiveType.SpeedSlot) { }
+    public override PassiveType Type => PassiveType.SpeedSlot;
 }

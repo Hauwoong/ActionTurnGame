@@ -28,7 +28,8 @@ public class CombatExecutor
             var priority = new ActionPriority
             {
                 Speed = graph.SlotRuntime[slot].Speed,
-                RegisterOrder = action.RegisterOrder
+                CharacterId = slot.CharacterId,
+                SlotIndex = slot.SlotIndex
             };
             pq.Enqueue(action, priority);
         }

@@ -1,20 +1,17 @@
-public abstract class PassiveData
-{
-    public string Name { get; }
-    public PassiveType Type { get; }
+using UnityEngine;
+using UnityEngine;
 
-    protected PassiveData(string name, PassiveType type)
-    {
-        Name = name;
-        Type = type;
-    }
+public abstract class PassiveData : ScriptableObject
+{
+    [SerializeField] private string passiveName;
+    public string Name => passiveName;
+    public abstract PassiveType Type { get; }
 }
 
 public enum PassiveType
 {
-    SpeedSlot,      // 스피드 슬롯 관련
+    SpeedSlot,
     AttackBoost,
     EmotionOnAttack,
     MaxHpBoost,
-    // 나중에 추가
 }

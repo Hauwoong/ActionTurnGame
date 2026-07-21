@@ -2,15 +2,14 @@ using UnityEngine;
 
 public class PlayerActionInput : MonoBehaviour
 {
-    public BattleManager battleManager;
+    [SerializeField] private BattleManager battleManager;
 
     private SpeedSlot? selectedSlot = null;
-    [SerializeField] CardData draggingCard = null;
+    private CardData draggingCard = null;
 
     public void SelectSpeedSlot(SpeedSlot slot)
     {
         selectedSlot = slot;
-
         Debug.Log($"Speed Dice {selectedSlot.Value.SlotIndex} selected");
     }
 
@@ -22,12 +21,21 @@ public class PlayerActionInput : MonoBehaviour
 
     public void RegisterToSlot(SpeedSlot targetSlot)
     {
-        if (selectedSlot == null) return;
+        if (!selectedSlot.HasValue || draggingCard == null) return;
 
-        battleManager.RegisterAction(selectedSlot.Value, targetSlot, draggingCard);
+        var runtime = battleManager.Runtime;
+        runtime.EnqueueEvent(new ActionRegisteredEvent(
+            selectedSlot.Value, targetSlot, draggingCard
+        ));
 
         draggingCard = null;
         selectedSlot = null;
+    }
+
+    public void CancelSlot(SpeedSlot slot)
+    {
+        var runtime = battleManager.Runtime;
+        runtime.EnqueueEvent(new ActionCancelledEvent(slot));
     }
 
     public void EndDraggingCard()
@@ -37,10 +45,10 @@ public class PlayerActionInput : MonoBehaviour
 
     public bool HasSelectedSlot()
     {
-        return selectedSlot != null; 
+        return selectedSlot.HasValue;
     }
 
-    public bool ISDraggingCard()
+    public bool IsDraggingCard()
     {
         return draggingCard != null;
     }

@@ -1,57 +1,47 @@
 using System.Collections.Generic;
+using UnityEngine;
 
-public class CharacterData
+[CreateAssetMenu(menuName = "Card Game/Character")]
+public class CharacterData : ScriptableObject
 {
-    public string Name { get; }
-    public int MaxHp { get; }
-    public int MaxStagger { get; }
-    public int MaxEnergy { get; }
-    public int MinSpeed { get; }
-    public int MaxSpeed { get; }
-    public int BaseSpeedSlotCount { get; }
-    public int MaxEmotionLevel { get; }      // 최대 감정 단계
-    public int MaxEmotionStack { get; }      // 감정 스택 최대치 감정 스택 10 -> 감정 레벨 +1
-    public int EmotionGainOnDamageDealt { get; }
-    public int EmotionGainOnDamageReceived { get; }
-    public int EmotionGainOnStagger { get; }
-    public int EmotionGainOnStaggered { get; }
-    public int EmotionGainOnStaggerHeal { get; } 
-    public IReadOnlyList<PassiveData> Passives { get; }
-    public IReadOnlyList<CardData> InitialDeck { get; }
+    [Header("Info")]
+    [SerializeField] private string _name;
 
-    public CharacterData(
-        string name,
-        int maxHp,
-        int maxStagger,
-        int maxEnergy,
-        int minSpeed,
-        int maxSpeed,
-        int baseSpeedSlotCount = 1,
-        int maxEmotionLevel = 5,
-        int maxEmotionStack = 10,
-        int emotionGainOnDamageDealt = 0,
-        int emotionGainOnDamageReceived = 0,
-        int emotionGainOnStagger = 0,
-        int emotionGainOnStaggered = 0,
-        int emotionGainOnStaggerHeal = 0,
-        List<PassiveData> passives = null,
-        List<CardData> initialDeck = null)
-    {
-        Name = name;
-        MaxHp = maxHp;
-        MaxStagger = maxStagger;
-        MaxEnergy = maxEnergy;
-        MinSpeed = minSpeed;
-        MaxSpeed = maxSpeed;
-        BaseSpeedSlotCount = baseSpeedSlotCount;
-        MaxEmotionLevel = maxEmotionLevel;
-        MaxEmotionStack = maxEmotionStack;
-        EmotionGainOnDamageDealt = emotionGainOnDamageDealt;
-        EmotionGainOnDamageReceived = emotionGainOnDamageReceived;
-        EmotionGainOnStagger = emotionGainOnStagger;
-        EmotionGainOnStaggered = emotionGainOnStaggered;
-        EmotionGainOnStaggerHeal = emotionGainOnStaggerHeal;
-        Passives = passives ?? new List<PassiveData>();
-        InitialDeck = initialDeck ?? new List<CardData>();
-    }
+    [Header("Stats")]
+    [SerializeField] private int _maxHp;
+    [SerializeField] private int _maxStagger;
+    [SerializeField] private int _maxEnergy;
+    [SerializeField] private int _minSpeed;
+    [SerializeField] private int _maxSpeed;
+    [SerializeField] private int _baseSpeedSlotCount = 1;
+
+    [Header("Emotion")]
+    [SerializeField] private int _maxEmotionLevel = 5;     // 최대 감정 단계
+    [SerializeField] private int _maxEmotionStack = 10;    // 감정 스택 최대치 감정 스택 10 -> 감정 레벨 +1
+    [SerializeField] private int _emotionGainOnDamageDealt;
+    [SerializeField] private int _emotionGainOnDamageReceived;
+    [SerializeField] private int _emotionGainOnStagger;
+    [SerializeField] private int _emotionGainOnStaggered;
+    [SerializeField] private int _emotionGainOnStaggerHeal;
+
+    [Header("Passives & Deck")]
+    [SerializeField] private List<PassiveData> _passives = new();
+    [SerializeField] private List<CardData> _initialDeck = new();
+
+    public string Name => _name;
+    public int MaxHp => _maxHp;
+    public int MaxStagger => _maxStagger;
+    public int MaxEnergy => _maxEnergy;
+    public int MinSpeed => _minSpeed;
+    public int MaxSpeed => _maxSpeed;
+    public int BaseSpeedSlotCount => _baseSpeedSlotCount;
+    public int MaxEmotionLevel => _maxEmotionLevel;
+    public int MaxEmotionStack => _maxEmotionStack;
+    public int EmotionGainOnDamageDealt => _emotionGainOnDamageDealt;
+    public int EmotionGainOnDamageReceived => _emotionGainOnDamageReceived;
+    public int EmotionGainOnStagger => _emotionGainOnStagger;
+    public int EmotionGainOnStaggered => _emotionGainOnStaggered;
+    public int EmotionGainOnStaggerHeal => _emotionGainOnStaggerHeal;
+    public IReadOnlyList<PassiveData> Passives => _passives;
+    public IReadOnlyList<CardData> InitialDeck => _initialDeck;
 }
