@@ -9,7 +9,7 @@ public class BattleSnapShot
     private readonly List<CharacterState> _characterStates;
     public IReadOnlyList<CharacterState> CharacterStates => _characterStates;
 
-    public BattleSnapShot(IEnumerable<Character> allies, IEnumerable<Character> enemies, int seed)
+    public BattleSnapShot(IEnumerable<CharacterData> allies, IEnumerable<CharacterData> enemies, int seed)
     {
         Seed = seed;
 
@@ -19,13 +19,13 @@ public class BattleSnapShot
         AddAll(enemies, Team.Enemy);
     }
 
-    void AddAll(IEnumerable<Character> characters, Team team)
+    void AddAll(IEnumerable<CharacterData> characters, Team team)
     {
         foreach (var character in characters)
         {
             int id = _nextCharacterId++;
 
-            _characterStates.Add(new CharacterState(character.CharacterData, id, team));
+            _characterStates.Add(new CharacterState(character, id, team));
         }
     }
 }

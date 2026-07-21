@@ -13,10 +13,36 @@ public class BattleManager : MonoBehaviour
     public void CreateBattle(IEnumerable<Character> allies, IEnumerable<Character> enemies)
     {
         int seed = new System.Random().Next();
-        var snapShot = new BattleSnapShot(allies, enemies, seed);
+        var snapShot = new BattleSnapShot(ExtractData(allies), ExtractData(enemies), seed);
         _runtime = new BattleRuntime(snapShot);
 
         OnBattleCreated?.Invoke(_runtime);
+    }
+
+    IEnumerable<CharacterData> ExtractData(IEnumerable<Character> characters)
+    {
+        int index = 0;
+
+        List<CharacterData> datas = new List<CharacterData>();
+        foreach (var character in characters)
+        {
+            int current = index++;
+
+            if (character == null)
+            {
+                Debug.LogError($"BattleManager: Character {current} is null.");
+                continue;
+            }
+
+            if (character.CharacterData == null)
+            {
+                Debug.LogError($"BattleManager: CharacterData is null for character {character.name}.");
+                continue;
+            }
+
+            datas.Add(character.CharacterData);
+        }
+        return datas;
     }
 
     public void StartTurn()
