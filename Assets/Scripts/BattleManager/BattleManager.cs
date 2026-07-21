@@ -21,6 +21,8 @@ public class BattleManager : MonoBehaviour
 
     public void StartTurn()
     {
+        if (_runtime == null) return;
+
         _runtime.RollSpeedDice();
 
         foreach (var character in _runtime.Characters.Values)
@@ -29,15 +31,27 @@ public class BattleManager : MonoBehaviour
 
     public void ExecuteCombat()
     {
+        if (_runtime == null) return;
+
         _runtime.Executor.Execute(_runtime.BoutGraph);
     }
 
+    // 턴 종료 -> 전투 해석 -> 종료 판정 -> 다음 턴. 한 턴의 진행 순서를 여기서 소유한다.
     public void EndTurn()
     {
+        if (_runtime == null) return;
+
+        ExecuteCombat();
+
         foreach (var character in _runtime.Characters.Values)
             _runtime.EnqueueEvent(new TurnEndEvent(character.CharacterId));
 
         _runtime.BoutGraph.Clear();
+
+        if (_runtime.TryGetBattleResult(out _))
+            EndBattle();
+        else
+            StartTurn();
     }
 
     public void EndBattle()
