@@ -3180,3 +3180,64 @@ CharacterRuntime 확장
 ■ 실행 흐름
   RunQueue() → BoutStartEvent
     → Apply(): BoutStartLog → ResolveCombat() → BoutEndEve
+---
+
+## 2026-07-21 ~ 07-22
+
+### 오늘 한 것
+- 대체된 전투 추상화 제거 (BoutPlanner, LorRuleSet, IRuleSet, ClashInput, ClashInputBuilder, ActionDeclaration)
+- 진영(Team) 개념 도입 — 한쪽 전멸 시 전투 종료
+- 턴 루프 배선 — CreateBattle / StartTurn / ExecuteCombat 에 호출자 신설
+- 엔진 계층에서 MonoBehaviour 의존 제거 (BattleSnapShot)
+- 최소 1대1 테스트 구성 (Strike 카드, Ally01 / Enemy01)
+
+### 문제 — 중요한 실수 기록
+
+■ "참조 0건"을 "지워도 되는 코드"로 착각
+- Bout.cs 는 어디서도 참조되지 않았지만 "개념이 살아있다"는 이유로 존치 결정
+- 실제로는 ActionInstance.Speed(존재한 적 없는 멤버)를 읽고 있어 721b912 부터 빌드가 깨져 있었음
+- 컴파일 실패 상태의 Unity 는 Add Component 를 거부 → "컴포넌트가 안 붙는다"는 증상으로 나타남
+- 참조 수와 컴파일 가능 여부는 별개다
+
+■ IRng.Range 의 경계 규약이 문서화되지 않음
+- DeterministicRng.Range 는 random.Next(min, max + 1) → max 포함
+- Unity 의 Random.Range(int, int) 는 max 제외 → 그 관습을 아는 사람일수록 착각
+- CardZone.Shuffle 이 rng.Range(0, i + 1) 로 작성됨 → ArgumentOutOfRangeException
+- 덱이 비었을 땐 루프가 안 돌아 드러나지 않다가, 카드를 넣는 순간 터짐
+- 주사위/속도 호출부는 포함 기준이 맞아 정상 동작 → 셔플만 틀린 채로 잠복해 있었음
+
+■ using UnityEngine 이 없어도 Unity 에 종속될 수 있음
+- BattleSnapShot 은 using UnityEngine 이 없는데 IEnumerable<Character> 를 받고 있었음
+- Character 는 MonoBehaviour → 타입 참조만으로 종속
+- 계층 순수성은 using 목록이 아니라 시그니처에 등장하는 타입으로 판단해야 함
+
+■ Editor.log 는 누적된다
+- 이미 삭제된 파일의 과거 에러가 그대로 남아 있음
+- error CS 를 grep 할 때 해당 파일/멤버가 현재도 존재하는지 교차 확인 필요
+
+■ 호출자 없는 코드가 대량으로 방치돼 있었음
+- CreateBattle / StartTurn / ExecuteCombat / EndBattle 모두 호출자 0
+- EndTurn 만 TurnUI 버튼에 연결돼 있었고, 그마저 ExecuteCombat 을 부르지 않아
+  등록한 액션이 해석 없이 BoutGraph.Clear() 로 버려지고 있었음
+- 컴파일이 되는 것과 실행 경로가 이어진 것은 별개다
+
+■ 진영 개념 부재
+- BattleSnapShot 이 양 진영을 평평한 리스트 하나로 합쳐 받아 팀 정보가 소실
+- IsBattleOver() 가 전체 생존자 수만 세어 사실상 "최후의 1인" 규칙이 됨
+- 3v3 에서 한 팀이 전멸해도 전투가 끝나지 않는 상태였음
+
+### 해결
+- Bout.cs / BoutCandidate.cs 삭제, LorRuleSet 계열 삭제
+- enum Team 도입, IsBattleOver() → TryGetBattleResult(out Team? winner) 로 교체
+- BattleStarter 신설, EndTurn 이 턴 진행 순서(전투 해석 → 종료 판정 → 다음 턴)를 소유
+- BattleManager 가 Character → CharacterData 추출을 담당, BattleSnapShot 은 순수 데이터만 수신
+- 추출은 즉시 평가. 지연 평가(LINQ Select)로 넘기면 멤버 접근이 다시 엔진 안에서 일어남
+- CardZone.Shuffle 은 rng.Range(0, i) 로 수정. IRng.Range 는 이름/주석으로 규약 명시 검토 중
+
+### 배운 점
+- 데드 코드는 "안 쓰인다"와 "컴파일된다"를 따로 확인해야 한다
+- 난수 API 는 경계 규약을 이름이나 주석에 드러내야 한다. Range 라는 이름은 Unity 관습 때문에 오해를 부른다
+- 계층 순수성은 using 이 아니라 시그니처로 판단한다
+- 인스펙터 필드는 타입에 따라 넣을 것이 다르다 — Character 는 씬 오브젝트, CharacterData 는 에셋
+- 잘못된 세팅은 NullReferenceException 이 아니라 위치(진영/인덱스/이름)를 담은 메시지로 드러나야 원인 추적이 빠르다
+- 버그가 "지금까지 안 터진 것"이 "정상이었다"는 뜻은 아니다. 조건이 안 맞아 잠복했을 뿐일 수 있다
