@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 public class BoutGraph
 {
     private Dictionary<SpeedSlot, ActionInstance> actionBySlot;
@@ -194,6 +194,7 @@ public class BoutGraph
 
     public void Clear()
     {
+        actionBySlot.Clear();
         targetMap.Clear();
         edges.Clear();
         interceptCandidates.Clear();

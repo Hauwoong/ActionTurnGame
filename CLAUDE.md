@@ -23,19 +23,14 @@
   이제 루프의 모든 탈출 경로가 `visited.Add(slot)` 을 찍는다.
   함정이었던 것: struct 인 `SpeedSlot` 은 `TryGetValue` 실패 시 null 이 아니라 `default`(0번 캐릭터 슬롯)가
   나와서, 폴백 없이 흘리면 무조건 0번을 때린다.
-
-### 3. `BoutGraph.Clear()` 가 `actionBySlot` 을 안 지운다
-`Engine/Bout/BoutGraph.cs`
-
-`Clear()` 는 `edges` / `targetMap` / `interceptCandidates` 만 비우고 `actionBySlot` 은 그대로 둔다.
-그래서 턴이 넘어가도 슬롯 디버그 UI 에 지난 턴 카드 이름이 남는다(전투 중단 아님, 표시만 잔류).
-사소하지만, 다음 턴 합 계산이 `actionBySlot.Values` 를 도는 만큼 스테일 항목이 섞일 여지도 있음.
-
-### 결정 필요: 클래시 데미지 = 굴림값 "차이"
-`Engine/Combat/DiceRuleTable.cs`
-
-Attack vs Attack 승자가 `rollA - rollB`(두 굴림의 **차이**)만큼만 넣는다. LOR 원본은 승자가 **자기 굴림값 전체**.
-그래서 지금은 데미지가 1~3 으로 매우 작고 무승부면 0. 게임 필이 크게 달라지는 지점이라 의도인지 확정 필요.
+- **클래시 데미지를 원작 규칙으로 교정** — `DiceRuleTable` 의 승자 수치를 "차이" → **굴림값 전체**로.
+  단 매치업별 예외 유지: Attack 이 Block 을 이기면 `공격값 - 수비값`(방어 경감, 원작 규칙),
+  Counter vs Block 도 동일 대칭. 막기 승리 스태거 피해와 회피 승리 회복은 전부 굴림값 전체.
+  이제 합/일방(`ResolveUnopposedDice` 는 원래 전체) 데미지 스케일이 일치한다.
+- **`BoutGraph.Clear()` 가 `actionBySlot` 도 비우도록 수정 — 구 3번 해결** — 슬롯 표시 잔류와
+  다음 턴 스테일 액션 여지 제거. 이 사전은 `BattleRuntime` 이 즉석 생성해 넘긴 것이라 외부 소유자 없음(지워도 안전).
+- **HpUI 의 진단용 `Debug.Log` 제거** — `characterId` 필터 앞에 있어 HpUI 인스턴스 수만큼(2번씩) 찍히던
+  "데미지 로그 중복"의 원인. 엔진 이중 데미지가 아니었음. 콘솔 로그가 필요하면 별도 로그 콘솔 컴포넌트가 맞는 자리.
 
 ### 4. Engine → Data 의존 끊기 — 구 2번
 `Engine/` 은 `using UnityEngine` 이 없지만 `CharacterData` / `CardData`
