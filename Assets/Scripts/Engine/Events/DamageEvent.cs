@@ -1,4 +1,4 @@
-
+﻿
 using System.Runtime.InteropServices;
 
 public class DamageEvent : ICombatEvent
@@ -16,8 +16,9 @@ public class DamageEvent : ICombatEvent
 
         if (!_ctx.IsCancelled)
         {
-            runtime.AddLog(new DamageLog(_ctx.Defender.CharacterId, _ctx.FinalDamage));
             _ctx.Defender.TakeDamage(_ctx.FinalDamage);
+            runtime.AddLog(new DamageLog(_ctx.Defender.CharacterId, _ctx.FinalDamage));
+
             _ctx.Attacker.TriggerAfterDamage(_ctx);
             _ctx.Defender.TriggerAfterDamage(_ctx);
 

@@ -1,4 +1,4 @@
-public class StatusDamageEvent : ICombatEvent
+﻿public class StatusDamageEvent : ICombatEvent
 {
     private readonly StatusDamageContext _ctx;
 
@@ -13,8 +13,8 @@ public class StatusDamageEvent : ICombatEvent
 
         if (!_ctx.IsCancelled)
         {
-            runtime.AddLog(new StatusDamageLog(_ctx.Defender.CharacterId, _ctx.FinalDamage));
             _ctx.Defender.TakeDamage(_ctx.FinalDamage);
+            runtime.AddLog(new StatusDamageLog(_ctx.Defender.CharacterId, _ctx.FinalDamage));
             _ctx.Defender.TriggerAfterDamage(_ctx);
 
             if (_ctx.Defender.ShouldDie())

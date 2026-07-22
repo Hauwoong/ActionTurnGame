@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class SlotDebugPanel : MonoBehaviour
@@ -52,7 +52,11 @@ public class SlotDebugPanel : MonoBehaviour
     private void OnTurnStart(TurnStartLog log) => Refresh();
     private void OnActionRegistered(ActionRegisteredLog log) => Refresh();
     private void OnActionCancelled(ActionCancelledLog log) => Refresh();
-    private void OnBoutStart(BoutStartLog log) => Refresh();
+    private void OnBoutStart(BoutStartLog log)
+    {
+        UnityEngine.Debug.Log($"[BoutStart] {log.AttackerId} -> {log.TargetId}");
+        Refresh();
+    }
     private void OnBoutEnd(BoutEndLog log) => Refresh();
 
     private void Refresh()

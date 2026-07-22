@@ -1,4 +1,4 @@
-public class BoutStartEvent : ICombatEvent
+﻿public class BoutStartEvent : ICombatEvent
 {
     public ActionInstance A { get; }
     public ActionInstance B { get; }
@@ -16,6 +16,17 @@ public class BoutStartEvent : ICombatEvent
     public void Apply(BattleRuntime runtime)
     {
         runtime.AddLog(new BoutStartLog(AttackerId, TargetId));
+
+        if (A != null)
+        {
+            runtime.UseAction(A);
+        }
+
+        if (B != null)
+        {
+            runtime.UseAction(B);
+        }
+
         runtime.Executor.ResolveCombat(A, B, AttackerId, TargetId);
         runtime.EnqueueEvent(new BoutEndEvent(AttackerId, TargetId, B?.SourceSlot.CharacterId));
     }

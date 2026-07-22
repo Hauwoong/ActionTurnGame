@@ -1,4 +1,4 @@
-public class StaggeredEvent : ICombatEvent
+﻿public class StaggeredEvent : ICombatEvent
 {
     public int CharacterId { get; }
 

@@ -14,17 +14,16 @@
 
         if(!_ctx.IsCancelled)
         {
-            runtime.AddLog(new StaggerLog
-            (
-                _ctx.IsHeal ? _ctx.Attacker.CharacterId : _ctx.Defender.CharacterId, 
-                _ctx.FinalValue, 
-                _ctx.IsHeal
-            ));
             if (_ctx.IsHeal)
                 _ctx.Attacker.RecoverStagger(_ctx.FinalValue);
             else 
                 _ctx.Defender.TakeStagger(_ctx.FinalValue);
-            
+            runtime.AddLog(new StaggerLog
+            (
+                _ctx.IsHeal ? _ctx.Attacker.CharacterId : _ctx.Defender.CharacterId,
+                _ctx.FinalValue,
+                _ctx.IsHeal
+            ));
             _ctx.Attacker.TriggerAfterStagger(_ctx);
             _ctx.Defender.TriggerAfterStagger(_ctx);
 

@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -49,6 +49,7 @@ public class HpUI : MonoBehaviour
 
     private void OnDamage(DamageLog log)
     {
+        UnityEngine.Debug.Log($"[Damage] target={log.TargetId} amount={log.Amount}");
         if (log.TargetId == characterId) Refresh();
     }
 
