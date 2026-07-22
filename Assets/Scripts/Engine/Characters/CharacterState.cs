@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 public sealed class CharacterState
 {
@@ -19,7 +19,7 @@ public sealed class CharacterState
     public int EmotionGainOnStaggered { get; }
     public int EmotionGainOnStaggerHeal { get; }
     public IReadOnlyList<PassiveData> Passives { get; }
-    public IReadOnlyList<CardData> InitialDeck { get; }
+    public IReadOnlyList<CardModel> InitialDeck { get; }
 
     public CharacterState(CharacterData source, int id, Team team)
     {
@@ -33,6 +33,13 @@ public sealed class CharacterState
         {
             if (passive is IStatModifierPassive statModifier)
                 statModifier.Apply(builder);
+        }
+
+        // initialDeck에서 CardData => CardModel로 치환
+        var initialDeck = new List<CardModel>();
+        foreach (var cardData in source.InitialDeck)
+        {
+            initialDeck.Add(cardData.ToModel());
         }
 
         // builder 값으로 초기화
@@ -50,6 +57,6 @@ public sealed class CharacterState
         EmotionGainOnStaggered = builder.EmotionGainOnStaggered;
         EmotionGainOnStaggerHeal = builder.EmotionGainOnStaggerHeal;
         Passives = new List<PassiveData>(source.Passives);
-        InitialDeck = new List<CardData>(source.InitialDeck);
+        InitialDeck = initialDeck;
     }
 }

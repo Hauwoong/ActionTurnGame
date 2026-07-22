@@ -1,11 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class PlayerActionInput : MonoBehaviour
 {
     [SerializeField] private BattleManager battleManager;
 
     private SpeedSlot? selectedSlot = null;
-    private CardData draggingCard = null;
+    private CardModel draggingCard = null;
 
     public void SelectSpeedSlot(SpeedSlot slot)
     {
@@ -13,7 +13,7 @@ public class PlayerActionInput : MonoBehaviour
         Debug.Log($"Speed Dice {selectedSlot.Value.SlotIndex} selected");
     }
 
-    public void StartDraggingCard(CardData card)
+    public void StartDraggingCard(CardModel card)
     {
         Debug.Log("Drag Start");
         draggingCard = card;

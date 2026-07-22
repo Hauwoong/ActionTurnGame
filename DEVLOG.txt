@@ -3480,3 +3480,62 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
 - "N번씩 찍히는 로그"는 이벤트가 N번 발생한 것과 구독자가 N명인 것을 먼저 구분한다.
   모델 값(HP)이 1번만 변했다면 발생은 1번이다
 - 진단용 임시 로그는 목적을 다하면 바로 지운다. 필터 앞에 둔 로그는 구독자 수만큼 증폭된다
+
+---
+
+## 2026-07-22 ~ 07-23 — Engine → Data 의존 끊기 1단계: 카드 파이프라인 CardModel 치환
+
+배경: Engine 은 using UnityEngine 이 없지만 CardData(SO)를 타입으로 12곳에서 참조.
+"SO 는 에디터 껍데기, 엔진은 순수 클래스" 방향의 첫 단계로 카드부터 치환한 기록.
+
+### 문제점
+
+■ Engine 안 CardData 참조가 12곳 (전수조사 결과)
+- CardZone/CardManager/CardResolver/ActionInstance + 카드 Event 3종 + Log 4종 + CharacterState/Runtime
+- 추가 발견: PassiveData 도 SO 라 같은 누수 (기존 목록에 없었음), BattleSnapShot 의 CharacterData 도 잔존
+
+■ 필드 리네임이 에셋 데이터를 날릴 뻔함
+- CardData 필드를 소문자 → PascalCase 로 리네임했는데, Unity 직렬화는 "필드 이름"으로 매칭
+- Strike.asset 디스크에는 옛 키(cardName, dices, ...)로 저장돼 있어, 그대로 로드되면 전부 기본값 리셋
+- cost 0 + 주사위 없음 = "공짜인데 데미지 0" 류의 조용한 고장이 될 뻔
+
+■ CardModel 1차본이 생성자에서 CardData 를 받음
+- Engine 클래스 시그니처에 CardData 가 등장 = 의존이 그대로 남음 (using 이 아니라 시그니처가 기준)
+
+■ artwork(Sprite)는 UnityEngine 타입이라 CardModel 에 못 들어감
+- 그런데 UI 는 그림을 그려야 함 — 엔진 밖 어딘가에 "이름 → 그림" 지식이 필요
+
+### 고민
+
+■ 변환 지식을 어디에 두나
+- CardModel(엔진)이 CardData 를 알면 본말전도 → 변환은 Data 쪽 CardData.ToModel() 로
+- Data → Engine 참조는 허용 방향. 금지는 Engine → Data 한 방향뿐
+- 계층별 CardData 참조: Engine 0 / Data 원래 자리 / Scene·UI 허용 — "참조 0"의 목표 범위는 Engine 만
+
+■ 그림 조회 책임을 누가 지나
+- CreateBattle 이 CardData 를 볼 수 있는 마지막 지점 → BattleManager 가
+  이름→Sprite 사전을 만들고 GetCardArtwork(name) 노출
+- CardUI 는 레지스트리 존재를 모르게: CardHandUI(이미 battleManager 를 앎)가 조회해서
+  Setup 3번째 인자로 주입. CardUI 는 "받은 스프라이트를 그린다"만
+
+■ CardZone 도 읽기 전용으로 만들어야 하나
+- 아니다. 컬렉션의 가변성과 원소의 가변성은 별개 —
+  원소(카드 정의)는 불변(CardModel), 존(덱/손패)은 런타임 상태라 가변이 본질
+- 밖에는 이미 IReadOnlyList 로만 노출 중이라 캡슐화는 충분
+
+### 해결법
+
+- CardModel: 전부 get 전용, Dices 는 IReadOnlyList, 생성자는 원시 값만 수령
+- CardData: [SerializeField] private + 프로퍼티로 정리(스타일 위반 해소),
+  각 필드에 FormerlySerializedAs("디스크의 옛 키") — PascalCase 중간 이름이 아니라
+  에셋 파일에 실제 적힌 소문자 키를 넣어야 함
+- 치환 순서: CardZone → CardManager → CardResolver → ActionInstance → Event/Log → CharacterState(ToModel 관문) → UI
+- 검증: 컴파일 0 에러 → Strike 인스펙터 값 생존 확인 → 플레이 한 바퀴 (드로우/표시/드롭/합/데미지)
+
+### 배운 점
+
+- Unity 직렬화는 필드 이름 매칭이다. 리네임 = 데이터 손실 위험이며, FormerlySerializedAs 에는
+  "디스크에 적힌" 이름을 넣는다. 중간에 거쳐간 이름은 디스크에 저장된 적이 없으면 무의미하다
+- 순수 모델의 생성자가 SO 를 받으면 치환이 아니라 포장이다. 변환 메서드는 버리는 쪽(Data)에 둔다
+- Unity 전용 데이터(Sprite)는 모델에서 빼고, 엔진 밖 계층이 식별자(이름)로 되찾는 레지스트리를 쓴다
+- 컬렉션의 가변성(존)과 원소의 가변성(카드 정의)을 구분한다 — 전부 불변화가 목표가 아니다

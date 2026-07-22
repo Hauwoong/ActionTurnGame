@@ -1,16 +1,15 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 public class CardZone
 {
-    private readonly List<CardData> _cards = new();
-    public IReadOnlyList<CardData> Cards => _cards;
+    private readonly List<CardModel> _cards = new();
+    public IReadOnlyList<CardModel> Cards => _cards;
     public int Count => _cards.Count;
 
-    public void Add(CardData card) => _cards.Add(card);
+    public void Add(CardModel card) => _cards.Add(card);
+    public void Remove(CardModel card) => _cards.Remove(card);
 
-    public void Remove(CardData card) => _cards.Remove(card);
-
-    public CardData DrawTop()
+    public CardModel DrawTop()
     {
         if (_cards.Count == 0) return null;
         var card = _cards[0];
@@ -18,11 +17,11 @@ public class CardZone
         return card;
     }
 
-    public void AddRange(List<CardData> cards) => _cards.AddRange(cards);
+    public void AddRange(List<CardModel> cards) => _cards.AddRange(cards);
 
-    public List<CardData> TakeAll()
+    public List<CardModel> TakeAll()
     {
-        var cards = new List<CardData>(_cards);
+        var cards = new List<CardModel>(_cards);
         _cards.Clear();
         return cards;
     }

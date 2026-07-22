@@ -1,4 +1,4 @@
-public class DrawCardLog : CombatLog
+﻿public class DrawCardLog : CombatLog
 {
     public int CharacterId { get; }
     public int Count { get; }
@@ -13,9 +13,9 @@ public class DrawCardLog : CombatLog
 public class UseCardLog : CombatLog
 {
     public int CharacterId { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
-    public UseCardLog(int characterId, CardData card)
+    public UseCardLog(int characterId, CardModel card)
     {
         CharacterId = characterId;
         Card = card;
@@ -25,9 +25,9 @@ public class UseCardLog : CombatLog
 public class DiscardCardLog : CombatLog
 {
     public int CharacterId { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
-    public DiscardCardLog(int characterId, CardData card)
+    public DiscardCardLog(int characterId, CardModel card)
     {
         CharacterId = characterId;
         Card = card;
@@ -37,9 +37,9 @@ public class DiscardCardLog : CombatLog
 public class ExileCardLog : CombatLog
 {
     public int CharacterId { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
-    public ExileCardLog(int characterId, CardData card)
+    public ExileCardLog(int characterId, CardModel card)
     {
         CharacterId = characterId;
         Card = card;

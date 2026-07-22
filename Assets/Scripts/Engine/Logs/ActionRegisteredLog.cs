@@ -1,14 +1,14 @@
-public class ActionRegisteredLog : CombatLog
+﻿public class ActionRegisteredLog : CombatLog
 {
     public int ActionId { get; }
     public int CharacterId { get; }
     public int SlotIndex { get; }
     public int TargetCharacterId { get; }
     public int TargetSlotIndex { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
     public ActionRegisteredLog(int actionId, int characterId, int slotIndex,
-        int targetCharacterId, int targetSlotIndex, CardData card)
+        int targetCharacterId, int targetSlotIndex, CardModel card)
     {
         ActionId = actionId;
         CharacterId = characterId;

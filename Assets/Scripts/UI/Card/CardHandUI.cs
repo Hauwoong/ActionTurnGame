@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class CardHandUI : MonoBehaviour
@@ -87,7 +87,7 @@ public class CardHandUI : MonoBehaviour
         foreach (var card in cr.CardManager.Hand)
         {
             var obj = Instantiate(cardPrefab, cardParent);
-            obj.GetComponent<CardUI>().Setup(card, input);
+            obj.GetComponent<CardUI>().Setup(card, input, battleManager.GetCardArtwork(card.CardName));
             _cardObjects.Add(obj);
         }
     }

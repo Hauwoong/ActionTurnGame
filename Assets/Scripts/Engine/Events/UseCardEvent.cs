@@ -1,9 +1,9 @@
-public class UseCardEvent : ICombatEvent
+﻿public class UseCardEvent : ICombatEvent
 {
     public int CharacterId { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
-    public UseCardEvent(int characterId, CardData card)
+    public UseCardEvent(int characterId, CardModel card)
     {
         CharacterId = characterId;
         Card = card;

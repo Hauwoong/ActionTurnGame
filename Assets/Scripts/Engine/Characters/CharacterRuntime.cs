@@ -68,7 +68,7 @@ public class CharacterRuntime : IEventSink
         _maxEnergy = state.MaxEnergy;
         _currentEnergy = _maxEnergy;
 
-        _cardManager = new CardManager(new List<CardData>(state.InitialDeck), rng);
+        _cardManager = new CardManager(new List<CardModel>(state.InitialDeck), rng);
 
         _activeSpeedSlotCount = state.SpeedSlotCount;
         CreateSpeedSlots();
@@ -215,7 +215,7 @@ public class CharacterRuntime : IEventSink
     {
         if (!CanUseAction(action)) return;
 
-        EnqueueEvent(new EnergyUseEvent(CharacterId, action.Card.cost));
+        EnqueueEvent(new EnergyUseEvent(CharacterId, action.Card.Cost));
 
         var entries = _cardResolver.BuildDiceEntries(
             action.Card, action, _state.CharacterId, ref _nextDiceId

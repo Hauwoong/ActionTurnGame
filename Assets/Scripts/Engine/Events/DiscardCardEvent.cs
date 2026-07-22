@@ -1,9 +1,9 @@
-public class DiscardCardEvent : ICombatEvent
+﻿public class DiscardCardEvent : ICombatEvent
 {
     public int CharacterId { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
-    public DiscardCardEvent(int characterId, CardData card)
+    public DiscardCardEvent(int characterId, CardModel card)
     {
         CharacterId = characterId;
         Card = card;

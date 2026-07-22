@@ -11,7 +11,7 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
     [SerializeField] TMP_Text cardDamageText;
     [SerializeField] Image artworkImage;
 
-    public CardData card;
+    public CardModel card;
     public PlayerActionInput input;
 
     private RectTransform rect;
@@ -19,6 +19,7 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
     private CanvasGroup canvasGroup;
     private Vector3 originalPos;
     private Transform originalParent;
+    private Sprite artwork;
 
     private void Awake()
     {
@@ -28,11 +29,11 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
         originalParent = transform.parent;
     }
 
-    public void Setup(CardData data, PlayerActionInput input)
+    public void Setup(CardModel data, PlayerActionInput input, Sprite artwork)
     {
         this.card = data;
         this.input = input;
-        
+        this.artwork = artwork;
         UpdateUI();
     }
 
@@ -40,15 +41,15 @@ public class CardUI : MonoBehaviour,IBeginDragHandler,IDragHandler,IEndDragHandl
     {
         if (card == null) return;
 
-        cardNameText.text = card.cardName;
-        cardCostText.text = card.cost.ToString();
+        cardNameText.text = card.CardName;
+        cardCostText.text = card.Cost.ToString();
 
         cardDamageText.gameObject.SetActive(false); // 기본값으로 비활성화
 
 
-        if (artworkImage != null && card.artwork != null)
+        if (artworkImage != null && artwork != null)
         {
-            artworkImage.sprite = card.artwork;
+            artworkImage.sprite = artwork;
         }
     }
 

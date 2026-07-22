@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -35,7 +35,7 @@ public class SlotDebugItem : MonoBehaviour, IDropHandler
             : "None";
 
         cardText.text = action?.Card != null
-            ? action.Card.cardName
+            ? action.Card.CardName
             : "No Card";
 
         int interceptCount = graph.interceptCandidates.TryGetValue(_slot, out var candidates)

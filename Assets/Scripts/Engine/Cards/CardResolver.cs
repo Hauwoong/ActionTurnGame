@@ -2,12 +2,12 @@
 
 public class CardResolver
 {
-    public List<DiceEntry> BuildDiceEntries(CardData card, ActionInstance action,
+    public List<DiceEntry> BuildDiceEntries(CardModel card, ActionInstance action,
         int characterId, ref int nextDiceId)
     {
         var entries = new List<DiceEntry>();
 
-        foreach (var diceData in card.dices)
+        foreach (var diceData in card.Dices)
         {
             int id = nextDiceId++;
             var handle = new DiceHandle(new CharacterHandle(characterId), id);
@@ -18,12 +18,12 @@ public class CardResolver
         return entries;
     }
 
-    public bool CanUse(CardData card, CharacterRuntime user)
+    public bool CanUse(CardModel card, CharacterRuntime user)
     {
-        return user.CurrentEnergy >= card.cost;
+        return user.CurrentEnergy >= card.Cost;
     }
 
-    public List<ICombatEvent> BuildCardEffects(CardData card, CharacterRuntime user)
+    public List<ICombatEvent> BuildCardEffects(CardModel card, CharacterRuntime user)
     {
         var events = new List<ICombatEvent>();
         // TODO: 나중에 카드 효과를 구현할 때, card.description을 파싱해서 이벤트를 생성하는 로직이 필요할 것이다.

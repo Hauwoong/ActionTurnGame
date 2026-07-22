@@ -8,19 +8,19 @@ public class CardManager
     private readonly CardZone _discard = new();
     private readonly CardZone _exile = new();
 
-    public IReadOnlyList<CardData> Deck => _deck.Cards;
-    public IReadOnlyList<CardData> Hand => _hand.Cards;
-    public IReadOnlyList<CardData> Used => _used.Cards;
-    public IReadOnlyList<CardData> Discard => _discard.Cards;
-    public IReadOnlyList<CardData> Exile => _exile.Cards;
+    public IReadOnlyList<CardModel> Deck => _deck.Cards;
+    public IReadOnlyList<CardModel> Hand => _hand.Cards;
+    public IReadOnlyList<CardModel> Used => _used.Cards;
+    public IReadOnlyList<CardModel> Discard => _discard.Cards;
+    public IReadOnlyList<CardModel> Exile => _exile.Cards;
 
-    public CardManager(List<CardData> initialDeck, IRng rng)
+    public CardManager(List<CardModel> initialDeck, IRng rng)
     {
         _deck.AddRange(initialDeck);
         _deck.Shuffle(rng);
     }
 
-    public CardData Draw(IRng rng)
+    public CardModel Draw(IRng rng)
     {
         if (_deck.Count == 0 && _discard.Count > 0)
         {
@@ -48,19 +48,19 @@ public class CardManager
         return drawn; // 실제로 뽑은 수 반환
     }
 
-    public void UseCard(CardData card)
+    public void UseCard(CardModel card)
     {
         _hand.Remove(card);
         _used.Add(card);
     }
 
-    public void DiscardCard(CardData card)
+    public void DiscardCard(CardModel card)
     {
         _hand.Remove(card);
         _discard.Add(card);
     }
 
-    public void ExileCard(CardData card)
+    public void ExileCard(CardModel card)
     {
         _hand.Remove(card);
         _exile.Add(card);

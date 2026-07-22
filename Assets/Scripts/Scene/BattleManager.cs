@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.Collections.Generic;
 
@@ -6,6 +6,8 @@ public class BattleManager : MonoBehaviour
 {
     private BattleRuntime _runtime;
     public BattleRuntime Runtime => _runtime;
+
+    private readonly Dictionary<string, Sprite> _cardArtByName = new();
 
     public event Action<BattleRuntime> OnBattleCreated;
     public event Action OnBattleEnded;
@@ -38,6 +40,12 @@ public class BattleManager : MonoBehaviour
             {
                 Debug.LogError($"BattleManager: CharacterData is null for character {character.name}.");
                 continue;
+            }
+
+            foreach (var card in character.CharacterData.InitialDeck)
+            {
+                if (!_cardArtByName.ContainsKey(card.CardName))
+                    _cardArtByName[card.CardName] = card.Artwork;
             }
 
             datas.Add(character.CharacterData);
@@ -84,5 +92,13 @@ public class BattleManager : MonoBehaviour
     {
         OnBattleEnded?.Invoke();
         _runtime = null;
+    }
+
+    public Sprite GetCardArtwork(string cardName)
+    {
+        if (_cardArtByName.TryGetValue(cardName, out var sprite))
+            return sprite;
+        else 
+            return null;
     }
 }

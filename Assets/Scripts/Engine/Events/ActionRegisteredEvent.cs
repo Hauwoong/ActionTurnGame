@@ -1,10 +1,10 @@
-public class ActionRegisteredEvent : ICombatEvent
+﻿public class ActionRegisteredEvent : ICombatEvent
 {
     private readonly SpeedSlot _sourceSlot;
     private readonly SpeedSlot _targetSlot;
-    private readonly CardData _card;
+    private readonly CardModel _card;
 
-    public ActionRegisteredEvent(SpeedSlot sourceSlot, SpeedSlot targetSlot, CardData card)
+    public ActionRegisteredEvent(SpeedSlot sourceSlot, SpeedSlot targetSlot, CardModel card)
     {
         _sourceSlot = sourceSlot;
         _targetSlot = targetSlot;

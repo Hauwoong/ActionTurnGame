@@ -1,9 +1,9 @@
-public class ExileCardEvent : ICombatEvent
+﻿public class ExileCardEvent : ICombatEvent
 {
     public int CharacterId { get; }
-    public CardData Card { get; }
+    public CardModel Card { get; }
 
-    public ExileCardEvent(int characterId, CardData card)
+    public ExileCardEvent(int characterId, CardModel card)
     {
         CharacterId = characterId;
         Card = card;

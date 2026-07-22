@@ -1,6 +1,6 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-07-22 갱신)
+## 다음 작업 (2026-07-23 갱신)
 
 ### 완료 (이번 세션)
 - **HpUI 배치** (`characterId` 0/1) — 데미지가 실제 HP 에 반영되는 것 눈으로 확인.
@@ -31,16 +31,28 @@
   다음 턴 스테일 액션 여지 제거. 이 사전은 `BattleRuntime` 이 즉석 생성해 넘긴 것이라 외부 소유자 없음(지워도 안전).
 - **HpUI 의 진단용 `Debug.Log` 제거** — `characterId` 필터 앞에 있어 HpUI 인스턴스 수만큼(2번씩) 찍히던
   "데미지 로그 중복"의 원인. 엔진 이중 데미지가 아니었음. 콘솔 로그가 필요하면 별도 로그 콘솔 컴포넌트가 맞는 자리.
+- **[4-1단계] 카드 파이프라인 `CardData` → `CardModel` 치환 완료 (2026-07-23, 플레이 검증)** —
+  순수 클래스 `CardModel`(`CardName`/`Cost`/`Dices`, 전부 get 전용) 신설, `CardData.ToModel()` 이 변환 담당.
+  `CardZone`/`CardManager`/`CardResolver`/`ActionInstance`/카드 Event·Log 전부 교체.
+  **Engine 폴더의 `CardData` 타입 참조 0.** 변환 관문은 `CharacterState` 생성자(SO 덱 → 모델 덱).
+  - artwork(Sprite)는 UI 전용으로 분리: `BattleManager` 가 `CreateBattle` 때 이름→Sprite 레지스트리를 만들고
+    `GetCardArtwork(name)` 노출, `CardHandUI` 가 조회해 `CardUI.Setup` 3번째 인자로 주입. `CardUI` 는 레지스트리를 모름.
+  - `CardData` 는 `[SerializeField] private` + 프로퍼티로 정리(스타일 위반 해소). 필드 리네임에 `FormerlySerializedAs`
+    필수였음 — **어트리뷰트에 넣는 이름은 에셋 파일(디스크)에 실제 적힌 키** (Strike.asset 리셋 직전에 잡음).
 
-### 4. Engine → Data 의존 끊기 — 구 2번
-`Engine/` 은 `using UnityEngine` 이 없지만 `CharacterData` / `CardData`
-(둘 다 ScriptableObject)를 타입으로 참조한다. `CharacterState.Source`,
-`CharacterState.InitialDeck`, `ActionInstance.Card`, `CardManager`, `CardResolver` 가 해당.
+### 4. Engine → Data 의존 끊기 — 구 2번 (1단계 완료, 2~4단계 남음)
 
-방향: SO 는 "에디터에서 값을 채우는 껍데기"로 두고, 순수 클래스로 변환해 엔진에 넘긴다.
-이게 끝나야 asmdef 에 **No Engine References** 를 켤 수 있다.
+남은 SO 누수 (2026-07-23 전수조사 기준):
+- `CharacterData` ← `CharacterState`, `CharacterStateBuilder`, `BattleSnapShot`
+- `PassiveData` ← `CharacterState`, `PassiveFactory` (CLAUDE.md 구판 목록에 빠져 있던 누수)
 
-같이 처리할 것: `CardData` 가 public 필드투성이라 스타일 규칙 위반.
+진행 계획:
+- **2단계**: `CharacterModel` 신설 + `CharacterData.ToModel()`. `CharacterState`/`Builder`/`BattleSnapShot` 이
+  순수 모델을 받게. 참조 0건인 `CharacterState.Source` 프로퍼티도 이때 삭제.
+  `CharacterData` 는 이미 private 필드 + 프로퍼티 구조라 직렬화 마이그레이션 불필요.
+- **3단계**: `PassiveModel`(추상 + 타입별 서브클래스) 신설, `IStatModifierPassive` 구현을 모델 쪽으로 이사,
+  `PassiveFactory` 가 모델을 받게. SO 는 `ToModel()` 만 갖는 껍데기로.
+- **4단계**: Engine asmdef 신설 + **No Engine References** 켜서 기계 검증.
 
 ### 5. 카드 뽑기 장수를 상수 → 변수로 — 구 3번
 `Engine/Events/TurnStartEvent.cs` 가 `new DrawCardEvent(CharacterId, 1)` 로 고정.
