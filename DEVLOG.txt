@@ -3241,3 +3241,167 @@ CharacterRuntime 확장
 - 인스펙터 필드는 타입에 따라 넣을 것이 다르다 — Character 는 씬 오브젝트, CharacterData 는 에셋
 - 잘못된 세팅은 NullReferenceException 이 아니라 위치(진영/인덱스/이름)를 담은 메시지로 드러나야 원인 추적이 빠르다
 - 버그가 "지금까지 안 터진 것"이 "정상이었다"는 뜻은 아니다. 조건이 안 맞아 잠복했을 뿐일 수 있다
+
+---
+
+## 2026-07-22 — 데미지가 HP UI 에 반영되지 않던 문제 (이벤트 실행 순서)
+
+배경: HpUI 를 캐릭터당 하나씩(id 0/1) 씬에 배치해 "데미지가 실제로 들어가는지" 눈으로 보려던 작업.
+합은 잡히는데 HP 텍스트가 계속 50 → 원인을 파이프라인 끝에서 끝까지 추적한 기록.
+
+### 문제점
+
+■ 주사위를 캐릭터 큐에 싣는 단계가 파이프라인에서 통째로 빠져 있었음
+- 카드 등록(ActionRegisteredEvent → BoutGraph)은 되는데, 그 카드의 주사위를 싣는 CharacterRuntime.UseAction 호출자가 0 건
+- 그래서 ResolveCombat 이 PeekDice == null 로 즉시 탈출 → 데미지 0, 카드도 슬롯에 잔류
+- 클래시 자체가 아니라 "합은 걸리는데 데미지가 안 나오는" 증상으로 나타남
+
+■ 데미지는 실제로 들어가는데 HP 텍스트만 50 에서 안 변함 (이번 기록의 핵심)
+- 임시 로그로 확인: [Damage] target=0 amount=1 이 찍히고, 스택도 DamageEvent → AddLog → HpUI.OnDamage 까지 정상 도달
+- 즉 모델 HP 는 깎이고 있는데 화면만 stale
+
+■ 3턴이 지나면 데미지가 더 이상 안 들어감
+- 에너지(빛)가 소비만 되고 회복이 없음. maxEnergy 3, cost 1 → 3턴이면 0
+- 등록은 에너지를 검사하지 않고 UseAction(해석 시점)만 검사 → 합은 걸리는데 조용히 데미지 0
+
+■ (부수 발견) BoutGraph.Clear() 가 actionBySlot 을 안 지움
+- edges/targetMap/interceptCandidates 만 clear → 턴이 넘어가도 슬롯에 카드 이름이 남음
+
+### 고민
+
+■ HP 텍스트가 안 변하는 진짜 원인
+- AddLog 은 동기다. 그 한 줄이 Dispatch → HpUI.OnDamage → Refresh 까지 그 자리에서 다 실행하고 리턴한다
+- Refresh 는 cr.CurrentHp 를 그 순간 다시 읽는다 → "언제 읽느냐"가 전부
+- 고치기 전 DamageEvent 는 AddLog(로그) → TakeDamage(HP 감소) 순이었다
+  → Refresh 가 아직 안 깎인 HP 를 읽어 그림. 모델은 그다음에야 깎임. UI 는 영원히 한 박자 전 값
+
+■ "로그 먼저" vs "상태 먼저" — 어느 쪽이 규칙인가
+- CLAUDE.md 규칙은 "AddLog → CharacterRuntime 호출" (로그 먼저)로 적혀 있었음
+- 실제 코드를 세어보니 8 개 중 5 개는 이미 "상태 먼저"(EnergyUse/ChangeMaxHp/GainEmotionStack/Draw/Death)
+- "로그 먼저"는 Context 기반 3형제(Damage/StatusDamage/Stagger)에만 몰려 있었고, 그게 곧 버그 패턴
+- 즉 문서 규칙이 소수(그리고 틀린 쪽)를 따르고 있었다
+
+### 해결법
+
+■ 순서를 "상태 먼저"로 통일
+- DamageEvent: TakeDamage 를 AddLog 앞으로 → 텍스트가 즉시 깎인 값으로 표시됨 (검증 완료)
+- StatusDamageEvent / StaggerEvent 도 동일한 잠복 버그 → 같은 방식으로 순서 교정 (HpUI 가 StatusDamageLog 도 구독 중이라 상태이상 피해 넣는 순간 재발함)
+- CLAUDE.md 핵심 규칙 문구를 "CharacterRuntime 상태 변경 → AddLog → Enqueue" 로 수정하고 이유 명시
+
+■ 에너지 회복 (별도 작업으로 분리)
+- TurnStartEvent.Apply 에서 턴 시작 시 에너지 회복(최대치 복구 방향). CharacterRuntime 에 회복 메서드 신설 필요
+  (ChangeMaxEnergy 는 최대치까지 올려서 부적합)
+
+### 배운 점
+
+- 동기 dispatch + "모델을 다시 읽는 UI" 조합에서는, 알림(로그)을 상태 변경보다 먼저 보내면 관찰자는 항상 변경 전 값을 본다.
+  알림은 반영이 끝난 뒤에 보내야 한다.
+- "지금까지 안 터진 것"은 정상이 아니라 잠복이다 — StatusDamage/Stagger 는 그걸 읽는 UI 를 아직 안 붙였을 뿐, 같은 버그를 갖고 있다.
+- 문서 규칙과 코드 관행이 어긋나면, 다수 관행 + 올바른 동작 쪽으로 문서를 고친다. 규칙이 소수의 버그 패턴을 성문화하고 있을 수 있다.
+- "합은 걸리는데 데미지 0" 같은 증상은 한 원인이 아니라 여러 층(주사위 미적재 → 실행 순서 → 에너지 고갈)이 겹칠 수 있다. 한 층을 뚫으면 다음 층이 드러난다.
+
+---
+
+## 2026-07-22 — 에너지(빛) 회복 경로 신설
+
+배경: 에너지가 소비만 되고 회복이 없어 3턴 뒤 데미지 0 이 되는 게임플레이 블로커.
+턴 시작 회복과 감정 레벨업 회복 두 경로를 만든 기록.
+
+### 문제점
+
+■ 에너지 회복 경로가 아예 없었음
+- 소비: UseAction → EnergyUseEvent → UseEnergy(cost) 로 잘 되어 있음
+- 회복: ChangeMaxEnergy / IncreaseMaxEnergy 둘 다 최대치를 건드리는 메서드라 부적합
+- "현재값만 최대치까지 채우는" 메서드가 없었음 (RecoverStagger 에는 같은 패턴이 이미 있었음)
+
+■ 문서에 잘못된 원작 규칙이 적혀 있었음
+- CLAUDE.md 가 "매 턴 최대로 복구(LOR 기본)" 라고 기록하고 있었음
+- 실제 LOR 은 매 씬 빛 +1 + 카드 1장 드로우가 기본. 최대 복구는 감정 레벨업 때
+- 사용자가 원작 지식으로 교정 → 고정량 +1 방식으로 결정
+
+### 고민
+
+■ 회복량을 어디서 결정하나
+- +1 하드코딩은 드로우 장수(DrawCardEvent 의 1)와 똑같은 경직성을 가짐
+- 지금은 하드코딩으로 두고, "드로우 장수 데이터화" 작업 때 같은 패턴으로 함께 푼다
+
+■ 감정 레벨업 회복의 Amount 를 뭘로 넘기나
+- A안: MaxEnergy 를 넘기고 클램프에 맡김 → 로그 Amount 가 "요청량"이 됨
+- B안: MaxEnergy - CurrentEnergy(부족분)를 계산해 넘김 → 로그가 "실제 회복량"을 기록
+- 로그를 사실의 기록으로 쓰는(리플레이/디버깅) 방향이라 B안 채택. 0 이면 enqueue 생략
+
+### 해결법
+
+■ CharacterRuntime.RecoverEnergy(int amount)
+- 현재값에 더하고 _maxEnergy 로 클램프. RecoverStagger 와 같은 패턴
+
+■ EnergyRecoverEvent / EnergyRecoverLog 신설
+- EnergyUseEvent/Log 를 거울처럼. Event/Log 1:1, 상태 먼저 → AddLog 순서 준수
+- 처음에 { get; set; } 으로 작성됐다가 리뷰에서 { get; } 으로 교정
+  (이벤트/로그는 "일어난 일의 기록" — 생성 후 불변이어야 함)
+
+■ 배선 두 곳
+- TurnStartEvent.Apply: TriggerTurnStart 앞에서 EnergyRecoverEvent(+1) enqueue
+  (턴 시작 훅이 회복 전 에너지를 읽으면 안 되므로 앞이어야 함)
+- EmotionLevelUpEvent.Apply: 상태 변경 → AddLog → 부족분 계산 → enqueue 순서
+
+### 배운 점
+
+- 원작 재현 프로젝트에서는 "규칙이 뭐였는지" 자체가 검증 대상이다. 문서에 적힌 원작 규칙도 틀릴 수 있고,
+  실제 플레이 경험이 있는 쪽이 교정해야 한다
+- 새 상태 변경이 필요할 때 비슷한 자원(스태거)의 기존 메서드 패턴을 먼저 찾으면 설계가 빨라진다
+- 로그의 수치는 "요청량"이 아니라 "실제 변화량"을 기록해야 로그만으로 상태를 재구성할 수 있다
+- 이벤트를 enqueue 하는 쪽이 조건을 검사하는 구조(EmotionLevelUp 의 조기 리턴 가드)는
+  enqueue 지점이 늘어나면 깨질 수 있는 암묵적 약속이다 — 지금은 문제없지만 기억해 둘 것
+
+---
+
+## 2026-07-22 — 일방 공격이 통째로 증발하던 버그 (CombatExecutor)
+
+배경: 상대가 카드를 내지 않은 슬롯을 때리면 아무 일도 일어나지 않았다.
+ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구현돼 있었는데
+도달하는 코드가 없던 상태.
+
+### 문제점
+
+■ 타겟을 action 이 아니라 graph.edges 에서만 찾고 있었음
+- RunQueue 의 `if (!graph.edges.TryGetValue(slot, out var targetSlot)) continue;`
+- edge 는 BoutGraph.Connect 가 양방향으로만 만든다 = 양쪽이 서로를 겨냥해야 생긴다
+- 즉 "합이 성립한 공격"만 처리되고, 합이 아닌 공격(일방)은 전부 continue 로 증발
+- 덤으로 이 continue 는 visited.Add 도 하지 않는 유일한 탈출 경로였음
+
+### 고민
+
+■ "edge 없으면 폴백 targetSlot 만 구해서 기존 흐름에 태우면 되지 않나?" → 안 됨
+- 내 타겟이 제3자를 노리는 액션을 갖고 있으면(edge 없음, ActionBySlot 에는 있음)
+  기존 클래시 조건이 그걸 opponent 로 잡아 성립하지도 않은 합을 만들고,
+  상대를 visited 처리해 상대의 진짜 합까지 날린다
+- edge 없음 = 무조건 일방 경로. 클래시 조건에 hasEdge 를 명시해야 함
+
+■ TryGetValue 실패 시 out 값의 함정
+- SpeedSlot 은 struct → 실패 시 null 이 아니라 default = (characterId 0, slotIndex 0)
+- 멀쩡해 보이는 값이라 그대로 흘리면 무조건 0번 캐릭터를 때린다
+- 폴백은 반드시 action.TargetSlot 에서 가져와야 함 (이미 손에 든 action 에 붙어 있음 —
+  ActionBySlot 재조회 불필요)
+
+### 해결법
+
+■ RunQueue 재구조화 (체크리스트 방식으로 구현)
+1. bool hasEdge = graph.edges.TryGetValue(slot, out var targetSlot)
+2. !hasEdge 면 targetSlot = action.TargetSlot 으로 대체
+3. IsTargetAlive 검사는 공통 경로에서 통과
+4. 클래시 조건에 hasEdge 추가 → edge 없으면 자동으로 else(일방)행
+5. 모든 탈출 경로가 visited.Add(slot) 을 찍는 것 확인
+
+■ 플레이 검증
+- 빈 슬롯 공격 → 데미지 반영 확인
+- 정상 합 회귀 없음, 다음 턴 정상 진행
+
+### 배운 점
+
+- struct 를 out 으로 받는 TryGetValue 는 실패해도 "그럴듯한 값"(default)을 돌려준다.
+  참조 타입의 null 처럼 터져 주지 않으므로, 실패 분기를 안 만들면 조용히 엉뚱한 대상을 가리킨다
+- "경로가 구현돼 있다"와 "경로에 도달한다"는 별개다. 일방 공격 처리 코드는 완성돼 있었지만
+  호출부의 필터가 그 앞에서 전부 걸러내고 있었다
+- 루프의 탈출 경로마다 불변식(여기선 visited 마킹)이 지켜지는지 경로별로 세어봐야 한다.
+  한 경로만 빠뜨려도 "가끔 두 번 처리되는" 류의 버그가 된다

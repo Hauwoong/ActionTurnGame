@@ -1,30 +1,43 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-07-22 기준)
+## 다음 작업 (2026-07-22 갱신)
 
-### 0. HpUI 배치 — 엔진 손대기 전에 먼저
-`UI/Status/HpUI.cs` 를 씬에 캐릭터당 하나씩(`characterId` 0, 1) 배치.
-합이 잡히고 턴이 넘어가는 것까지는 확인했지만, **데미지가 실제로 들어가는지는 아직 아무도 못 봤다.**
-엔진을 고치기 시작하면 "내가 뭘 깨뜨렸나"를 판단할 기준이 필요하므로,
-정상 동작이 어떤 모습인지 먼저 봐 둘 것.
+### 완료 (이번 세션)
+- **HpUI 배치** (`characterId` 0/1) — 데미지가 실제 HP 에 반영되는 것 눈으로 확인.
+- **주사위 적재 배선** — `BoutStartEvent.Apply` 가 `ResolveCombat` 앞에서 `UseAction(A)` / `UseAction(B)` 호출.
+  이 단계가 통째로 빠져 있어(호출자 0건) 주사위가 안 실리고 데미지가 0 이었음.
+- **이벤트 실행 순서 교정** — `DamageEvent` / `StatusDamageEvent` / `StaggerEvent` 를 "상태 먼저 → `AddLog`" 로.
+  로그가 먼저 나가면 그걸 받아 모델을 읽는 UI 가 변경 전 값을 그려 한 박자 밀렸음. (DEVLOG 2026-07-22, 핵심 규칙 갱신)
+- **에너지(빛) 회복 — 구 1번 (게임플레이 블로커) 해결** —
+  `CharacterRuntime.RecoverEnergy(amount)` 신설(최대치 클램프), `EnergyRecoverEvent`/`EnergyRecoverLog` 추가,
+  `TurnStartEvent.Apply` 가 `TriggerTurnStart` **앞에서** +1 회복(턴 시작 훅이 회복 전 값을 보면 안 되므로).
+  회복량은 일단 `1` 하드코딩 — "다음 작업 5"(드로우 장수) 때 같은 패턴으로 데이터화.
+  **주의: LOR 기본은 "매 턴 최대 복구"가 아니라 매 씬 +1.** 이전 판에 "매 턴 최대로 복구(LOR 기본)" 이라고
+  적혀 있던 것은 오류였음(사용자가 교정).
+- **감정 레벨업 시 빛 전액 회복** — `EmotionLevelUpEvent` 가 부족분(`MaxEnergy - CurrentEnergy`)을 계산해
+  `EnergyRecoverEvent` 를 enqueue. 로그의 `Amount` 가 요청량이 아니라 **실제 회복량**을 기록하는 방식(B안).
+  0 이면 enqueue 자체를 생략해 로그 노이즈 차단.
+- **일방 공격 수정 — 구 2번 (버그) 해결, 플레이 검증 완료** — `CombatExecutor.RunQueue` 가
+  `bool hasEdge` 로 edge 조회 결과를 받고, 없으면 `action.TargetSlot` 폴백. 생존 검사는 공통 통과,
+  클래시 조건에 `hasEdge` 추가(edge 없이 타겟이 제3자를 노리면 합이 아니라 일방으로 가야 하므로 필수).
+  이제 루프의 모든 탈출 경로가 `visited.Add(slot)` 을 찍는다.
+  함정이었던 것: struct 인 `SpeedSlot` 은 `TryGetValue` 실패 시 null 이 아니라 `default`(0번 캐릭터 슬롯)가
+  나와서, 폴백 없이 흘리면 무조건 0번을 때린다.
 
-### 1. 일방 공격이 동작하지 않음 (버그)
-`Engine/Combat/CombatExecutor.cs:55`
+### 3. `BoutGraph.Clear()` 가 `actionBySlot` 을 안 지운다
+`Engine/Bout/BoutGraph.cs`
 
-```csharp
-if (!graph.edges.TryGetValue(slot, out var targetSlot)) continue;
-```
+`Clear()` 는 `edges` / `targetMap` / `interceptCandidates` 만 비우고 `actionBySlot` 은 그대로 둔다.
+그래서 턴이 넘어가도 슬롯 디버그 UI 에 지난 턴 카드 이름이 남는다(전투 중단 아님, 표시만 잔류).
+사소하지만, 다음 턴 합 계산이 `actionBySlot.Values` 를 도는 만큼 스테일 항목이 섞일 여지도 있음.
 
-타겟을 `action.TargetSlot` 이 아니라 `graph.edges` 에서 찾는다. edge 는 양쪽이 모두
-액션을 등록해야 생기므로, **상대가 카드를 내지 않은 슬롯을 때리면 그냥 건너뛴다.**
-LOR 규칙상 편면공격은 그대로 들어가야 하고, `ResolveUnopposedDice` 와
-`BoutStartEvent(action, null, ...)` 경로는 이미 구현돼 있는데 도달하지 못하는 상태.
+### 결정 필요: 클래시 데미지 = 굴림값 "차이"
+`Engine/Combat/DiceRuleTable.cs`
 
-방향: edge 를 1순위로 보되 없으면 `action.TargetSlot` 으로 폴백.
-주의: 지금 55행의 `continue` 는 `visited.Add(slot)` 도 하지 않고 넘어간다. 폴백을 넣으면
-그 경로가 사라지므로 `visited` 처리를 어떻게 할지 같이 정해야 한다.
+Attack vs Attack 승자가 `rollA - rollB`(두 굴림의 **차이**)만큼만 넣는다. LOR 원본은 승자가 **자기 굴림값 전체**.
+그래서 지금은 데미지가 1~3 으로 매우 작고 무승부면 0. 게임 필이 크게 달라지는 지점이라 의도인지 확정 필요.
 
-### 2. Engine → Data 의존 끊기
+### 4. Engine → Data 의존 끊기 — 구 2번
 `Engine/` 은 `using UnityEngine` 이 없지만 `CharacterData` / `CardData`
 (둘 다 ScriptableObject)를 타입으로 참조한다. `CharacterState.Source`,
 `CharacterState.InitialDeck`, `ActionInstance.Card`, `CardManager`, `CardResolver` 가 해당.
@@ -34,19 +47,19 @@ LOR 규칙상 편면공격은 그대로 들어가야 하고, `ResolveUnopposedDi
 
 같이 처리할 것: `CardData` 가 public 필드투성이라 스타일 규칙 위반.
 
-### 3. 카드 뽑기 장수를 상수 → 변수로
+### 5. 카드 뽑기 장수를 상수 → 변수로 — 구 3번
 `Engine/Events/TurnStartEvent.cs` 가 `new DrawCardEvent(CharacterId, 1)` 로 고정.
 "다음 턴 카드 +n" 같은 효과를 만들 때 두 개가 필요해진다:
 - 기본 장수 → `CharacterData` → `CharacterState` → `CharacterRuntime`
 - 일시 보정 → `StatusEffectRuntime` 이 이미 `OnTurnStart` 훅과 만료 처리를 갖고 있으므로 그쪽이 적합
 
-### 4. 잔재 정리
+### 6. 잔재 정리 — 구 4번
 - `UI/Slot/SpeedSlotUI.cs` — 참조 0건. `SlotDebugItem` 이 대체함
 - `Engine/Battle/BattleInput.cs`, `BattleResult.cs`, `BattleRuntime.Start(BattleInput)` — 호출자 0.
   `Start` 내용은 `BattleManager.ExecuteCombat` 과 중복
 - `TurnUI` 의 `endTurnButton` / `turnText` 필드 — 선언만 되고 쓰이지 않음
 
-### 5. `Step()` 재귀 구조 (급하지 않음)
+### 7. `Step()` 재귀 구조 (급하지 않음) — 구 5번
 `BattleRuntime.EnqueueEvent` 가 enqueue 직후 `Step()` 을 호출하고, `Step()` 은 다른 곳에서
 호출되지 않는다. 따라서 **큐에 원소가 2개 이상 쌓이지 않으며**, 사실상 `ev.Apply(this)` 와
 등가다. 이벤트는 깊이 우선(DFS)으로 즉시 처리된다.
@@ -83,7 +96,7 @@ Unity / C# 카드 + 주사위 전투 시스템 (LOR 스타일).
 3계층: `CharacterData`(청사진) → `CharacterState`(스냅샷) → `CharacterRuntime`(가변).
 
 **목표: Unity 에 최대한 의존하지 않는 자체 전투 엔진.**
-`Engine/` 에는 `using UnityEngine` 이 한 줄도 없다. 남은 누수는 위 "다음 작업 2".
+`Engine/` 에는 `using UnityEngine` 이 한 줄도 없다. 남은 누수는 위 "다음 작업 4".
 
 ## 현재 상태 (2026-07-22)
 
@@ -96,7 +109,9 @@ Unity / C# 카드 + 주사위 전투 시스템 (LOR 스타일).
 ```
 
 확인된 것: 합이 잡히면 양쪽 슬롯이 서로를 가리킨다(`Bout: 1-0` / `Bout: 0-0`).
-**아직 확인 못 한 것: 데미지가 실제로 들어가는지.** 표시 UI 가 없어서.
+**데미지도 실제로 HP 에 반영되는 것까지 확인됨**(HpUI + 주사위 적재 배선 + 이벤트 순서 교정, 2026-07-22).
+에너지는 턴 시작 +1 / 감정 레벨업 시 전액 회복으로 해결됨.
+단, 클래시 데미지가 굴림값 "차이"라 작음 — "결정 필요" 참고.
 
 ## 폴더 구조
 
@@ -149,7 +164,10 @@ Character (MonoBehaviour, 전투 씬 한 명당 하나)
 - `SlotDebugItem` 의 `Button` 은 `Transition = None`. 아니면 `UpdateColor` 가 칠한 합 표시를 덮어씀
 
 ## 핵심 규칙
-- **상태 변경은 Event.Apply 안에서만.** `runtime.AddLog → CharacterRuntime 호출 → 후속 Event Enqueue` 순.
+- **상태 변경은 Event.Apply 안에서만.** 순서는 `CharacterRuntime 상태 변경 → runtime.AddLog → 후속 Event Enqueue`.
+  - **상태를 먼저 바꾸고 그다음에 로그를 낸다.** `AddLog` 은 동기라 그 자리에서 UI 콜백까지 실행되는데,
+    UI 는 로그를 받고 모델(`CurrentHp` 등)을 다시 읽는다. 로그를 상태 변경보다 먼저 내면 UI 가 **변경 전 값**을 읽어
+    한 박자 밀린다 — `DamageEvent` 에서 실제로 겪은 버그(2026-07-22). `EnergyUse`/`ChangeMaxHp`/`Draw` 등 다수가 이미 상태-먼저.
 - **CombatExecutor = 순수 계산.** 부작용 금지.
 - **Data 계층은 Runtime 모르게.**
 - **UI 는 LogDispatcher 구독.** `OnBattleCreated` 로 바인딩, `OnBattleEnded` 로 해제. (`SlotDebugPanel` 참고)

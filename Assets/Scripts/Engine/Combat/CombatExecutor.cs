@@ -52,7 +52,13 @@ public class CombatExecutor
                 continue;
             }
 
-            if (!graph.edges.TryGetValue(slot, out var targetSlot)) continue;
+            bool hasEdge = graph.edges.TryGetValue(slot, out var targetSlot);
+
+            if (!hasEdge)
+            {
+                targetSlot = action.TargetSlot;
+            }
+
             if (!IsTargetAlive(targetSlot))
             {
                 visited.Add(slot);
@@ -61,7 +67,8 @@ public class CombatExecutor
 
             if (graph.ActionBySlot.TryGetValue(targetSlot, out var opponent)
                 && !IsTargetStaggered(targetSlot)
-                && !visited.Contains(targetSlot))
+                && !visited.Contains(targetSlot)
+                && hasEdge)
             {
                 visited.Add(slot);
                 visited.Add(targetSlot);

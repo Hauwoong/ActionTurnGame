@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 public class CharacterRuntime : IEventSink
@@ -110,6 +110,15 @@ public class CharacterRuntime : IEventSink
         if(_maxEnergy <= 1) _maxEnergy = 1;
         if (_currentEnergy > _maxEnergy) _currentEnergy = _maxEnergy;
         if (_currentEnergy < 0) _currentEnergy = 0;
+    }
+
+    public void RecoverEnergy(int amount)
+    {
+        _currentEnergy += amount;
+        if (_currentEnergy > _maxEnergy)
+        {
+            _currentEnergy = _maxEnergy;
+        }
     }
 
     public void TakeDamage(int amount)
