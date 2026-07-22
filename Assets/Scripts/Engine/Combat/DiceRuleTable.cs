@@ -25,13 +25,13 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new DamageContext(
                 ctx.OwnerA, ctx.OwnerB,
-                ctx.ModifiedRollA - ctx.ModifiedRollB
+                ctx.ModifiedRollA
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new DamageContext(
                 ctx.OwnerB, ctx.OwnerA,
-                ctx.ModifiedRollB - ctx.ModifiedRollA
+                ctx.ModifiedRollB
             ),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
@@ -51,7 +51,7 @@
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerA,
-                ctx.ModifiedRollB - ctx.ModifiedRollA,
+                ctx.ModifiedRollB,
                 false
             ),
             Draw = ClashResult.Draw,
@@ -66,7 +66,7 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerB,
-                ctx.ModifiedRollA - ctx.ModifiedRollB,
+                ctx.ModifiedRollA,
                 false
             ),
             Lose = ClashResult.BWin,
@@ -87,13 +87,13 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new DamageContext(
                 ctx.OwnerA, ctx.OwnerB,
-                ctx.ModifiedRollA - ctx.ModifiedRollB
+                ctx.ModifiedRollA
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = (AdvanceType.Destroy, AdvanceType.Reuse),
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerB,
-                ctx.ModifiedRollB - ctx.ModifiedRollA,
+                ctx.ModifiedRollB,
                 true  // 회피 사용자 흐트러짐 회복
             ),
             Draw = ClashResult.Draw,
@@ -108,14 +108,14 @@
             WinAdvance = (AdvanceType.Reuse, AdvanceType.Destroy),
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerA,
-                ctx.ModifiedRollA - ctx.ModifiedRollB,
+                ctx.ModifiedRollA,
                 true  // 회피 사용자 흐트러짐 회복
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new DamageContext(
                 ctx.OwnerB, ctx.OwnerA,
-                ctx.ModifiedRollB - ctx.ModifiedRollA
+                ctx.ModifiedRollB
             ),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
@@ -129,14 +129,14 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerB,
-                ctx.ModifiedRollA - ctx.ModifiedRollB,
+                ctx.ModifiedRollA,
                 false  // 진 쪽 흐트러짐 피해
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerA,
-                ctx.ModifiedRollB - ctx.ModifiedRollA,
+                ctx.ModifiedRollB,
                 false
             ),
             Draw = ClashResult.Draw,
@@ -151,14 +151,14 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerB,
-                ctx.ModifiedRollA - ctx.ModifiedRollB,
+                ctx.ModifiedRollA,
                 false  // 회피 쪽 흐트러짐 피해
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerB,
-                ctx.ModifiedRollB - ctx.ModifiedRollA,
+                ctx.ModifiedRollB,
                 true  // 회피 사용자 흐트러짐 회복
             ),
             Draw = ClashResult.Draw,
@@ -173,14 +173,14 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerA,
-                ctx.ModifiedRollA - ctx.ModifiedRollB,
+                ctx.ModifiedRollA,
                 true  // 회피 사용자 흐트러짐 회복
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerA,
-                ctx.ModifiedRollB - ctx.ModifiedRollA,
+                ctx.ModifiedRollB,
                 false  // 회피 쪽 흐트러짐 피해
             ),
             Draw = ClashResult.Draw,
@@ -195,14 +195,14 @@
             WinAdvance = destroyBoth,
             WinContext = (ctx) => new StaggerContext(
                 ctx.OwnerA, ctx.OwnerA,
-                ctx.ModifiedRollA - ctx.ModifiedRollB,
+                ctx.ModifiedRollA,
                 true  // 이긴 쪽 흐트러짐 회복
             ),
             Lose = ClashResult.BWin,
             LoseAdvance = destroyBoth,
             LoseContext = (ctx) => new StaggerContext(
                 ctx.OwnerB, ctx.OwnerB,
-                ctx.ModifiedRollB - ctx.ModifiedRollA,
+                ctx.ModifiedRollB,
                 true
             ),
             Draw = ClashResult.Draw,
@@ -215,12 +215,11 @@
         {
             Win = ClashResult.AWin,
             WinAdvance = counterWin,
-            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA - ctx.ModifiedRollB),
+            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA),
 
             Lose = ClashResult.BWin,
             LoseAdvance = counterLose,
-            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB - ctx.ModifiedRollA),
-
+            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
             DrawContext = null
@@ -231,12 +230,11 @@
         {
             Win = ClashResult.AWin,
             WinAdvance = (AdvanceType.Destroy, AdvanceType.Destroy),
-            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA - ctx.ModifiedRollB),
+            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA),
 
             Lose = ClashResult.BWin,
             LoseAdvance = (AdvanceType.Destroy, AdvanceType.Reuse),
-            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB - ctx.ModifiedRollA),
-
+            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
             DrawContext = null
@@ -251,7 +249,7 @@
 
             Lose = ClashResult.BWin,
             LoseAdvance = counterLose,
-            LoseContext = (ctx) => new StaggerContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB - ctx.ModifiedRollA, false),
+            LoseContext = (ctx) => new StaggerContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB, false),
 
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
@@ -263,7 +261,7 @@
         {
             Win = ClashResult.AWin,
             WinAdvance = destroyBoth,
-            WinContext = (ctx) => new StaggerContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA - ctx.ModifiedRollB, false),
+            WinContext = (ctx) => new StaggerContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA, false),
 
             Lose = ClashResult.BWin,
             LoseAdvance = (AdvanceType.Destroy, AdvanceType.Reuse),
@@ -279,11 +277,11 @@
         {
             Win = ClashResult.AWin,
             WinAdvance = counterWin,
-            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA - ctx.ModifiedRollB),
+            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA),
 
             Lose = ClashResult.BWin,
             LoseAdvance = (AdvanceType.Destroy, AdvanceType.Reuse),
-            LoseContext = (ctx) => new StaggerContext(ctx.OwnerB, ctx.OwnerB, ctx.ModifiedRollB - ctx.ModifiedRollA, true),
+            LoseContext = (ctx) => new StaggerContext(ctx.OwnerB, ctx.OwnerB, ctx.ModifiedRollB, true),
 
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
@@ -295,12 +293,11 @@
         {
             Win = ClashResult.AWin,
             WinAdvance = (AdvanceType.Reuse, AdvanceType.Destroy),
-            WinContext = (ctx) => new StaggerContext(ctx.OwnerA, ctx.OwnerA, ctx.ModifiedRollA - ctx.ModifiedRollB, true),
+            WinContext = (ctx) => new StaggerContext(ctx.OwnerA, ctx.OwnerA, ctx.ModifiedRollA, true),
 
             Lose = ClashResult.BWin,
             LoseAdvance = (AdvanceType.Destroy, AdvanceType.Reuse),
-            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB - ctx.ModifiedRollA),
-
+            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
             DrawContext = null
@@ -311,12 +308,11 @@
         {
             Win = ClashResult.AWin,
             WinAdvance = counterWin,
-            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA - ctx.ModifiedRollB),
+            WinContext = (ctx) => new DamageContext(ctx.OwnerA, ctx.OwnerB, ctx.ModifiedRollA),
 
             Lose = ClashResult.BWin,
             LoseAdvance = (AdvanceType.Destroy, AdvanceType.Reuse),
-            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB - ctx.ModifiedRollA),
-
+            LoseContext = (ctx) => new DamageContext(ctx.OwnerB, ctx.OwnerA, ctx.ModifiedRollB),
             Draw = ClashResult.Draw,
             DrawAdvance = destroyBoth,
             DrawContext = null
