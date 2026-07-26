@@ -2,7 +2,7 @@
 public class BleedEffect : StatusEffectRuntime
 {
     public BleedEffect(CharacterRuntime owner, int stack)
-        : base(owner, stack, priority: 0, StatusEffectType.Bleed) { }
+        : base(owner, stack, duration: Permanent, priority: 0, StatusEffectType.Bleed) { }
 
     public override void OnDiceClash()
     {
@@ -17,9 +17,9 @@ public class BleedEffect : StatusEffectRuntime
 public class BurnEffect : StatusEffectRuntime
 {
     public BurnEffect(CharacterRuntime owner, int stack)
-        : base(owner, stack, priority: 1, StatusEffectType.Burn) { }
+        : base(owner, stack, duration: Permanent,  priority: 1, StatusEffectType.Burn) { }
 
-    public override void OnTurnEnd()
+    protected override void OnTurnEnd()
     {
         var ctx = new StatusDamageContext(Owner, Stack);
         Owner.EnqueueEvent(new StatusDamageEvent(ctx));
@@ -32,7 +32,7 @@ public class BurnEffect : StatusEffectRuntime
 public class StrengthEffect : StatusEffectRuntime
 {
     public StrengthEffect(CharacterRuntime owner, int stack)
-        : base(owner, stack, priority: 2, StatusEffectType.Strength) { }
+        : base(owner, stack, duration: 1, priority: 2, StatusEffectType.Strength) { }
 
     public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
     {
@@ -47,7 +47,7 @@ public class StrengthEffect : StatusEffectRuntime
 public class ParalysisEffect : StatusEffectRuntime
 {
     public ParalysisEffect(CharacterRuntime owner, int stack)
-        : base(owner, stack, priority: 3, StatusEffectType.Paralysis) { }
+        : base(owner, stack, duration: 1,  priority: 3, StatusEffectType.Paralysis) { }
 
     public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
     {

@@ -1,6 +1,8 @@
 ﻿
 public abstract class StatusEffectRuntime
 {
+    private readonly int _baseDuration; public const int Permanent = -1;
+
     protected readonly CharacterRuntime Owner;
     public int Priority { get; } 
     public bool IsExpired { get; protected set; }
@@ -8,10 +10,12 @@ public abstract class StatusEffectRuntime
     public int Duration { get; protected set; }
     public StatusEffectType Type { get; protected set; }
     
-    protected StatusEffectRuntime(CharacterRuntime owner,int stack, int priority, StatusEffectType type)
+    protected StatusEffectRuntime(CharacterRuntime owner,int stack, int duration, int priority, StatusEffectType type)
     {
         Owner = owner;
         Stack = stack;
+        Duration = duration;
+        _baseDuration = duration;
         Priority = priority;
         Type = type;
     }
@@ -25,13 +29,17 @@ public abstract class StatusEffectRuntime
     public virtual void OnAfterStagger(StaggerContext ctx) { }   // 추가
     public virtual void OnBeforeClash(ClashContext ctx, bool IsOwnerA) { } 
     public virtual void OnDiceClash() { }
-    public virtual void OnTurnEnd()
+    protected virtual void OnTurnEnd() { }
+    public void TickTurnEnd()
     {
-        Duration--;
+        OnTurnEnd();
 
-        if (Duration <= 0)
+        if (Duration > 0)
         {
-            IsExpired = true;
+            Duration--;
+
+            if (Duration <= 0) IsExpired = true;
         }
     }
+    public void Refresh() => Duration = _baseDuration;
 }

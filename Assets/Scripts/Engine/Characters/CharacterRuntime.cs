@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 
 public class CharacterRuntime : IEventSink
 {
@@ -233,28 +232,37 @@ public class CharacterRuntime : IEventSink
     public void DestroyUsedDice() => _dicePool.DestroyUsed();
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
 
-    public void AddStatus(StatusEffectType type, int stack)
+    public int AddStatus(StatusEffectType type, int stack)
     {
-        if (_effectMap.TryGetValue(type, out var effect))
+        if (_effectMap.TryGetValue(type, out var effect) && !effect.IsExpired)
         {
             effect.AddStack(stack);
+            effect.Refresh();
         }
         else
         {
-            var newEffect = StatusFactory.Create(type, this, stack);
-            _statusEffects.Add(newEffect);
-            _effectMap[type] = newEffect;
+            effect = StatusFactory.Create(type, this, stack);
+            _statusEffects.Add(effect);
+            _effectMap[type] = effect;
         }
         _dirty = true;
+
+        return effect.Stack;
     }
 
     public void TriggerTurnStart()
     {
-        // 
         var ctx = new TurnStartContext(this);
+
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnTurnStart(ctx);
+        }
+
         FlushExpired();
 
         //패시브 효과 트리거
@@ -265,28 +273,48 @@ public class CharacterRuntime : IEventSink
     public void TriggerBeforeDamage(IDamageContext ctx)
     {
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnBeforeDamage(ctx);
+        }
+
+        FlushExpired();
+
         foreach (var passive in _passives)
             passive.OnBeforeDamage(ctx);
-        FlushExpired();
     }
 
     public void TriggerAfterDamage(IDamageContext ctx)
     {
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnAfterDamage(ctx);
+        }
+            
+        FlushExpired();
+
         foreach (var passive in _passives)
             passive.OnAfterDamage(ctx);
-        FlushExpired();
     }
     public void TriggerBeforeClash(ClashContext ctx, bool isOwnerA)
     {
         // 상태이상
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnBeforeClash(ctx, isOwnerA);
+        }
+            
         FlushExpired();
 
         // 패시브
@@ -297,15 +325,28 @@ public class CharacterRuntime : IEventSink
     public void TriggerDiceClash()
     {
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnDiceClash();
+        }
+
         FlushExpired();
     }
 
     public void TriggerTurnEnd()
     {
-        foreach (var effect in _statusEffects)
-            effect.OnTurnEnd();
+        EnsureSorted();
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
+            effect.TickTurnEnd();
+        }
+
         FlushExpired();
 
         if (_emotionStack >= _state.MaxEmotionStack && _emotionLevel < _state.MaxEmotionLevel)
@@ -323,21 +364,35 @@ public class CharacterRuntime : IEventSink
     public void TriggerBeforeStagger(StaggerContext ctx)
     {
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnBeforeStagger(ctx);
+        }
+
+        FlushExpired();
+
         foreach (var passive in _passives)
             passive.OnBeforeStagger(ctx);
-        FlushExpired();
     }
 
     public void TriggerAfterStagger(StaggerContext ctx)
     {
         EnsureSorted();
-        foreach (var effect in _statusEffects)
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
             effect.OnAfterStagger(ctx);
+        }
+
+        FlushExpired();
+
         foreach (var passive in _passives)
             passive.OnAfterStagger(ctx);
-        FlushExpired();
     }
 
     void CreateSpeedSlots()
@@ -360,11 +415,14 @@ public class CharacterRuntime : IEventSink
     {
         for (int i = _statusEffects.Count - 1; i >= 0; i--)
         {
-            if (_statusEffects[i].IsExpired)
+            var expired = _statusEffects[i];
+
+            if (!expired.IsExpired) continue;
+
+            _statusEffects.RemoveAt(i);
+            if (_effectMap.TryGetValue(expired.Type, out var cur) && ReferenceEquals(expired, cur))
             {
-                var expiredEffect = _statusEffects[i];
-                var keyToRemove = expiredEffect.Type; // StatusEffectRuntime에 Type 프로퍼티 추가
-                _effectMap.Remove(keyToRemove);
+                _effectMap.Remove(expired.Type);
             }
         }
     }
