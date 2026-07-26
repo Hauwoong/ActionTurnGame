@@ -131,8 +131,8 @@ public class CombatExecutor
             result, advanceA, advanceB
         ));
 
-        charA.TriggerDiceClash();
-        charB.TriggerDiceClash();
+        charA.TriggerDiceRoll();
+        charB.TriggerDiceRoll();
 
         if (ctx != null)
             _runtime.EnqueueEvent(new ClashContextEvent(ctx));
@@ -151,6 +151,7 @@ public class CombatExecutor
         var target = _runtime.GetCharacterRuntime(targetId);
 
         entry.Dice.Roll(_rng); // 주사위 굴리기 추가
+        attacker.TriggerDiceRoll();
 
         if (entry.Dice.Type == DiceType.Attack)
         {

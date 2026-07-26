@@ -1,10 +1,10 @@
-﻿// 출혈 - 주사위 합마다 스택만큼 피해 + 스택 절반 감소
+﻿// 출혈 - 주사위 굴릴 때마다 스택만큼 피해 + 스택 절반 감소
 public class BleedEffect : StatusEffectRuntime
 {
     public BleedEffect(CharacterRuntime owner, int stack)
         : base(owner, stack, duration: Permanent, priority: 0, StatusEffectType.Bleed) { }
 
-    public override void OnDiceClash()
+    public override void OnDiceRoll()
     {
         var ctx = new StatusDamageContext(Owner, Stack);
         Owner.EnqueueEvent(new StatusDamageEvent(ctx));

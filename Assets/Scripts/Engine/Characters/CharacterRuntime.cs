@@ -322,7 +322,7 @@ public class CharacterRuntime : IEventSink
             passive.OnBeforeClash(ctx, isOwnerA);
     }
 
-    public void TriggerDiceClash()
+    public void TriggerDiceRoll()
     {
         EnsureSorted();
 
@@ -330,7 +330,7 @@ public class CharacterRuntime : IEventSink
         foreach (var effect in effects)
         {
             if (effect.IsExpired) continue;
-            effect.OnDiceClash();
+            effect.OnDiceRoll();
         }
 
         FlushExpired();

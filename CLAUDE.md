@@ -55,21 +55,23 @@
   진입점을 뚫어 6개 항목 전부 통과: 출혈 5→2→1(재진입 경로에서 증발 없음) / 힘 굴림 +3 /
   duration 1 만료 / 힘 2회 스택 6 / 마비 -2 / priority 힘→마비 순서(= `EnsureSorted` 도 같이 검증됨).
   힘·마비는 관측 창구가 없어 `StatusEffects.cs:39` 브레이크포인트 + Locals 로 확인.
-  **`DebugAdd*` 는 3-1.5 검증에 또 쓰므로 아직 남겨둠.** 그때 삭제.
+  **`DebugAdd*` 는 3-2(Delay) 검증에 또 쓰므로 아직 남겨둠.** 그때 삭제.
 - **잔재 정리 일부 완료 (2026-07-26)** — `BattleRuntime.Start(BattleInput)` + `_input` 제거,
   `CharacterState.Source` 제거, 그 결과 참조 0이 된 `BattleInput.cs` / `BattleResult.cs` 삭제.
+- **3-1.5 출혈 발동 조건 교정 완료 (2026-07-26, 플레이 검증)** — "합마다"에서 **"주사위를 굴릴 때마다"**로.
+  `ResolveUnopposedDice` 의 `Roll` 직후에 `attacker.TriggerDiceRoll()` 한 줄 + `OnDiceClash`/`TriggerDiceClash`
+  → `OnDiceRoll`/`TriggerDiceRoll` 개명 5곳. 범위는 주사위 4종 전부라 타입 검사 없음.
+  대조군(고치기 전 일방에서 안 터짐) → 수정 후 터짐 → 합 5→2→1 회귀 없음 순으로 확인.
+  - **방어·회피 주사위 발동은 아직 미검증** — 카드가 `Strike`(Attack 1개)뿐이라 만들 수가 없다. 카드가 늘어난 뒤로.
 
-### 3. 상태이상 — 발동 조건 교정 + Delay(발효 지연) (진행 중)
+### 3. 상태이상 — Delay(발효 지연) (진행 중)
 
-- **3-1.5. 출혈 발동 조건 수정 — 합이 아니라 "주사위를 굴릴 때마다"** (원작 규칙, 사용자 확인) **← 다음 작업**
-  - 검증은 `DebugAddBleed()` 로. 출혈을 걸고 **일방 공격**(edge 없이 상대 슬롯을 노림)에서
-    피해가 들어오면 통과. 고치기 전에 안 들어오는 것부터 확인해두면 대조군이 생긴다.
-  - `ResolveUnopposedDice` 에도 훅 추가. 단 **공격자만** — 일방에서는 방어 측이 주사위를 굴리지 않는다.
-    `ResolveDiceClash` 가 양쪽을 부르는 건 양쪽 다 굴렸기 때문이다.
-  - `OnDiceClash` / `TriggerDiceClash` → `OnDiceRoll` / `TriggerDiceRoll` 로 개명.
-    조건이 "합"이 아니라 "굴림"이 되므로 이름을 안 바꾸면 반드시 헷갈린다.
-  - 미결: 방어·회피 주사위도 `CombatExecutor.cs:153` 에서 굴려진다. "굴릴 때마다"에 공격 외 주사위도
-    포함인지 확인 필요.
+- **3-1.6. 상태이상으로 죽어도 그 주사위의 공격이 나간다** — `RunQueue` 의 `IsValidAction`(IsDead 검사)은
+  액션을 큐에서 꺼낼 때 한 번만 돈다. 그래서 출혈로 공격자가 죽어도 그 굴림의 `DamageEvent` 는 그대로 나간다.
+  **3-1.5 가 만든 버그가 아니라 클래시 경로에 원래 있던 동작**이다
+  (`CombatExecutor.cs:134` 에서 터지고 137~144 에서 이벤트가 나감).
+  원작 규칙 확인 필요 — 죽은 시점에 남은 주사위가 소멸하는 게 맞다면 `ResolveCombat` 의 `while` 루프에
+  생존 검사를 넣는 방향.
 - **3-2. Delay 필드 + `Tick*` 래퍼 7개** — "다음 턴에 힘 부여" 류. **duration 과 다른 축이다**:
   duration = 얼마나 오래, delay = 언제 시작. 발효 시점은 **카드의 성질**이라(즉시 부여 카드와 다음 턴
   부여 카드가 공존) 효과 클래스에 하드코딩하면 안 되고 `StatusAddEvent` 까지 인자로 뚫어야 한다.
