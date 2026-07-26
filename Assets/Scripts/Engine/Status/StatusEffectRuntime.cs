@@ -7,6 +7,7 @@ public abstract class StatusEffectRuntime
     public int Priority { get; } 
     public bool IsExpired { get; protected set; }
     public int Stack { get; protected set; }
+    public int PendingStack { get; protected set; }
     public int Duration { get; protected set; }
     public StatusEffectType Type { get; protected set; }
     
@@ -20,7 +21,12 @@ public abstract class StatusEffectRuntime
         Type = type;
     }
 
-    public virtual void AddStack(int amount) => Stack += amount;
+    public virtual void AddStack(int amount, bool delayed)
+    {
+        if (delayed) PendingStack += amount;
+
+        else Stack += amount;
+    }
     public virtual void ReduceStack(int amount) => Stack -= amount;
     public virtual void OnTurnStart(TurnStartContext ctx) { }
     public virtual void OnBeforeDamage(IDamageContext ctx) { }
@@ -38,8 +44,18 @@ public abstract class StatusEffectRuntime
         {
             Duration--;
 
-            if (Duration <= 0) IsExpired = true;
+            if (Duration <= 0)
+                Stack = 0;
         }
+
+        if (PendingStack > 0)
+        {
+            Stack += PendingStack;
+            PendingStack = 0;
+            Duration = _baseDuration;
+        }
+
+        if (Stack <= 0) IsExpired = true;
     }
     public void Refresh() => Duration = _baseDuration;
 }

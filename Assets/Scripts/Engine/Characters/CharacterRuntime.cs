@@ -232,22 +232,20 @@ public class CharacterRuntime : IEventSink
     public void DestroyUsedDice() => _dicePool.DestroyUsed();
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
 
-    public int AddStatus(StatusEffectType type, int stack)
+    public int AddStatus(StatusEffectType type, int stack, bool delayed = false)
     {
-        if (_effectMap.TryGetValue(type, out var effect) && !effect.IsExpired)
+        if (!_effectMap.TryGetValue(type, out var effect) || effect.IsExpired)
         {
-            effect.AddStack(stack);
-            effect.Refresh();
-        }
-        else
-        {
-            effect = StatusFactory.Create(type, this, stack);
+            effect = StatusFactory.Create(type, this, 0);
             _statusEffects.Add(effect);
             _effectMap[type] = effect;
         }
+
+        effect.AddStack(stack, delayed);
+        
         _dirty = true;
 
-        return effect.Stack;
+        return delayed ? effect.PendingStack : effect.Stack;
     }
 
     public void TriggerTurnStart()

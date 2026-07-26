@@ -138,18 +138,24 @@ public class BattleManager : MonoBehaviour
     {
         if (_runtime == null) return;
 
-        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Bleed, 5));
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Bleed, 5, false));
     }
     public void DebugAddStrength()
     {
         if (_runtime == null) return;
 
-        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Strength, 3));
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Strength, 3, false));
     }
     public void DebugAddParalysis()
     {
         if (_runtime == null) return;
 
-        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Paralysis, 2));
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Paralysis, 2, false));
+    }
+    public void DebugAddDelayedStrength()
+    {
+        if (_runtime == null) return;
+
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Strength, 3, true));
     }
 }

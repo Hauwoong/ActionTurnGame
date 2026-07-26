@@ -63,22 +63,59 @@
   → `OnDiceRoll`/`TriggerDiceRoll` 개명 5곳. 범위는 주사위 4종 전부라 타입 검사 없음.
   대조군(고치기 전 일방에서 안 터짐) → 수정 후 터짐 → 합 5→2→1 회귀 없음 순으로 확인.
   - **방어·회피 주사위 발동은 아직 미검증** — 카드가 `Strike`(Attack 1개)뿐이라 만들 수가 없다. 카드가 늘어난 뒤로.
+- **3-2 Delay(발효 지연) 완료 (2026-07-27, 플레이 검증)** — DEVLOG `2026-07-27` 참고.
+  **`Delay` 카운터도 `IsActive` 게이트도 래퍼 7개도 만들지 않았다.** 대기분을 따로 세기로 정하자
+  (즉시 2 + 대기 3 → 이번 턴 +2, 다음 턴 +3) 그 셋이 통째로 불필요해졌다 — 대기분은 아무 훅도 안 읽는
+  숫자일 뿐이라 "대기 중이라 훅을 막아야 하는 상태"가 존재하지 않는다. 복잡도는 `TickTurnEnd` 한 곳으로 모였다.
+  - `Stack` / `PendingStack` 두 칸. `AddStack(int amount, bool delayed)` 이 분배를 독점.
+  - `TickTurnEnd` 순서: `OnTurnEnd()` → duration 만료면 **활성분 버리기**(`Stack = 0`) →
+    대기분 승격 + `Duration = _baseDuration` **재장전** → 그러고 나서 만료 판정. 순서 하나만 틀려도 깨진다.
+  - `AddStatus` 는 "없거나 만료됐으면 `Create(type, this, 0)` + 등록 → 무조건 `AddStack`" 으로 두 분기를 합쳤다.
+  - Bleed/Burn 은 진입 가드(`if (Stack <= 0) return;`)와 만료 조건(`&& PendingStack <= 0`)이 **둘 다** 필요하다.
+    앞은 "진입할 때 0", 뒤는 "나가면서 0" 을 막는 서로 다른 순간이다.
 
-### 3. 상태이상 — Delay(발효 지연) (진행 중)
+### 3. 상태이상 — 남은 것
 
+- **3-1.7. 굴림 보정이 일방 공격에서 통째로 빠진다 (3-1.5 와 같은 계열, 범위는 더 넓다)**
+  `TriggerBeforeClash` 호출자는 `CombatExecutor.cs:122-123` 두 줄뿐이고 둘 다 `ResolveDiceClash` 안이다.
+  `ResolveUnopposedDice` 는 `entry.Dice.CurrentRoll` 을 날것으로 `DamageContext` 에 넣는다.
+  그래서 `OnBeforeClash` 를 쓰는 것 전부가 일방에서 죽는다 — **힘**(`StatusEffects.cs:42,44`),
+  **마비**(`:57,59`), **`AttackBoostPassive`**(`:16,18`). 상태이상만이 아니라 패시브도 걸려 있다.
+  - 일방 경로에서 빠지는 훅은 `OnBeforeClash` **하나뿐**이다(데미지·스태거 훅은 `DamageEvent`/`StaggerEvent`
+    안에서 돌아 두 경로가 공유, 굴림 훅은 3-1.5 에서 메꿈). 이것만 해결하면 일방/합 비대칭은 끝난다.
+  - 근본 원인: `ClashContext` 가 **주사위 하나의 최종 굴림값**(`ModifiedRollA/B`)과 **두 주사위의 비교**를
+    한 그릇에 담고 있다. 힘은 앞엣것인데 뒤엣것에 묶여서, 비교 상대가 없으면 같이 사라진다.
+  - **A안(권장)**: `DiceRollContext(Owner, Dice, ModifiedRoll)` 신설 + `OnModifyRoll` 훅을 상태이상·패시브
+    양쪽에 추가. 힘/마비/AttackBoost 를 이사. `ResolveDiceClash` 는 주사위별로 훅을 돌린 값으로
+    `ClashContext` 를 초기화하고, `ResolveUnopposedDice` 는 같은 훅으로 `DamageContext` 를 만든다.
+    두 경로가 같은 훅을 공유하므로 앞으로 또 빠지지 않는다. `OnBeforeClash` 는 사용자 0이 되어 삭제 후보.
+  - **B안**: 일방에서도 `ClashContext` 를 만들어 재사용. 변경은 작지만 상대 주사위 자리가 null 이 되어
+    `IClashContext.Defender` 가 null 이 되고, "클래시가 아닌데 `ClashContext`" 라 3-1.5 에서 배운 것과
+    정면으로 부딪힌다.
 - **3-1.6. 상태이상으로 죽어도 그 주사위의 공격이 나간다** — `RunQueue` 의 `IsValidAction`(IsDead 검사)은
   액션을 큐에서 꺼낼 때 한 번만 돈다. 그래서 출혈로 공격자가 죽어도 그 굴림의 `DamageEvent` 는 그대로 나간다.
   **3-1.5 가 만든 버그가 아니라 클래시 경로에 원래 있던 동작**이다
   (`CombatExecutor.cs:134` 에서 터지고 137~144 에서 이벤트가 나감).
   원작 규칙 확인 필요 — 죽은 시점에 남은 주사위가 소멸하는 게 맞다면 `ResolveCombat` 의 `while` 루프에
   생존 검사를 넣는 방향.
-- **3-2. Delay 필드 + `Tick*` 래퍼 7개** — "다음 턴에 힘 부여" 류. **duration 과 다른 축이다**:
-  duration = 얼마나 오래, delay = 언제 시작. 발효 시점은 **카드의 성질**이라(즉시 부여 카드와 다음 턴
-  부여 카드가 공존) 효과 클래스에 하드코딩하면 안 되고 `StatusAddEvent` 까지 인자로 뚫어야 한다.
-  - 나머지 7개 훅도 `TickTurnEnd` 와 같은 패턴으로: 래퍼가 `IsActive` 가드 → `protected virtual On*` 위임
-  - `AddStatus` 의 기존-효과 분기에서 `Delay = Min(기존, 신규)` 병합 필요 (비활성 힘에 즉시 힘이 겹칠 때)
-  - 원작 경우의 수는 **이번 턴 / 다음 턴 / 영구 3가지뿐**(사용자 확인). 현재 `int` 표현이 그 상위집합이라
-    재설계는 불필요. 굳이 좁히면 `enum StatusDuration` 이지만 지금 것도 틀리지 않았다.
+- **3-1.8. `ClashContext` 가 `IClashContext` 를 구현할 이유가 없다 (지금은 무해, 나중에 물린다)**
+  `ClashContext.cs:11` 의 `CharacterRuntime IClashContext.Defender => OwnerB;` — **"B가 방어자"는 틀린 전제다.**
+  A/B 는 "큐에서 먼저 나온 쪽"과 "상대"일 뿐이고 실제 공수는 주사위 타입과 승패로 갈린다.
+  `DiceRuleTable` 이 케이스마다 `(attacker, defender)` 를 일일이 지정하는 게 그 증거 —
+  같은 A승이라도 `Counter vs Block`(248) 은 `DamageContext(A, B)`, `Block vs Counter`(264) 는
+  `StaggerContext(A, B)`, `Evade vs Counter`(296) 는 `StaggerContext(A, A)`(자기 회복)로 전부 다르다.
+  - **지금 안 터지는 이유**: 소비자가 0. `.Defender` 를 읽는 곳은 `DamageEvent`/`StaggerEvent`/`StatusDamageEvent`
+    뿐이고 거기 오는 건 `rule.Resolve()` 가 만든 `DamageContext`/`StaggerContext` 다.
+    `DiceRule` 의 `Func<ClashContext, IClashContext>` 에서 `ClashContext` 는 **입력**일 뿐.
+  - 누가 `IsCancelled` 를 보려고 인터페이스로 받는 순간 틀린 전제가 딸려온다.
+  - 고치는 법: `ClashContext` 에서 `: IClashContext` 를 뗀다. `IsCancelled` 는 이미 public 프로퍼티라
+    인터페이스 없이 접근된다. 떼고 컴파일이 통과하면 그게 소비자 0의 증명이다.
+- **3-1.9. 잔가지 (3-1.7 할 때 같이)**
+  - `StatusEffectRuntime.cs:31` 의 파라미터명이 `IsOwnerA` (대문자 시작). 오버라이드들은 `isOwnerA`.
+    named argument 는 base 시그니처가 기준이라 헷갈린다.
+  - `Refresh()` 참조 0건 — 3-2 에서 `AddStatus` 분기를 합치며 호출이 사라졌다. no-op 이기도 하니 삭제 후보.
+  - `StatusAddLog` 에 `delayed` 가 없다. 로그만 보면 "힘 3"이 이번 턴 건지 다음 턴 건지 구분이 안 된다.
+    3-4 에서 "힘 3 (다음 턴)" 을 그리려면 필요해진다.
 - **3-3. 훅 순회를 스냅샷 → 재사용 없는 인덱스 루프로** — `ToArray()` 할당 제거.
   **공유 버퍼 필드 하나로 돌려쓰면 재진입 때문에 깨진다**(바깥 루프가 쓰던 배열을 안쪽이 덮어씀).
   올바른 방향은 `_triggerDepth` 카운터로 "순회 중엔 제거·정렬 금지"를 강제하는 것:

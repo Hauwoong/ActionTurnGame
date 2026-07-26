@@ -6,10 +6,11 @@ public class BleedEffect : StatusEffectRuntime
 
     public override void OnDiceRoll()
     {
+        if (Stack <= 0) return;
         var ctx = new StatusDamageContext(Owner, Stack);
         Owner.EnqueueEvent(new StatusDamageEvent(ctx));
         Stack = Stack / 2;
-        if (Stack <= 0) IsExpired = true;
+        if (Stack <= 0 && PendingStack <= 0) IsExpired = true;
     }
 }
 
@@ -21,10 +22,11 @@ public class BurnEffect : StatusEffectRuntime
 
     protected override void OnTurnEnd()
     {
+        if (Stack <= 0) return;
         var ctx = new StatusDamageContext(Owner, Stack);
         Owner.EnqueueEvent(new StatusDamageEvent(ctx));
         Stack = Stack / 2;
-        if (Stack <= 0) IsExpired = true;
+        if (Stack <= 0 && PendingStack <= 0) IsExpired = true;
     }
 }
 

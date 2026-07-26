@@ -1,4 +1,4 @@
-public class ClashContext : IClashContext
+﻿public class ClashContext : IClashContext
 {
     public DiceRuntime DiceA { get; }
     public DiceRuntime DiceB { get; }
