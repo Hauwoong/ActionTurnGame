@@ -132,4 +132,24 @@ public class BattleManager : MonoBehaviour
         else 
             return null;
     }
+
+    // TODO: 3-1 검증용. 검증 끝나면 이 region 통째로 삭제.
+    public void DebugAddBleed()
+    {
+        if (_runtime == null) return;
+
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Bleed, 5));
+    }
+    public void DebugAddStrength()
+    {
+        if (_runtime == null) return;
+
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Strength, 3));
+    }
+    public void DebugAddParalysis()
+    {
+        if (_runtime == null) return;
+
+        _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Paralysis, 2));
+    }
 }
