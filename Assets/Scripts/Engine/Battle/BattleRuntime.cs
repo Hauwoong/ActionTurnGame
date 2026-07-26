@@ -1,33 +1,48 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+// 전투의 가변 심장이자 이벤트 허브. 이벤트는 Apply(this)로 이 객체로 되불러 상태를 바꾼다.
 public class BattleRuntime : IEventSink
 {
+    // ──────────── 결정성(RNG) ────────────
     private readonly int _seed;
-
-    private readonly List<CombatLog> _combatLogs = new();
-    public IReadOnlyList<CombatLog> CombatLogs => _combatLogs;
-
-    private readonly Dictionary<int, CharacterRuntime> _characters;
-    public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
     public IRng Rng { get; }
 
-    private readonly Queue<ICombatEvent> _eventQueue = new();
-    public bool HasEvents => _eventQueue.Count > 0;
-    public CombatExecutor Executor { get; private set; }
+    // ──────────── 캐릭터 · 슬롯 ────────────
+    private readonly Dictionary<int, CharacterRuntime> _characters;
+    public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
 
-    private readonly Dictionary<SpeedSlot, SpeedSlotRuntime> _slotRuntimeMap = new();
+    private readonly Dictionary<SpeedSlot, SpeedSlotRuntime> _slotRuntimeMap = new(); // 전 캐릭터의 속도 슬롯을 평탄화한 조회 맵. SpeedSlot->Runtime 역참조.
     public IReadOnlyDictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntimeMap => _slotRuntimeMap;
 
-    private BattleInput _input;
+    // ──────────── 전투 · 합(Bout) ────────────
+    public CombatExecutor Executor { get; private set; }
 
     private BoutGraph _boutGraph;
     public BoutGraph BoutGraph => _boutGraph;
 
     private int _nextActionId = 0;
+
+    /// <summary>
+    /// 액션 고유 번호를 하나 발급한다(발급 후 증가).  ActionInstance 식별용
+    /// </summary>
     public int NextActionId() => _nextActionId++;
+
+    // ──────────── 이벤트 ────────────
+    private readonly Queue<ICombatEvent> _eventQueue = new();
+    public bool HasEvents => _eventQueue.Count > 0; // 미사용 / 배수 루프를 염두에 뒀던 흔적(현재 Step이 즉시 처리해 항상 false).
+
+    // ──────────── 로그 ────────────
+    private readonly List<CombatLog> _combatLogs = new();
+    public IReadOnlyList<CombatLog> CombatLogs => _combatLogs;
 
     private readonly LogDispatcher _logDispatcher = new();
     public LogDispatcher LogDispatcher => _logDispatcher;
 
+    // ──────────── 생성자 ────────────
+    /// <summary>
+    /// 스냅샷으로 전투 런타임을 조립한다.
+    /// Rng/Executor 생성 -> 캐릭터별 CharacterRuntime 생성 -> 전 캐릭터 속도 슬롯을 평탄화해 조회 맵에 등록 -> 빈 BoutGraph 준비
+    /// </summary>
+    /// <param name="snapShot">전투 하나를 환전히 결정하는 불변 입력(Seed + CharacterState)</param>
     public BattleRuntime(BattleSnapShot snapShot)
     {
         _seed = snapShot.Seed;
@@ -44,6 +59,10 @@ public class BattleRuntime : IEventSink
         _boutGraph = new BoutGraph(new Dictionary<SpeedSlot, ActionInstance>(), _slotRuntimeMap);
     }
 
+    // ──────────── 캐릭터 · 슬롯 ────────────
+    /// <summary>
+    /// 전 캐릭터의 모든 속도 슬롯을 다시 굴린다(Used 플래그도 초기화). 턴 시작 때 BattleManager가 호출
+    /// </summary>
     public void RollSpeedDice()
     {
         foreach (var character in _characters.Values)
@@ -51,30 +70,64 @@ public class BattleRuntime : IEventSink
                 slot.Roll(Rng);
     }
 
-    // 캐릭터
+    /// <summary>
+    /// 캐릭터 번호롤 가변 런타임을 가져온다. 등록되지 않은 번호만 예외.
+    /// </summary>
+    /// <param name="characterId">찾을 캐릭터 번호</param>
+    /// <returns>해당 캐릭터의 CharacterRuntime</returns>
     public CharacterRuntime GetCharacterRuntime(int characterId)
         => _characters[characterId];
 
+    /// <summary>
+    /// 슬롯 키(캐릭터 번호 + 슬롯 번호)로 그 슬롯의 런타임을 가져온다.
+    /// </summary>
+    /// <param name="slot">찾을 슬롯 키</param>
+    /// <returns>해당 슬롯의 SpeedSlotRuntime</returns>
     public SpeedSlotRuntime GetSpeedSlotRuntime(SpeedSlot slot)
         => _slotRuntimeMap[slot];
 
-    // 주사위
+    // ──────────── 주사위 ────────────
+    /// <summary>
+    /// 해당 캐릭터가 지금 쓸 주사위를 소비 없이 들여다본다. 없으면 null.
+    /// 소비는 안 하지만 이미 죽은(Destroyed/Consumed) 주사위는 건너뛰며 커서를 밀기는 한다.
+    /// </summary>
+    /// <param name="characterId">대상 캐릭터</param>
+    /// <returns>쓸 수 있는 주사위, 없으면 null</returns>
     public DiceEntry? PeekDice(int characterId)
         => _characters[characterId].Peek();
 
+    /// <summary>
+    /// 현재 커서의 주사위를 처리하고 다음 주사위로 넘어간다.
+    /// Consume/Destroy는 커서 전진, Reuse는 커서를 두고 같은 주사위를 다시 쓴다(연격).
+    /// </summary>
+    /// <param name="characterId">대상 캐릭터</param>
+    /// <param name="type">처리 방식(Consume/Destroy/Reuse)</param>
     public void AdvanceDice(int characterId, AdvanceType type)
         => _characters[characterId].Advance(type);
 
+    /// <summary>
+    /// 액션을 시전자에게 넘겨 실제로 사용시킨다 - 코스트 지불 이벤트 + 카드 주사위를 그 캐릭터 풀에 적재.
+    /// 이 단계가 빠지면 주사위가 안 실려 데미지가 0이 된다.
+    /// </summary>
+    /// <param name="action">사용할 액션. 시전자는 action.SourceSlot.CharacterId로 결정된다.</param>
     public void UseAction(ActionInstance action)
         => _characters[action.SourceSlot.CharacterId].UseAction(action);
 
-    // 이벤트
-    public void EnqueueEvent(ICombatEvent ev)
+    // ──────────── 이벤트 ────────────
+    /// <summary>
+    /// 이벤트를 큐에 넣고 곧바로 Step()으로 처리한다.
+    /// 주의: 큐지만 배수 루프가 아니다 - 파생 이벤트가 DFS로 즉시 처리되며 큐에 2개 이상 쌓이지 않는다.
+    /// </summary>
+    /// <param name="ev">실행할 이벤트</param>
+    public void EnqueueEvent(ICombatEvent ev) // 주의: 큐지만 배수 루프가 아니다. Enqueue 직후 Step()이 즉시 실행 -> 파생 이벤트는 DFS로 즉시 처리. 큐에 2개 이상 안 쌓인다.
     {
         _eventQueue.Enqueue(ev);
         Step();
     }
 
+    /// <summary>
+    /// 큐에서 이벤트 하나를 꺼내 Apply(this)로 실행한다. 현재 호출자는 EnqueueEvent 뿐.
+    /// </summary>
     public void Step()
     {
         if (_eventQueue.Count == 0) return;
@@ -82,21 +135,24 @@ public class BattleRuntime : IEventSink
         ev.Apply(this);
     }
 
-    // 로그
+    // ──────────── 로그 ────────────
+    /// <summary>
+    /// 로그를 기록하고 LogDispatcher로 구독자(주로 UI)에게 전달한다.
+    /// 동기 호출이라 이 줄에서 UI 콜백까지 실행된다 - 반드시 상태 변경을 먼저 하고 호출할 것.
+    /// </summary>
+    /// <param name="log">기록할 전투 로그</param>
     public void AddLog(CombatLog log)
     {
         _combatLogs.Add(log);
         _logDispatcher.Dispatch(log);
     }
-    
 
-    public void Start(BattleInput input)
-    {
-        _input = input;
-        Executor.Execute(_input.BoutGraph);
-    }
-
-    // 한쪽 진영이 전멸하면 true. winner 는 승리 팀, 양측 동시 전멸이면 null(무승부).
+    // ──────────── 전투 판정 ────────────
+    /// <summary>
+    /// 전투 종료 여부를 판정한다. 한쪽 진영이 전멸하면 true.
+    /// </summary>
+    /// <param name="winner">승리 팀. 양측 동시 전멸이면 null(무승부). 전투가 안 끝났으면 역시 null.</param>
+    /// <returns>전투가 끝났으면 true</returns>
     public bool TryGetBattleResult(out Team? winner)
     {
         bool allyAlive = false;
