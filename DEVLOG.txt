@@ -3539,3 +3539,189 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
 - 순수 모델의 생성자가 SO 를 받으면 치환이 아니라 포장이다. 변환 메서드는 버리는 쪽(Data)에 둔다
 - Unity 전용 데이터(Sprite)는 모델에서 빼고, 엔진 밖 계층이 식별자(이름)로 되찾는 레지스트리를 쓴다
 - 컬렉션의 가변성(존)과 원소의 가변성(카드 정의)을 구분한다 — 전부 불변화가 목표가 아니다
+
+---
+
+## 2026-07-25 ~ 07-26 — 상태이상 만료 처리 수정 + duration 배선
+
+배경: CharacterRuntime 주석 작업 중 상태이상 만료 로직이 깨져 있는 것을 발견해 그쪽으로 샜다.
+고치는 과정에서 "이벤트 큐가 사실 DFS 재귀"라는 구조적 성질이 훅 순회를 직접 위협한다는 걸 확인했다.
+※ 이 엔트리 시점에 플레이 검증은 아직 못 했다 — AddStatus 호출자가 0건이라 실행 경로 자체가 없다.
+
+### 문제점
+
+■ FlushExpired 가 _effectMap 에서만 지우고 _statusEffects 에서 안 지웠다
+- 만료된 효과가 리스트에 남아 매 훅마다 계속 트리거 (0 데미지 로그 스팸)
+
+■ 맵 제거를 Type 키로만 해서, 같은 타입의 살아있는 인스턴스가 좀비 때문에 축출됨
+- AddStatus 의 AddStack 누적 경로가 영영 안 타고 인스턴스만 증식
+
+■ 재진입 함정 — 순회 중 컬렉션이 바뀐다
+- EnqueueEvent 는 즉시 Step() 을 부르는 DFS 재귀(CLAUDE.md "다음 작업 7")
+- TriggerDiceClash 의 foreach 안에서
+  BleedEffect.OnDiceClash → StatusDamageEvent → 같은 캐릭터 TriggerBeforeDamage → FlushExpired
+  로 되돌아온다. 순회 중 RemoveAt 은 List<T>._version 을 올려 바깥 foreach 가 터진다
+- Sort(EnsureSorted)도 _version 을 올리므로 같은 경로로 터진다
+
+■ Duration 에 값을 넣는 코드가 프로젝트에 0건
+- 선언·감소·판정만 있고 대입이 없어 항상 0 → 첫 OnTurnEnd 에 -1 → 즉시 만료
+- Bleed/Strength/Paralysis 가 무조건 첫 턴 끝에 죽고 있었다
+
+■ Bleed / Burn 비대칭
+- BurnEffect.OnTurnEnd 가 base.OnTurnEnd() 를 안 불러 Burn 만 턴 카운트 만료가 안 걸림
+- 구조가 똑같은 두 효과인데 만료 조건이 달랐다
+
+■ AddStatus 호출자 0건
+- 상태이상 파이프라인 전체가 게임에서 도달 불가. 즉 여태 한 번도 실행된 적 없는 코드였다
+
+### 고민
+
+■ 순회 중 컬렉션 변경 — 스냅샷이냐 인덱스 루프냐
+- 인덱스 루프는 제거가 일어나면 조용히 원소를 건너뛴다고 판단해 1차로 기각, ToArray() 스냅샷 채택
+- 스냅샷의 짝으로 루프 첫 줄에 if (effect.IsExpired) continue 가 반드시 필요
+- (후속) 재진입 깊이 카운터로 "순회 중엔 제거·정렬 금지"를 강제하면 인덱스 루프가 도로 안전해지고
+  할당도 0이 된다 — 다음 작업으로 남김
+
+■ 좀비에 스택이 쌓이는 경로
+- IsExpired 가 켜진 뒤 FlushExpired 전까지 맵에는 그대로 남아 있다
+- 그 사이 AddStatus 가 들어오면 곧 버려질 인스턴스에 AddStack → 스택 증발
+- AddStatus 에 !effect.IsExpired 가드를 넣자 비로소 FlushExpired 의 ReferenceEquals 가드가
+  실제로 일하게 됐다 (그 전엔 맵과 리스트가 항상 같은 인스턴스라 언제나 true 인 방어 코드)
+
+■ duration 값을 뭘 줄 것인가 — "전부 1턴"은 오답이었다
+- Bleed 에 duration 1 을 주면 스택이 절반으로 줄어드는 로직이 두 번째 기회를 못 받는다
+- Stack/2 와 if (Stack <= 0) IsExpired 를 이미 써 뒀다는 건 스택 소모로 만료시킬 의도였다는 뜻
+- 즉 duration 1 은 그 코드를 죽은 코드로 만든다 → 만료 방식을 효과별로 하나만 쓰도록 갈랐다
+
+■ duration 을 누가 정하나 — 호출자냐 효과 타입이냐
+- 호출자가 넘기면 AddStatus → StatusAddEvent → 카드 데이터까지 인자가 번진다
+- 지속시간은 효과의 성질이므로 서브클래스가 자기 기본값을 하드코딩하는 쪽 채택
+- 반대로 "다음 턴에 부여"(발효 시점)는 카드의 성질이라 효과 클래스에 넣으면 안 된다 —
+  같은 힘을 즉시 주는 카드와 다음 턴에 주는 카드가 공존할 수 있기 때문. 축이 다르다
+
+■ base 에 라이프사이클 로직을 두면 오버라이드가 base 를 안 부를 때 조용히 깨진다
+- Burn 이 이미 그 사고를 낸 전례 → 감소·만료를 오버라이드 불가능한 래퍼로 올림
+
+■ 로그에 요청량을 담나 결과를 담나
+- AddStatus(Strength, 3) 인데 이미 힘 2가 있으면 결과는 5. 요청량을 담으면 UI 가 틀린 값을 그린다
+- EnergyRecoverLog 를 "실제 회복량"으로 정한 선례가 있어 동일하게 결과값 채택
+
+### 해결법
+
+■ 훅 순회 (8개 Trigger*)
+- _statusEffects.ToArray() 스냅샷 위에서 순회 + 루프 첫 줄 if (effect.IsExpired) continue
+- FlushExpired 호출 위치를 "상태이상 루프 직후 → 패시브 루프" 로 8곳 통일
+- TriggerTurnEnd 에만 빠져 있던 EnsureSorted() 추가
+- _passives 는 생성자에서만 채워지고 제거가 없어 스냅샷 불필요
+
+■ FlushExpired
+- 역순 루프에서 참조를 먼저 잡고 RemoveAt(i) → _effectMap 은 ReferenceEquals 로
+  동일 인스턴스일 때만 제거 (좀비를 지우면서 새 인스턴스의 맵 항목을 날리지 않도록)
+
+■ duration 배선
+- StatusEffectRuntime 생성자에 int duration 추가, public const int Permanent = -1 센티널
+- TickTurnEnd(비-virtual 래퍼)가 OnTurnEnd() → Duration 감소 → 만료 판정 순으로 독점
+- OnTurnEnd 를 public → protected 로 내려 CharacterRuntime 이 래퍼를 우회할 수 없게 함
+- 값: Bleed/Burn = Permanent(스택 소모형), Strength/Paralysis = 1(턴 카운트형)
+- Refresh() + readonly _baseDuration — 재적용 시 지속시간 갱신 (AddStatus 의 AddStack 옆)
+
+■ StatusAddEvent / StatusAddLog 신설
+- Apply 는 GetCharacterRuntime → AddStatus → AddLog 순 (핵심 규칙: 상태 먼저, 로그 나중)
+- AddStatus 를 int 반환으로 바꿔 결과 스택을 로그에 싣는다
+
+### 배운 점
+
+- 이벤트 큐가 DFS 재귀라 훅 순회 중 재진입이 일어난다. EnqueueEvent 를 부르는 훅은
+  그 자리에서 같은 객체의 다른 훅으로 되돌아올 수 있다 — 앞으로도 계속 물릴 함정이다
+- 순회 중 컬렉션을 건드리는 문제는 "복사해서 돌기"와 "순회 중 변경을 금지하기" 두 갈래다.
+  전자는 증상을, 후자는 원인을 없앤다
+- 라이프사이클 관리는 오버라이드 불가능한 래퍼로 올리고, 훅은 protected 로 내린다.
+  그러면 우회가 컴파일 에러가 되어 컴파일러가 규칙을 강제한다 (Burn 사고의 재발 방지)
+- 센티널 값을 쓸 땐 판정을 가드 블록 "안"에 넣는다.
+  if (Duration > 0) Duration--; 와 if (Duration <= 0) IsExpired = true; 를 나란히 두면
+  Permanent(-1)가 두 번째에 걸려 정반대로 작동한다 — 실제로 겪음
+- TryGetValue 의 out var 는 else 분기에서 null 이다. 분기 밖에서 그 변수를 쓰려면
+  else 에서 재대입해 "최종적으로 사용된 값"을 가리키게 만든다
+- 참조 0건인 채로 작성한 코드는 "아직 검증되지 않은 코드"다. 컴파일이 통과해도
+  한 번도 실행된 적이 없다는 사실은 변하지 않는다
+- 도메인을 알아야만 판단할 수 있는 코드가 있다. Refresh() 는 duration 이 1이나 Permanent 뿐인
+  현재 규칙에서는 영구 no-op 인데(0이 되는 순간 IsExpired 가 함께 켜지므로 Refresh 시점의
+  Duration 은 항상 1 이상), 참조도 있고 컴파일도 되고 테스트로도 안 잡힌다.
+  원작에 "N턴 지속" 버프가 없다는 사실을 아는 사람만 알 수 있다
+
+## 2026-07-26 — 상태이상 플레이 검증 + 출혈 발동 조건 버그 발견
+
+배경: 전날 엔트리에서 "AddStatus 호출자 0건이라 검증 못 했다"고 남긴 것을 처리했다.
+임시 디버그 버튼으로 실행 경로를 뚫어 6개 항목을 눈으로 확인했고, 그 과정에서
+출혈 발동 조건이 원작과 다르다는 걸 발견했다.
+
+### 문제점
+
+■ 전날 작업 전체가 한 번도 실행된 적 없는 코드였다
+- 만료 수정 / duration 배선 / StatusAddEvent 전부 컴파일만 통과한 상태
+- 진입점이 없으니 회귀인지 아닌지 판단할 근거가 0
+
+■ 출혈이 일방 공격에서 안 터진다 (원작 규칙 위반)
+- TriggerDiceClash 호출자는 CombatExecutor.cs:134-135 두 줄뿐이고 둘 다 ResolveDiceClash 안이다
+- ResolveUnopposedDice 는 주사위를 굴리면서도(153) 훅을 한 줄도 부르지 않는다
+- 원작은 "주사위를 굴릴 때마다" 출혈이 들어간다 (사용자 확인)
+
+■ 검증 결과를 볼 창구가 없다
+- 데미지를 콘솔에 찍는 코드가 프로젝트 어디에도 없다. 2026-07-22 에 HpUI 의 진단용
+  Debug.Log 를 지운 뒤로 남은 건 SlotDebugPanel 의 [BoutStart] 하나뿐
+- 힘/마비는 더 심하다. StatusAddLog 구독자가 0건이라 부여 여부조차 안 보이고
+  굴림 보정은 DiceClashLog 를 아무도 안 찍어서 값을 볼 방법이 없다
+
+### 고민
+
+■ 검증 진입점을 카드 효과로 만들 것인가 임시 버튼으로 만들 것인가
+- 카드 효과 시스템은 아직 없다. 같이 만들면 실패했을 때 상태이상 문제인지
+  카드 효과 문제인지 못 가린다 → 지울 것을 전제로 한 임시 버튼 채택
+- UnityEvent 가 enum 인자를 못 받아서 인자 없는 메서드 3개로 갈랐다
+
+■ 출혈 발동 조건 버그를 지금 같이 고칠 것인가
+- 안 고친다. 발동 조건(언제 터지나)과 만료 로직(터진 뒤 어떻게 사라지나)은 다른 축이고,
+  둘을 같이 건드리면 출혈이 안 나왔을 때 어느 쪽 문제인지 분리가 안 된다
+- 오늘은 현행 코드 기준(합에서만 발동)으로 검증하고, 발동 조건은 3-1.5 로 분리
+
+■ 힘 검증을 임시 로그로 볼 것인가 브레이크포인트로 볼 것인가
+- 임시 Debug.Log 는 나중에 지울 코드를 또 늘린다. 이미 그 사고를 낸 전례가 있다
+  (HpUI 의 진단 로그가 characterId 필터 앞에 있어 2번씩 찍히던 "데미지 중복" 소동)
+- 브레이크포인트는 추가 코드 0줄 → 채택
+
+### 해결법
+
+■ 임시 디버그 경로
+- BattleManager 에 DebugAddBleed/Strength/Paralysis, 전부 인자 없음 + _runtime null 가드
+- 대상은 id 0 (BattleSnapShot 이 아군→적군 순으로 연번을 매기므로 아군 1번)
+- TODO 주석으로 삭제 시점 명시. 3-1.5 검증에 또 필요하므로 지금은 남긴다
+
+■ 출혈 — 합 3턴으로 확인
+- 5 → 2 → 1 피해, 중간 증발 없음. HpUI 가 StatusDamageLog 를 이미 구독하고 있어
+  HP 바 감소가 곧 로그 정상 발행의 증거였다
+- 이 경로가 OnDiceClash → StatusDamageEvent → DFS 재귀 → 같은 캐릭터 TriggerBeforeDamage
+  → FlushExpired 로 되돌아오는, 원래 터지던 재진입 경로다
+
+■ 힘/마비 — 브레이크포인트
+- StatusEffects.cs:39 (StrengthEffect.OnBeforeClash) 에 찍고 Locals 로 Stack /
+  ctx.ModifiedRollA 확인. F10 한 번으로 보정 전후를 비교
+- 굴림 +3 / 턴 종료 후 소멸(duration 1) / 2회 부여 시 스택 6 / 마비 -2 /
+  힘(priority 2) → 마비(priority 3) 순서 전부 통과
+
+■ 잔재 정리
+- BattleRuntime.Start(BattleInput) 과 _input 제거로 BattleInput/BattleResult 참조가
+  0이 되어 두 파일 삭제. CharacterState.Source 도 같이 제거(CharacterData 누수)
+
+### 배운 점
+
+- 관측 창구가 없는 기능은 "검증 불가"다. 검증용 코드를 심기 전에 결과를 무엇으로 볼지부터
+  정해야 한다. 오늘 출혈은 HP 바가 있어서 바로 됐지만 힘은 그게 없어서 방법부터 골라야 했다
+- 브레이크포인트 위치를 잘 고르면 관측 코드가 0줄이 된다. StrengthEffect.OnBeforeClash 는
+  힘이 부여되지 않았으면 객체 자체가 없어서 호출될 일이 없다 —
+  즉 "브레이크가 걸린다"는 사실 자체가 부여 성공의 증거다
+- 한 테스트가 두 개를 덮을 때가 있다. 힘→마비 priority 순서가 맞게 나왔다는 것은
+  EnsureSorted 가 정상 동작한다는 뜻이기도 하다. 따로 테스트를 짜지 않았던 항목이다
+- 콘솔이 조용한 게 항상 버그는 아니다. "로그가 안 뜬다"를 의심하기 전에 그 로그를 찍는
+  코드가 존재하는지부터 확인해야 한다. 오늘은 아예 없었다
+- 검증하려고 코드를 읽다 보면 원래 찾던 것과 다른 버그가 나온다. 출혈 발동 조건이 그랬다.
+  그때 같이 고치고 싶어지지만, 검증 중에 검증 대상을 바꾸면 그날의 검증이 통째로 무의미해진다

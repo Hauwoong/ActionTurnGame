@@ -1,6 +1,6 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-07-23 갱신)
+## 다음 작업 (2026-07-26 갱신)
 
 ### 완료 (이번 세션)
 - **HpUI 배치** (`characterId` 0/1) — 데미지가 실제 HP 에 반영되는 것 눈으로 확인.
@@ -39,6 +39,54 @@
     `GetCardArtwork(name)` 노출, `CardHandUI` 가 조회해 `CardUI.Setup` 3번째 인자로 주입. `CardUI` 는 레지스트리를 모름.
   - `CardData` 는 `[SerializeField] private` + 프로퍼티로 정리(스타일 위반 해소). 필드 리네임에 `FormerlySerializedAs`
     필수였음 — **어트리뷰트에 넣는 이름은 에셋 파일(디스크)에 실제 적힌 키** (Strike.asset 리셋 직전에 잡음).
+- **상태이상 만료 처리 수정 + duration 배선 (2026-07-25~26, 플레이 검증 완료)** —
+  DEVLOG `2026-07-25 ~ 07-26` 참고. 요약:
+  - `FlushExpired` 가 `_statusEffects` 에서도 제거하도록 수정. 맵 제거는 `ReferenceEquals` 로 동일 인스턴스 확인 후에만.
+  - 8개 `Trigger*` 를 `ToArray()` 스냅샷 + `if (effect.IsExpired) continue` 로. `FlushExpired` 위치를
+    "상태이상 루프 직후 → 패시브 루프" 로 통일, `TriggerTurnEnd` 에 빠져 있던 `EnsureSorted()` 추가.
+  - `AddStatus` 에 `!effect.IsExpired` 가드 — 만료 예정 좀비에 스택이 쌓여 증발하던 경로 차단.
+  - `duration` 배선: 생성자 인자 + `public const int Permanent = -1`. **`TickTurnEnd`(비-virtual 래퍼)**가
+    Duration 감소를 독점하고 `OnTurnEnd` 는 `protected` 로 내려 우회를 컴파일 에러로 만듦.
+    값은 Bleed/Burn = `Permanent`(스택 소모형), Strength/Paralysis = `1`(턴 카운트형).
+  - `Refresh()` + `readonly _baseDuration`. **단 현재 규칙에선 영구 no-op** — duration 이 1이나 Permanent 뿐이라
+    값이 안 바뀐다. 원작에 "N턴 지속" 버프가 없으므로 앞으로도 안 바뀔 가능성이 높다(데드 코드 정리 후보).
+  - `StatusAddEvent` / `StatusAddLog` 신설. `AddStatus` 가 **결과 스택**을 반환해 로그에 실음(EnergyRecover B안과 동일).
+- **3-1 검증 완료 (2026-07-26)** — DEVLOG `2026-07-26` 참고. `BattleManager` 의 임시 `DebugAdd*` 3개로
+  진입점을 뚫어 6개 항목 전부 통과: 출혈 5→2→1(재진입 경로에서 증발 없음) / 힘 굴림 +3 /
+  duration 1 만료 / 힘 2회 스택 6 / 마비 -2 / priority 힘→마비 순서(= `EnsureSorted` 도 같이 검증됨).
+  힘·마비는 관측 창구가 없어 `StatusEffects.cs:39` 브레이크포인트 + Locals 로 확인.
+  **`DebugAdd*` 는 3-1.5 검증에 또 쓰므로 아직 남겨둠.** 그때 삭제.
+- **잔재 정리 일부 완료 (2026-07-26)** — `BattleRuntime.Start(BattleInput)` + `_input` 제거,
+  `CharacterState.Source` 제거, 그 결과 참조 0이 된 `BattleInput.cs` / `BattleResult.cs` 삭제.
+
+### 3. 상태이상 — 발동 조건 교정 + Delay(발효 지연) (진행 중)
+
+- **3-1.5. 출혈 발동 조건 수정 — 합이 아니라 "주사위를 굴릴 때마다"** (원작 규칙, 사용자 확인) **← 다음 작업**
+  - 검증은 `DebugAddBleed()` 로. 출혈을 걸고 **일방 공격**(edge 없이 상대 슬롯을 노림)에서
+    피해가 들어오면 통과. 고치기 전에 안 들어오는 것부터 확인해두면 대조군이 생긴다.
+  - `ResolveUnopposedDice` 에도 훅 추가. 단 **공격자만** — 일방에서는 방어 측이 주사위를 굴리지 않는다.
+    `ResolveDiceClash` 가 양쪽을 부르는 건 양쪽 다 굴렸기 때문이다.
+  - `OnDiceClash` / `TriggerDiceClash` → `OnDiceRoll` / `TriggerDiceRoll` 로 개명.
+    조건이 "합"이 아니라 "굴림"이 되므로 이름을 안 바꾸면 반드시 헷갈린다.
+  - 미결: 방어·회피 주사위도 `CombatExecutor.cs:153` 에서 굴려진다. "굴릴 때마다"에 공격 외 주사위도
+    포함인지 확인 필요.
+- **3-2. Delay 필드 + `Tick*` 래퍼 7개** — "다음 턴에 힘 부여" 류. **duration 과 다른 축이다**:
+  duration = 얼마나 오래, delay = 언제 시작. 발효 시점은 **카드의 성질**이라(즉시 부여 카드와 다음 턴
+  부여 카드가 공존) 효과 클래스에 하드코딩하면 안 되고 `StatusAddEvent` 까지 인자로 뚫어야 한다.
+  - 나머지 7개 훅도 `TickTurnEnd` 와 같은 패턴으로: 래퍼가 `IsActive` 가드 → `protected virtual On*` 위임
+  - `AddStatus` 의 기존-효과 분기에서 `Delay = Min(기존, 신규)` 병합 필요 (비활성 힘에 즉시 힘이 겹칠 때)
+  - 원작 경우의 수는 **이번 턴 / 다음 턴 / 영구 3가지뿐**(사용자 확인). 현재 `int` 표현이 그 상위집합이라
+    재설계는 불필요. 굳이 좁히면 `enum StatusDuration` 이지만 지금 것도 틀리지 않았다.
+- **3-3. 훅 순회를 스냅샷 → 재사용 없는 인덱스 루프로** — `ToArray()` 할당 제거.
+  **공유 버퍼 필드 하나로 돌려쓰면 재진입 때문에 깨진다**(바깥 루프가 쓰던 배열을 안쪽이 덮어씀).
+  올바른 방향은 `_triggerDepth` 카운터로 "순회 중엔 제거·정렬 금지"를 강제하는 것:
+  - `FlushExpired` / `EnsureSorted` 맨 앞에 `if (_triggerDepth > 0) return;` (`EnsureSorted` 는 `_dirty` 를 내리지 않는다)
+  - 호출 순서가 함정: `EnsureSorted()` → `_triggerDepth++` → `try { 인덱스 루프 } finally { _triggerDepth--; }` → `FlushExpired()`.
+    `EnsureSorted` 를 `++` 뒤에 두면 최외곽도 정렬을 건너뛰고, `FlushExpired` 를 `finally` 안에 두면 영영 안 지워진다
+  - `finally` 필수 — 예외로 depth 가 안 내려가면 그 캐릭터는 이후 전투 내내 정렬·만료가 멈춘다
+  - 실익은 성능이 아니라 구조다(리스트가 비어 있어 지금은 할당도 거의 없음). 우선순위 낮음
+- **3-4. 상태이상 UI** — `CharacterRuntime._statusEffects` 가 완전히 private 이라 UI 가 읽을 경로가 없다.
+  `SpeedSlots` 처럼 `IReadOnlyList` 노출 필요. `StatusAddLog` 구독자도 아직 없음.
 
 ### 4. Engine → Data 의존 끊기 — 구 2번 (1단계 완료, 2~4단계 남음)
 
@@ -62,9 +110,9 @@
 
 ### 6. 잔재 정리 — 구 4번
 - `UI/Slot/SpeedSlotUI.cs` — 참조 0건. `SlotDebugItem` 이 대체함
-- `Engine/Battle/BattleInput.cs`, `BattleResult.cs`, `BattleRuntime.Start(BattleInput)` — 호출자 0.
-  `Start` 내용은 `BattleManager.ExecuteCombat` 과 중복
 - `TurnUI` 의 `endTurnButton` / `turnText` 필드 — 선언만 되고 쓰이지 않음
+- `BattleRuntime.HasEvents` — 참조 0건. 배수 루프를 염두에 뒀던 흔적이라 7번과 같이 판단할 것
+- ~~`BattleInput.cs` / `BattleResult.cs` / `BattleRuntime.Start`~~ — 2026-07-26 삭제 완료
 
 ### 7. `Step()` 재귀 구조 (급하지 않음) — 구 5번
 `BattleRuntime.EnqueueEvent` 가 enqueue 직후 `Step()` 을 호출하고, `Step()` 은 다른 곳에서
