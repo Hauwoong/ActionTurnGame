@@ -114,8 +114,8 @@
   - `StatusEffectRuntime.cs:31` 의 파라미터명이 `IsOwnerA` (대문자 시작). 오버라이드들은 `isOwnerA`.
     named argument 는 base 시그니처가 기준이라 헷갈린다.
   - `Refresh()` 참조 0건 — 3-2 에서 `AddStatus` 분기를 합치며 호출이 사라졌다. no-op 이기도 하니 삭제 후보.
-  - `StatusAddLog` 에 `delayed` 가 없다. 로그만 보면 "힘 3"이 이번 턴 건지 다음 턴 건지 구분이 안 된다.
-    3-4 에서 "힘 3 (다음 턴)" 을 그리려면 필요해진다.
+  - ~~`StatusAddLog` 에 `delayed` 추가~~ — 불필요로 판명(2026-07-27). `StatusUI.Refresh` 가 로그 내용이 아니라
+    **모델을 직접 다시 읽는** 구조라 로그는 "뭔가 바뀌었다" 신호로만 쓰인다. `HpUI` 와 같은 방식.
 - **3-3. 훅 순회를 스냅샷 → 재사용 없는 인덱스 루프로** — `ToArray()` 할당 제거.
   **공유 버퍼 필드 하나로 돌려쓰면 재진입 때문에 깨진다**(바깥 루프가 쓰던 배열을 안쪽이 덮어씀).
   올바른 방향은 `_triggerDepth` 카운터로 "순회 중엔 제거·정렬 금지"를 강제하는 것:
@@ -124,8 +124,20 @@
     `EnsureSorted` 를 `++` 뒤에 두면 최외곽도 정렬을 건너뛰고, `FlushExpired` 를 `finally` 안에 두면 영영 안 지워진다
   - `finally` 필수 — 예외로 depth 가 안 내려가면 그 캐릭터는 이후 전투 내내 정렬·만료가 멈춘다
   - 실익은 성능이 아니라 구조다(리스트가 비어 있어 지금은 할당도 거의 없음). 우선순위 낮음
-- **3-4. 상태이상 UI** — `CharacterRuntime._statusEffects` 가 완전히 private 이라 UI 가 읽을 경로가 없다.
-  `SpeedSlots` 처럼 `IReadOnlyList` 노출 필요. `StatusAddLog` 구독자도 아직 없음.
+- ~~**3-4. 상태이상 UI**~~ — **완료 (2026-07-27, 플레이 검증).** `StatusUI.cs` 신설.
+  `TMP_Text` 한 줄에 `Bleed 5 | Strength 0 (+3)` 식으로 나열, 비면 `-`(빈 문자열이면
+  "효과 없음"과 "UI 가 안 돎"이 구분 안 되므로). 이제 상태이상 검증에 브레이크포인트가 필요 없다.
+  - **갱신 시점이 이 작업의 핵심이었다.** 상태이상 변경 중 자기 로그를 가진 건 부여(`StatusAddLog`)뿐이고
+    스택 절반 감소·만료·대기분 승격·duration 감소는 로그가 없다. **새 로그를 만들지 않고**,
+    그 변경들이 이미 다른 로그와 같은 순간에 일어난다는 점을 이용했다:
+    스택 감소는 `StatusDamageLog` 와 같은 자리, 나머지는 전부 `TriggerTurnEnd` 안이고
+    `TurnEndLog` 가 그 뒤에 나간다. 구독은 `StatusAdd`/`StatusDamage`/`TurnEnd`/`TurnStart` 4개.
+  - **남는 구멍**: 데미지를 안 내는 효과가 예상 밖 순간에 바뀌면 놓친다. 새 효과를 만들 때
+    "이건 어느 로그에 얹혀 가나?" 를 한 번 생각할 것.
+  - `Refresh` 는 `IsExpired` 를 건너뛴다 — `FlushExpired` 는 훅 루프 뒤에 도는데 그 사이에 로그가 나간다.
+  - 노출은 `public IReadOnlyList<StatusEffectRuntime> StatusEffects`. **원소는 여전히 가변**이고
+    `AddStack` 이 public 이라 UI 가 부를 수 있다(`SpeedSlots` 도 동일). 막으려면 읽기 전용 view 타입이
+    필요한데, 그건 `SpeedSlots` 까지 같이 바꿔야 의미가 있다.
 
 ### 4. Engine → Data 의존 끊기 — 구 2번 (1단계 완료, 2~4단계 남음)
 

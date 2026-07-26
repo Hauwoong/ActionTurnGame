@@ -52,6 +52,7 @@ public class CharacterRuntime : IEventSink
     public int EmotionGainOnStaggered => _state.EmotionGainOnStaggered;
     public int EmotionGainOnStaggerHeal => _state.EmotionGainOnStaggerHeal;
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => _speedSlots;
+    public IReadOnlyList<StatusEffectRuntime> StatusEffects => _statusEffects;
 
     public CharacterRuntime(CharacterState state, IEventSink eventSink, IRng rng)
     {

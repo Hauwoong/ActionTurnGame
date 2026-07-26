@@ -8,9 +8,9 @@ public class BleedEffect : StatusEffectRuntime
     {
         if (Stack <= 0) return;
         var ctx = new StatusDamageContext(Owner, Stack);
-        Owner.EnqueueEvent(new StatusDamageEvent(ctx));
         Stack = Stack / 2;
         if (Stack <= 0 && PendingStack <= 0) IsExpired = true;
+        Owner.EnqueueEvent(new StatusDamageEvent(ctx));
     }
 }
 
@@ -24,9 +24,9 @@ public class BurnEffect : StatusEffectRuntime
     {
         if (Stack <= 0) return;
         var ctx = new StatusDamageContext(Owner, Stack);
-        Owner.EnqueueEvent(new StatusDamageEvent(ctx));
         Stack = Stack / 2;
         if (Stack <= 0 && PendingStack <= 0) IsExpired = true;
+        Owner.EnqueueEvent(new StatusDamageEvent(ctx));
     }
 }
 
