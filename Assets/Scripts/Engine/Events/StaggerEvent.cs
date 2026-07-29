@@ -9,6 +9,8 @@
 
     public void Apply(BattleRuntime runtime)
     {
+        if (_ctx.Attacker.IsDead) return;
+
         _ctx.Attacker.TriggerBeforeStagger(_ctx);
         _ctx.Defender.TriggerBeforeStagger(_ctx);
 

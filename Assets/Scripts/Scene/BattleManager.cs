@@ -139,6 +139,7 @@ public class BattleManager : MonoBehaviour
         if (_runtime == null) return;
 
         _runtime.EnqueueEvent(new StatusAddEvent(0, StatusEffectType.Bleed, 5, false));
+        _runtime.EnqueueEvent(new StatusAddEvent(1, StatusEffectType.Bleed, 5, false));
     }
     public void DebugAddStrength()
     {

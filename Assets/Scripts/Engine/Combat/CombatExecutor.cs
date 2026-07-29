@@ -59,7 +59,7 @@ public class CombatExecutor
                 targetSlot = action.TargetSlot;
             }
 
-            if (!IsTargetAlive(targetSlot))
+            if (!IsAlive(targetSlot.CharacterId))
             {
                 visited.Add(slot);
                 continue;
@@ -93,6 +93,12 @@ public class CombatExecutor
 
             if (diceA == null) break;
 
+            if (!IsAlive(targetId)) 
+            {
+                _runtime.EnqueueEvent(new DiceDiscardRemainingEvent(idA));
+                break;
+            }
+
             if (diceB != null)
                 ResolveDiceClash(idA, idB.Value);
             else
@@ -102,7 +108,15 @@ public class CombatExecutor
         if (b != null)
         {
             while (_runtime.PeekDice(idB.Value) != null)
+            {
+                if (!IsAlive(idA))
+                {
+                    _runtime.EnqueueEvent(new DiceDiscardRemainingEvent(idB.Value));
+                    break;
+                }
+
                 ResolveUnopposedDice(idB.Value, idA);
+            }
         }
     }
 
@@ -120,6 +134,9 @@ public class CombatExecutor
         var modifyedRollA = charA.TriggerModifyRoll(entryA.Dice);
         var modifyedRollB = charB.TriggerModifyRoll(entryB.Dice);
 
+        charA.TriggerDiceRoll();
+        charB.TriggerDiceRoll();
+
         var clashCtx = new ClashContext(charA, charB, modifyedRollA, modifyedRollB);
 
         var rule = _ruleTable.GetRule(entryA.Dice.Type, entryB.Dice.Type);
@@ -130,9 +147,6 @@ public class CombatExecutor
             entryA.Dice.CurrentRoll, entryB.Dice.CurrentRoll,
             result, advanceA, advanceB
         ));
-
-        charA.TriggerDiceRoll();
-        charB.TriggerDiceRoll();
 
         if (ctx != null)
             _runtime.EnqueueEvent(new ClashContextEvent(ctx));
@@ -159,10 +173,12 @@ public class CombatExecutor
 
         entry.Dice.Roll(_rng); // 주사위 굴리기 추가
 
+        var modifyedRoll = attacker.TriggerModifyRoll(entry.Dice);
+
         attacker.TriggerDiceRoll();
 
-        var modifyedRoll = attacker.TriggerModifyRoll(entry.Dice);
-   
+        if (attacker.IsDead) return;
+
         var ctx = new DamageContext(attacker, target, modifyedRoll);
         _runtime.EnqueueEvent(new DamageEvent(ctx));
         _runtime.EnqueueEvent(new DiceDestroyedEvent(characterId));
@@ -175,8 +191,7 @@ public class CombatExecutor
         return !actor.IsDead && !actor.IsStaggered;
     }
 
-    bool IsTargetAlive(SpeedSlot slot)
-        => !_runtime.GetCharacterRuntime(slot.CharacterId).IsDead;
+    bool IsAlive(int characterId) => !_runtime.GetCharacterRuntime(characterId).IsDead;
 
     bool IsTargetStaggered(SpeedSlot slot)
         => _runtime.GetCharacterRuntime(slot.CharacterId).IsStaggered;

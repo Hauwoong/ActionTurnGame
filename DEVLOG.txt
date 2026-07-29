@@ -4060,3 +4060,164 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
 ■ DiceClashLog 가 보정 전 CurrentRoll 을 찍는다
 - 합에서 검증할 때 로그 굴림값과 데미지가 어긋나 보인다.
   clashCtx.ModifiedRollA/B 로 바꾸거나 필드를 하나 더 두는 선택지
+
+## 2026-07-30 — 죽은 캐릭터가 계속 때리던 문제, 그리고 주사위 수명 정리 (3-1.6)
+
+배경: 3-1.7 을 끝내고 이어서. RunQueue 의 생존 검사가 "액션을 큐에서 꺼낼 때 한 번"뿐이라
+출혈로 공격자가 죽어도 그 굴림의 DamageEvent 가 그대로 나갔다. 원작 규칙(사용자 확인)은
+"죽으면 그 캐릭터의 남은 주사위는 소멸" 이므로 소멸 처리와 함께 정리했다.
+
+### 문제점
+
+■ 생존 검사가 큐에서 꺼낼 때 한 번만 돈다
+- IsValidAction(CombatExecutor.cs:49) / IsAlive(:62) 둘 다 RunQueue 안에 있다
+- ResolveCombat 의 while 루프에는 검사가 없어서, 주사위를 소진할 때까지 무조건 돈다
+- EnqueueEvent 가 동기 재귀라 출혈 → StatusDamageEvent → DeathEvent 가 굴림 훅 안에서 끝까지 처리된다.
+  즉 "죽은 다음 줄에서 데미지를 낸다"
+
+■ 대상이 죽어도 남은 공격이 시체로 나간다
+- 3연타 중 첫 타에 대상이 죽으면 남은 2타가 그대로 나간다
+- 둘째 루프(:102-106, A가 주사위를 다 쓴 뒤 B의 잔여를 일방으로 처리)에는 검사가 아예 없었다
+
+■ 루프에 break 를 도입하면 잔여 주사위가 새로 생긴다
+- 지금까지 ResolveCombat 은 반드시 주사위를 다 소진하고 끝났다. 그래서 pool 에 Ready 가 남은 적이 없다
+- BoutEnd 의 DiceDestroyUsedEvent 는 Used 만 치운다(DicePool.cs:51-58). Ready 는 안 건드린다
+- 캐릭터당 SpeedSlot 이 여러 개라 같은 턴에 또 행동하므로, 남은 주사위가 다음 bout 에서 다시 잡힌다
+
+### 고민
+
+■ "죽으면 소멸"을 어디서 구현하나
+- Peek() 이 Ready/Used 가 아닌 주사위를 건너뛰고 결국 null 을 반환한다(DicePool.cs:13-23).
+  그래서 DeathEvent 에서 주사위를 전부 소멸시키면 ResolveCombat 의 while 은 손대지 않아도 빠져나온다
+- 다만 그것만으로는 "지금 손에 든 굴림"을 못 막는다. 죽음이 TriggerDiceRoll 안에서 끝나므로
+  같은 반복 안에서 DamageEvent 가 나간다. 별도의 확인이 필요했다
+
+■ DicePool 을 Clear 할 것인가 상태만 표시할 것인가
+- 처음 구현은 _dice.Clear() + _cursor = 0 이었다. "캐릭터가 죽었으니 pool 도 없어지는 게 맞다"는 직관
+- 실제로는 _dicePool 이 CharacterRuntime 의 readonly 필드고 CharacterRuntime 은 죽어도 살아남는다.
+  Clear() 는 "객체를 없앤다"가 아니라 "내용물만 비운다"라 의도와 한 칸 어긋나 있었다
+- "리플레이 때문에 파괴 상태로 남겨야 한다"는 이야기가 있었는데, 이 프로젝트의 리플레이는
+  seed 재시뮬레이션 전제(IRng + Seed)라 근거가 아니다. Replay 코드도 아직 없다
+- 진짜 이유는 커서다. _cursor 는 _dice 의 인덱스라, 중간에서 원소를 제거하면 뒤가 당겨져 커서가
+  다른 주사위를 가리킨다. Advance 가 Remove 대신 Destroy + _cursor++ 인 게 그것 때문
+- 단 전체를 비우면서 커서도 0으로 되돌리면 그 불변식은 안 깨진다. 그래서 Clear 도 성립하긴 했다
+- 최종적으로는 "커서부터 끝까지" 방식으로 통일. 죽음과 중단이 치워야 할 범위가 같기 때문
+  (커서 앞쪽은 이미 처리됨). 그러면 Clear 어법이 사라지고 DestroyAllDice 도 지울 수 있다
+
+■ _cursor 에 -1 을 넣어 "죽음" 신호로 쓰면 안 되나
+- 안 된다. 죽음은 이미 CharacterRuntime._isDead 에 있고, 같은 사실을 두 곳에 적으면 어긋난다
+- DicePool 은 "다음 주사위가 뭐냐"만 아는 자리다. 캐릭터 생사를 알기 시작하면 계속 샌다
+- 무엇보다 3-1.10 에서 진단한 것과 같은 실수다 — 거긴 Ready 하나가 "안 쓴 것"과 "보관한 것"을
+  겸해서 구분이 안 되는 문제였다. "위치" 필드에 "상태"를 겸하게 하는 건 같은 종류다
+- 실제로 동작도 안 한다. Peek() 이 _dice[-1] 을 까고, Inject 의 Insert(-1, ...) 도 던진다
+
+■ 죽은 공격자 검사를 어디에 둘 것인가
+- 처음엔 ClashContextEvent.Apply 의 IsCancelled 옆을 권했다. 판정 성격이 같고 자리가 자연스러워서
+- 그런데 그러면 합 경로만 덮이고 일방은 CombatExecutor 의 early return 이 따로 덮는다.
+  같은 규칙이 두 계층에 흩어지는 형태 — 3-1.7 에서 OnBeforeClash 가 일방에서 죽어 있던 이유가 그것
+- 두 경로가 반드시 통과하는 가장 깊은 지점은 DamageEvent / StaggerEvent 다. 거기로 옮겼다
+- 대칭짝도 있었다. TakeDamage 첫 줄이 이미 if (_isDead) return; 이다(CharacterRuntime.cs:126).
+  죽은 "방어자"는 막혀 있었고 죽은 "공격자"만 빠져 있었다
+
+■ 합에서 명시적으로 중단할 것인가
+- 안 하는 게 낫다. 가드가 DamageEvent 를 막아주는 동안 ToAdvanceEvent 는 그대로 돌아서
+  상대의 주사위가 정상적으로 큐에서 빠진다
+- rule.Resolve 앞에서 return 해버리면 advanceB 가 안 나가 B의 주사위가 Ready 로 남고,
+  둘째 루프에서 같은 주사위를 다시 굴리게 된다
+
+■ 중단할 때 방어 주사위까지 부술 것인가 (사용자 지적)
+- 처음 만든 DestroyRemaining 은 타입을 안 봐서 방어·회피·반격까지 다 부쉈다
+- 정상 경로와 어긋난다. ResolveUnopposedDice 는 공격이 아니면 DiceConsumedEvent 를 내고
+  BoutEnd 의 Recover() 가 Consumed → Ready 로 되돌린다. 즉 정상 경로에선 보관된다
+- 그래서 처리가 갈린다: 중단 = 공격만 소멸 + 나머지는 보관 / 죽음 = 전부 소멸(방어할 일이 없으므로)
+
+### 해결법
+
+■ DicePool.Advance 에 경계 가드 (if (_cursor < 0 || _cursor >= _dice.Count) return;)
+- Peek 이 null 을 반환한 뒤에도 DiceDestroyedEvent 가 AdvanceDice 를 무조건 부른다(:13-14).
+  Clear 든 상태 표시든 커서가 리스트 끝을 넘기 때문에 어느 쪽이어도 예외가 났다
+- 이 가드가 "크래시 대신 버그를 관찰할 수 있게" 만들어줬다. 가드 전에는 3-1.6 시나리오가 예외로 끝났다
+
+■ DicePool 에 범위 기준 메서드 두 개
+- DestroyRemaining() — 커서 → 끝, 전부 Destroy. 죽음용
+- DiscardRemaining() — 커서 → 끝, Attack 은 Destroy / 나머지는 Consume. 중단용
+- 둘 다 커서를 _dice.Count 로 민다. 안 밀면 Inject 가 소멸된 주사위 앞에 꽂혀 리스트 순서가 어긋난다
+- DestroyAllDice(Clear 방식)는 삭제. DicePool 이 Advance / DestroyUsed / Recover /
+  DestroyRemaining / DiscardRemaining / ResetForNextTurn 으로 전부 상태+범위 기준이 됐다
+
+■ 이벤트 둘 — DiceDestroyRemainingEvent / DiceDiscardRemainingEvent
+- 로그는 안 낸다. 주사위 UI 가 없어 소비자가 0이고, 바로 뒤 BoutEndLog 가 갱신 신호 역할을 한다
+  (StatusUI 에서 세운 "이건 어느 로그에 얹혀 가나?" 기준). 의식적 선택이라 주석으로 남겼다
+- "Event/Log 1:1" 규칙과 안 부딪힌다. 그 규칙은 Log → Event 방향이다
+
+■ DeathEvent 에 DestroyRemainingDice() 추가 (Die() 다음, AddLog 앞)
+- 여긴 이벤트를 거치지 않고 직접 호출한다. 이미 Event.Apply 안이고 Die() 와 같은 트랜잭션이다
+
+■ DamageEvent / StaggerEvent 맨 앞에 Attacker.IsDead 가드
+- TriggerBeforeDamage 보다 앞. 훅도 감정 스택 획득(DamageEvent.cs:34)도 같이 막힌다
+- StaggerEvent 는 IsHeal 일 때 Attacker 가 곧 회복 대상이라, "죽은 놈이 회복도 못 한다"까지 겸한다
+
+■ CombatExecutor
+- ResolveUnopposedDice: TriggerDiceRoll 뒤에 if (attacker.IsDead) return; (낭비 제거용.
+  정확성은 위 가드가 담당한다). DiceDestroyedEvent 를 낼 필요가 없다 — DeathEvent 가 이미 치웠다
+- 첫 루프: diceA == null 확인이 먼저, 그다음 대상 생존. 순서가 반대면 주사위가 없는데도
+  소멸 이벤트를 하나 낸다
+- 둘째 루프: 루프 안에서 매 반복 확인하고 break. while 조건에 넣으면 정상 종료와 중단이
+  같은 출구로 나와 구분이 안 된다
+- IsTargetAlive(SpeedSlot) 을 IsAlive(int) 로 교체하고 RunQueue 까지 통일. "살아있다"의 정의가 한 곳
+
+■ 합 경로 순서 통일 (같이 처리)
+- TriggerDiceRoll 이 합에선 rule.Resolve 뒤, 일방에선 Roll 직후로 서로 달랐다.
+  3-1.5 때 TriggerDiceClash → TriggerDiceRoll 로 개명만 하고 위치를 안 옮긴 흔적이다
+- 두 함수를 같은 골격으로: 확보 → Roll → TriggerModifyRoll → TriggerDiceRoll → 죽음 확인
+  → 해석 → 로그 → 이벤트
+- 3 → 4 순서가 중요하다. 훅이 굴림값에 반응하기 시작하면 확정 전 값을 보면 안 된다
+- 4 → 5 순서 덕에 3-1.6 이 구조적으로 풀린다. 죽음이 굴림 훅에서 일어나므로 그 직후에 확인하면
+  아직 컨텍스트를 만들기 전이다. "만들어놓고 막는" 게 아니라 안 만드는 형태가 된다
+- 이 변경만 단독으로 넣고 회귀부터 확인했다(합 출혈 5→2→1, 데미지 수치, 힘 보정)
+
+### 겪은 실수
+
+■ DiceDiscardRemainingEvent 에 넘긴 id 가 반대였다
+- 첫 루프에서 대상이 죽었을 때 targetId 를 넘겼다. 죽은 쪽 주사위는 DeathEvent 가 이미 치웠으므로 no-op 이고,
+  정작 치워야 할 idA 의 주사위는 Ready 로 남는다. 도입한 이유였던 문제가 그대로 남는 형태
+
+■ 둘째 루프에서 break 를 빼먹어 예외
+- EnqueueEvent 가 동기라 Discard 가 그 자리에서 실행돼 pool 이 비는데, 흐름은 다음 줄로 내려가
+  ResolveUnopposedDice 의 _runtime.PeekDice(id).Value 를 친다 → InvalidOperationException
+
+■ 생존 검사를 if 밖에 둬서 한 번만 평가
+- 둘째 루프를 if (b != null && IsAlive(idA)) 로 감쌌다. 진입 시점에만 보므로
+  루프 도중 A가 죽으면 남은 주사위가 계속 시체를 때린다. 고치려던 버그와 같은 모양이다
+
+■ 중단 시 방어 주사위까지 파괴
+- 위 "고민" 참고. 사용자가 잡았다
+
+### 배운 점
+
+- 예외를 막는 가드는 해결책이 아니라 관측 도구일 때가 있다. Advance 가드를 넣기 전에는
+  3-1.6 시나리오가 크래시로 끝나서 "죽은 뒤에도 데미지가 나간다"를 볼 수가 없었다.
+  가드를 넣고 나서야 대조군이 성립했다
+- 같은 규칙은 두 경로가 반드시 지나는 가장 깊은 지점에 둔다. 처음에 고른 ClashContextEvent 는
+  합만 덮는 자리였다. 3-1.7 에서 방금 합친 것을 다시 가를 뻔했다
+- 어떤 값이 "위치"인지 "상태"인지 헷갈리면 센티넬을 의심한다. _cursor = -1 도, Ready 가
+  두 뜻을 겸하는 것(3-1.10)도 같은 병이다
+- 정상 경로가 이미 정한 처리를 중단 경로가 따라야 한다. 방어 주사위를 정상 경로는 Consume 으로
+  보관하는데 중단 경로만 Destroy 하면, 같은 주사위의 운명이 어디서 멈췄냐에 따라 달라진다
+- 루프의 탈출 경로마다 "무엇을 정리하고 나가는가"를 한 번씩 물어야 한다. RunQueue 의 visited.Add,
+  ResolveCombat 의 주사위 소비, 이번의 잔여 소멸이 전부 같은 모양의 요구다
+
+### 검증
+
+■ 통과 (플레이)
+- 합에서 출혈로 죽음 → 상대 HP 안 깎임, 예외 없음.
+  이 경로가 Advance 가드를 실제로 태운다: DamageEvent 는 가드로 막히지만 ToAdvanceEvent 는
+  그대로 나가 DiceDestroyedEvent → AdvanceDice 를 부르고, 그때 pool 은 DeathEvent 가 비운 뒤다
+- 양쪽 다 죽음 → BattleEndEvent(winner == null), 예외 없음
+- Editor.log 확인: 마지막 컴파일 성공 이후 Exception / error CS 0건
+
+■ 검증 대기 (카드가 Strike 하나뿐이라 상황을 만들 수 없음)
+- 첫 루프의 DiceDiscardRemainingEvent — 대상이 죽은 뒤에도 공격자에게 주사위가 남아야 한다
+- 둘째 루프 전체 — B의 주사위 수 > A 여야 도는데 Attack vs Attack 이 destroyBoth 라 항상 동시에 바닥난다
+- DiscardRemaining 의 방어 주사위 보관 분기 — 방어 주사위를 만들 카드가 없다
+- 게다가 보관은 3-1.10(커서) 때문에 지금은 다시 잡히지도 않는다

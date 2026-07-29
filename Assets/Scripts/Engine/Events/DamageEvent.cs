@@ -11,6 +11,8 @@ public class DamageEvent : ICombatEvent
 
     public void Apply(BattleRuntime runtime)
     {
+        if (_ctx.Attacker.IsDead) return;
+
         _ctx.Attacker.TriggerBeforeDamage(_ctx);
         _ctx.Defender.TriggerBeforeDamage(_ctx);
 

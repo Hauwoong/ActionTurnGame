@@ -1,4 +1,4 @@
-public class DeathEvent : ICombatEvent
+﻿public class DeathEvent : ICombatEvent
 {
     public int CharacterId { get; }
     public DeathEvent(int characterId)
@@ -8,7 +8,11 @@ public class DeathEvent : ICombatEvent
     public void Apply(BattleRuntime runtime)
     {
         var character = runtime.GetCharacterRuntime(CharacterId);
-        character.Die();  
+
+        character.Die();
+
+        character.DestroyRemainingDice();
+
         runtime.AddLog(new DeathLog(CharacterId));
 
         if (runtime.TryGetBattleResult(out var winner))

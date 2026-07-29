@@ -233,6 +233,8 @@ public class CharacterRuntime : IEventSink
     public void RecoverDice() => _dicePool.Recover();
     public void DestroyUsedDice() => _dicePool.DestroyUsed();
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
+    public void DiscardRemainingDice() => _dicePool.DiscardRemaining();
+    public void DestroyRemainingDice() => _dicePool.DestroyRemaining();
 
     public int AddStatus(StatusEffectType type, int stack, bool delayed = false)
     {

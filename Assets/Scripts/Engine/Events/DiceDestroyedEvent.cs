@@ -1,4 +1,4 @@
-
+﻿
 public sealed class DiceDestroyedEvent : ICombatEvent
 {
     public int CharacterId { get; }

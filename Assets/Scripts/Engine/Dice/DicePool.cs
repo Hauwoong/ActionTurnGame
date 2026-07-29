@@ -24,6 +24,8 @@ public class DicePool
 
     public void Advance(AdvanceType type)
     {
+        if (_cursor < 0 || _cursor >= _dice.Count) return;
+
         var entry = _dice[_cursor];
         switch (type)
         {
@@ -63,6 +65,30 @@ public class DicePool
         foreach (var e in _dice)
             if (e.Dice.State != DiceState.Destroyed)
                 e.Dice.Destroy();
+    }
+    public void DestroyRemaining()
+    {
+        for (int i = _cursor; i < _dice.Count; i++)
+        {
+            _dice[i].Dice.Destroy();
+
+            _cursor++;
+        }
+    }
+    public void DiscardRemaining()
+    {
+        for (int i = _cursor; i < _dice.Count; i++)
+        {
+            var dice = _dice[i].Dice;
+
+            if (dice.Type == DiceType.Attack)
+                dice.Destroy();
+
+            else
+                dice.Consume();
+
+             _cursor++;
+        }
     }
 }
 

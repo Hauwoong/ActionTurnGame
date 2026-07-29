@@ -2,6 +2,37 @@
 
 ## 다음 작업 (2026-07-30 갱신)
 
+### ▶ 내일 시작 지점 — 카드 늘리기 (방어·회피·반격 주사위 확보)
+
+**왜 이게 먼저인가.** 지금 카드가 `Strike`(Attack 주사위 1개) 하나뿐이라 **검증 부채가 4건 쌓여 있다.**
+전부 "방어 주사위가 있어야" 또는 "주사위가 2개 이상이어야" 만들 수 있는 상황이다:
+
+| 대기 중인 검증 | 필요한 것 |
+|---|---|
+| 3-1.5 — 방어·회피 주사위에서 출혈이 터지는가 | 방어 주사위 |
+| 3-1.7 — 일방에서 방어 주사위가 **안 굴러야** 한다 | 방어 주사위 |
+| 3-1.6 — 첫 루프 `DiceDiscardRemainingEvent` (대상 사망 후 잔여 소멸) | 주사위 2개 이상 |
+| 3-1.6 — 둘째 루프 전체 + `DiscardRemaining` 의 보관 분기 | 양쪽 주사위 수가 다른 카드 |
+
+카드를 늘리면 이 넷이 한꺼번에 열린다. 반대로 지금 다른 엔진 작업을 더 쌓으면 검증 부채도 같이 쌓인다.
+
+**할 일 (Data 계층 위주, 엔진 변경 거의 없음)**
+1. `Assets/Data/Cards/` 에 카드 에셋 추가. 최소 두 장:
+   - **방어 주사위가 있는 카드** — `Block` 또는 `Evade` 를 포함. 위 4건 중 3건이 여기 걸린다
+   - **주사위 2~3개짜리 공격 카드** — 다타 상황용
+2. `CardData` 는 이미 `ToModel()` 구조라 코드 변경 불필요. 인스펙터에서 `DiceData` 를 채우는 작업.
+3. 덱에 넣기 — `CharacterData` 의 덱 목록. `Ally01` / `Enemy01` 양쪽.
+4. `BattleManager` 의 artwork 레지스트리는 이름 기반이라 새 카드도 자동으로 잡힌다(스프라이트만 지정).
+
+**그다음 바로 검증** — 위 표의 4건을 순서대로. 3-1.5·3-1.7 은 대조군이 이미 기록돼 있으니 바로 비교된다.
+
+**막히면**: `Strike.asset` 을 열어 필드 구조를 먼저 볼 것. `CardData` 는 `[SerializeField] private` +
+프로퍼티 구조이고, 필드 리네임 이력이 있어 `FormerlySerializedAs` 가 붙어 있다(에셋 파일에 실제로 적힌 키 기준).
+
+**대안 (카드 작업이 막히거나 내키지 않으면)**: 3-1.10(`DiceRecoverEvent` 커서 문제) — 단 그것도
+관측하려면 방어 주사위가 필요하다. 아니면 "4. Engine → Data 의존 끊기 2단계"(`CharacterModel`)가
+상태이상 작업과 완전히 독립적이라 머리를 쉬어가는 선택지.
+
 ### 완료 (이번 세션)
 - **HpUI 배치** (`characterId` 0/1) — 데미지가 실제 HP 에 반영되는 것 눈으로 확인.
 - **주사위 적재 배선** — `BoutStartEvent.Apply` 가 `ResolveCombat` 앞에서 `UseAction(A)` / `UseAction(B)` 호출.
@@ -95,22 +126,30 @@
     타입 검사를 위로 올리면서 주사위를 소비하지 않고 `return`(→ `ResolveCombat` 무한 루프).
     **`ResolveCombat` 의 `while` 에서 "아무것도 안 하고 빠지기"는 존재하지 않는다** — 모든 탈출 경로가
     `DiceConsumed`/`DiceDestroyed` 중 하나를 내야 한다. `RunQueue` 의 `visited.Add(slot)` 과 같은 구조.
+- **3-1.6 완료 + 주사위 수명 정리 (2026-07-30, 플레이 검증)** — DEVLOG `2026-07-30` 참고.
+  **원작 규칙 확정(사용자): 죽으면 그 캐릭터의 남은 주사위는 소멸. 대상이 죽으면 공격자의 남은 주사위도 소멸(A안).**
+  - **가드는 `DamageEvent`/`StaggerEvent` 맨 앞의 `Attacker.IsDead`** — 합·일방 두 경로가 반드시 지나는
+    가장 깊은 지점. `ClashContextEvent` 에 두면 합만 덮여서 3-1.7 에서 합친 걸 다시 가르는 꼴이 된다.
+    `TakeDamage` 의 `if (_isDead) return;` 과 대칭짝(죽은 방어자는 이미 막혀 있었고 공격자만 빠져 있었다).
+  - `ResolveUnopposedDice` 의 early return 은 **낭비 제거용**이지 정확성 담당이 아니다.
+  - **합에서는 명시적으로 중단하지 않는다.** `ToAdvanceEvent` 가 그대로 돌아야 상대 주사위가 큐에서 빠진다.
+    `rule.Resolve` 앞에서 `return` 하면 B 주사위가 `Ready` 로 남아 둘째 루프에서 재굴림된다.
+  - **`DicePool` 이 범위 기준으로 통일됐다**: `DestroyRemaining`(커서→끝, 전부 — **죽음**) /
+    `DiscardRemaining`(커서→끝, Attack 만 소멸·나머지는 `Consume` 보관 — **중단**). `Clear` 어법과
+    `DestroyAllDice` 삭제. 커서를 `_dice.Count` 로 미는 게 필수 — 안 밀면 `Inject` 가 소멸된 주사위 앞에 꽂힌다.
+  - **`Advance` 경계 가드** — `Peek` 이 null 을 준 뒤에도 `DiceDestroyedEvent` 가 `AdvanceDice` 를 무조건 부른다.
+    이 가드가 3-1.6 을 "크래시"에서 "관찰 가능한 버그"로 바꿔줬다.
+  - **합·일방 순서 통일**: 확보 → `Roll` → `TriggerModifyRoll` → `TriggerDiceRoll` → 죽음 확인 → 해석 → 로그 → 이벤트.
+    `TriggerDiceRoll` 이 합에선 `rule.Resolve` 뒤에 있던 건 3-1.5 때 개명만 하고 위치를 안 옮긴 흔적.
+  - `IsTargetAlive(SpeedSlot)` → `IsAlive(int)` 로 교체, `RunQueue` 까지 통일.
+  - **`_cursor` 에 -1 을 넣어 죽음 신호로 쓰지 말 것** — 죽음은 `_isDead` 가 권위다. "위치" 필드에 "상태"를
+    겸하게 하는 건 3-1.10 의 `Ready` 이중 의미와 같은 병이고, `Peek`/`Inject` 가 곧장 예외를 던진다.
+  - **검증 대기 (카드가 `Strike` 하나뿐이라 상황을 만들 수 없음)**: 첫 루프의 `DiceDiscardRemainingEvent`,
+    둘째 루프 전체(`Attack vs Attack` 이 `destroyBoth` 라 양쪽이 동시에 바닥난다),
+    `DiscardRemaining` 의 방어 주사위 보관 분기.
 
 ### 3. 상태이상 — 남은 것
 
-- **3-1.6. 상태이상으로 죽어도 그 주사위의 공격이 나간다** **← 다음 작업. 3-1.10 과 묶어서.**
-  - 둘 다 `ResolveCombat` / `DicePool` 의 **주사위 수명** 문제라 같은 파일을 만진다.
-  - **착수 전 확인할 것: 원작에서 캐릭터가 죽은 시점에 그 캐릭터의 남은 주사위가 소멸하는가.**
-    답이 "소멸"이면 `ResolveCombat` 의 `while` 에 생존 검사를 넣는 방향인데, 그때
-    **남은 주사위를 어떻게 치울지**가 따라온다 — 그냥 `break` 하면 `DicePool` 에 `Ready` 인 주사위가
-    남은 채로 턴이 끝난다(`ResetForNextTurn` 이 정리하긴 한다).
-  - 대조군: 출혈 스택을 크게 걸어 첫 굴림에 죽게 만들고, 죽은 뒤에도 `DamageLog` 가 더 나가는지 확인.
-  `RunQueue` 의 `IsValidAction`(IsDead 검사)은
-  액션을 큐에서 꺼낼 때 한 번만 돈다. 그래서 출혈로 공격자가 죽어도 그 굴림의 `DamageEvent` 는 그대로 나간다.
-  **3-1.5 가 만든 버그가 아니라 클래시 경로에 원래 있던 동작**이다
-  (`CombatExecutor.cs:134` 에서 터지고 137~144 에서 이벤트가 나감).
-  원작 규칙 확인 필요 — 죽은 시점에 남은 주사위가 소멸하는 게 맞다면 `ResolveCombat` 의 `while` 루프에
-  생존 검사를 넣는 방향.
 - **3-1.10. `DiceRecoverEvent` 가 실제로는 효과가 없어 보인다 (2026-07-30 발견, 미확인)**
   의도는 "일방에서 굴리지 않고 보관한 방어·회피 주사위를 나중에 꺼내 쓴다"인데 커서가 막고 있다:
   - `DicePool.Advance(Consume)` 가 `_cursor++` 를 하는데 `Recover()` 는 **상태만** 되돌리고 커서는 안 건드린다
@@ -168,6 +207,8 @@
 - `UI/Slot/SpeedSlotUI.cs` — 참조 0건. `SlotDebugItem` 이 대체함
 - `TurnUI` 의 `endTurnButton` / `turnText` 필드 — 선언만 되고 쓰이지 않음
 - `BattleRuntime.HasEvents` — 참조 0건. 배수 루프를 염두에 뒀던 흔적이라 7번과 같이 판단할 것
+- `SlotDebugPanel.cs:57` 의 진단용 `Debug.Log("[BoutStart] ...")` — 매 bout 마다 스택 트레이스까지
+  찍힌다. 2026-07-22 의 `HpUI` 건과 같은 종류(그때는 필터 앞에 있어서 "데미지 로그 2번" 오해를 낳았다)
 - ~~`BattleInput.cs` / `BattleResult.cs` / `BattleRuntime.Start`~~ — 2026-07-26 삭제 완료
 
 ### 7. `Step()` 재귀 구조 (급하지 않음) — 구 5번
