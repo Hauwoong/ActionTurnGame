@@ -33,7 +33,6 @@ public abstract class StatusEffectRuntime
     public virtual void OnAfterDamage(IDamageContext ctx) { }
     public virtual void OnBeforeStagger(StaggerContext ctx) { }  // 추가
     public virtual void OnAfterStagger(StaggerContext ctx) { }   // 추가
-    public virtual void OnBeforeClash(ClashContext ctx, bool IsOwnerA) { } 
     public virtual void OnDiceRoll() { }
     protected virtual void OnTurnEnd() { }
     public void TickTurnEnd()
@@ -57,5 +56,5 @@ public abstract class StatusEffectRuntime
 
         if (Stack <= 0) IsExpired = true;
     }
-    public void Refresh() => Duration = _baseDuration;
+    public virtual void OnModifyRoll(DiceRollContext ctx) { }
 }

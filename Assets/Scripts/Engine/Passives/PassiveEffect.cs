@@ -1,4 +1,4 @@
-
+﻿
 public abstract class PassiveEffect
 {
     protected readonly CharacterRuntime Owner;
@@ -10,12 +10,12 @@ public abstract class PassiveEffect
         Type = type;
     }
 
-    public virtual void OnBeforeClash(ClashContext ctx, bool isOwnerA) { }
     public virtual void OnBeforeDamage(IDamageContext ctx) { }
     public virtual void OnAfterDamage(IDamageContext ctx) { }
     public virtual void OnBeforeStagger(StaggerContext ctx) { }
     public virtual void OnAfterStagger(StaggerContext ctx) { }
     public virtual void OnTurnStart(TurnStartContext ctx) { }
     public virtual void OnTurnEnd() { }
+    public virtual void OnModifyRoll(DiceRollContext ctx) { }
 
 }

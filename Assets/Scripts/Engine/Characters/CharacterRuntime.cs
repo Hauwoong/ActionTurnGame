@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 public class CharacterRuntime : IEventSink
 {
@@ -302,23 +303,26 @@ public class CharacterRuntime : IEventSink
         foreach (var passive in _passives)
             passive.OnAfterDamage(ctx);
     }
-    public void TriggerBeforeClash(ClashContext ctx, bool isOwnerA)
+
+    public int TriggerModifyRoll(DiceRuntime dice)
     {
-        // 상태이상
+        var ctx = new DiceRollContext(this, dice);
+
         EnsureSorted();
 
         var effects = _statusEffects.ToArray();
         foreach (var effect in effects)
         {
             if (effect.IsExpired) continue;
-            effect.OnBeforeClash(ctx, isOwnerA);
+            effect.OnModifyRoll(ctx);
         }
-            
+
         FlushExpired();
 
-        // 패시브
-        foreach (var passive in _passives)
-            passive.OnBeforeClash(ctx, isOwnerA);
+        foreach(var passive in _passives)
+            passive.OnModifyRoll(ctx);
+
+        return Math.Max(1, ctx.ModifiedRoll);
     }
 
     public void TriggerDiceRoll()

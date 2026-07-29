@@ -1,6 +1,6 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-07-26 갱신)
+## 다음 작업 (2026-07-30 갱신)
 
 ### 완료 (이번 세션)
 - **HpUI 배치** (`characterId` 0/1) — 데미지가 실제 HP 에 반영되는 것 눈으로 확인.
@@ -73,55 +73,54 @@
   - `AddStatus` 는 "없거나 만료됐으면 `Create(type, this, 0)` + 등록 → 무조건 `AddStack`" 으로 두 분기를 합쳤다.
   - Bleed/Burn 은 진입 가드(`if (Stack <= 0) return;`)와 만료 조건(`&& PendingStack <= 0`)이 **둘 다** 필요하다.
     앞은 "진입할 때 0", 뒤는 "나가면서 0" 을 막는 서로 다른 순간이다.
+- **3-1.7 / 3-1.8 / 3-1.9 완료 (2026-07-30, 플레이 검증)** — DEVLOG `2026-07-29 ~ 07-30` 참고.
+  A안 채택. `DiceRollContext(Owner/Dice/ModifiedRoll)` 신설 + `OnModifyRoll` 훅을 상태이상·패시브 양쪽에 추가,
+  `CharacterRuntime.TriggerModifyRoll(DiceRuntime) → int` 가 합·일방 두 경로의 공용 관문이 됐다.
+  - **`isOwnerA` 인자가 통째로 소멸.** 훅이 자기 주사위 하나만 보게 되어 힘/마비/`AttackBoostPassive` 셋 다
+    `if (isOwnerA) ... else ...` 대칭 코드가 한 줄로 줄었다. 훅 시그니처의 A/B 는 그릇이 크다는 신호였다.
+  - **범위 규칙**: 힘 = 공격 주사위만(타입 가드 있음), 마비 = 전 타입. 효과마다 다르므로 타입 검사는 훅 안.
+  - **굴림값 하한 1 은 `TriggerModifyRoll` 반환 직전 한 곳**(`Math.Max`, `Mathf` 아님).
+    마비 안에 두면 순서 의존이고 감소 효과가 늘 때마다 재구현해야 한다. 원작이 "보정 합산 후 하한"이라
+    결과도 이쪽이 맞다(굴림 3/마비 5/힘 2 → 마비 클램프 3, 래퍼 클램프 1). `TickTurnEnd` 와 같은 구도.
+  - **보정값을 `DiceRuntime.CurrentRoll` 에 되쓰지 않는다.** "실제 굴린 값" 과 "이번 해석에서 쓸 값"은
+    다른 개념이고, 합치면 "최대값 굴림 시 발동" 류를 만들 수 없다. `CurrentRoll` 은 `Roll()` 만 쓴다.
+  - **`ResolveUnopposedDice` 는 이제 공격 주사위만 굴린다.** 방어·회피는 굴리지 않고 `DiceConsumedEvent` 만 낸다
+    — 어차피 `Consume` 으로 보관됐다 나중에 다시 굴려지므로 지금 굴린 값은 버려지고, 3-1.5 가 넣은
+    `TriggerDiceRoll` 때문에 버릴 굴림에 출혈만 터지고 있었다.
+    원칙: **`Roll()` 이 있는 자리에 굴림 훅이 따라붙는다. 굴리지 않으면 훅도 없다.**
+  - `ClashContext` 는 `DiceA`/`DiceB` 를 잃고 "두 캐릭터 + 두 숫자"만 남았다(타입 검사가 훅 안으로 갔으므로).
+    `: IClashContext` 와 `Defender` 도 제거(3-1.8). `OnBeforeClash`/`TriggerBeforeClash` 3곳,
+    `Refresh()` 삭제(3-1.9). `IsOwnerA` 대소문자 문제는 그 줄과 함께 소멸.
+  - **실수 둘**: `ClashContext` 생성자 복붙(`ModifiedRollB = modifiedRollA` → 모든 합이 무승부),
+    타입 검사를 위로 올리면서 주사위를 소비하지 않고 `return`(→ `ResolveCombat` 무한 루프).
+    **`ResolveCombat` 의 `while` 에서 "아무것도 안 하고 빠지기"는 존재하지 않는다** — 모든 탈출 경로가
+    `DiceConsumed`/`DiceDestroyed` 중 하나를 내야 한다. `RunQueue` 의 `visited.Add(slot)` 과 같은 구조.
 
 ### 3. 상태이상 — 남은 것
 
-- **3-1.7. 굴림 보정이 일방 공격에서 통째로 빠진다 (3-1.5 와 같은 계열, 범위는 더 넓다)** **← 다음 작업. 여기부터.**
-  - 3-1.8 / 3-1.9 가 전부 이 작업에서 만지는 파일이라 같이 처리한다.
-  - 검증은 이제 브레이크포인트 없이 `StatusUI` 로 된다 — 힘 걸고 **일방 공격**으로 데미지가
-    굴림값보다 높게 나오면 통과. 고치기 전에 안 오르는 것부터 확인해 대조군을 만들 것(3-1.5 선례).
-  - 착수 전 결정할 것: **힘이 방어·회피 주사위에도 붙는가.** `AttackBoostPassive` 는
-    `ctx.DiceA.Type == DiceType.Attack` 를 검사하는데 힘·마비는 안 한다. 이 답에 따라
-    타입 검사를 훅 안에 둘지 호출부에 둘지가 갈린다.
-  `TriggerBeforeClash` 호출자는 `CombatExecutor.cs:122-123` 두 줄뿐이고 둘 다 `ResolveDiceClash` 안이다.
-  `ResolveUnopposedDice` 는 `entry.Dice.CurrentRoll` 을 날것으로 `DamageContext` 에 넣는다.
-  그래서 `OnBeforeClash` 를 쓰는 것 전부가 일방에서 죽는다 — **힘**(`StatusEffects.cs:42,44`),
-  **마비**(`:57,59`), **`AttackBoostPassive`**(`:16,18`). 상태이상만이 아니라 패시브도 걸려 있다.
-  - 일방 경로에서 빠지는 훅은 `OnBeforeClash` **하나뿐**이다(데미지·스태거 훅은 `DamageEvent`/`StaggerEvent`
-    안에서 돌아 두 경로가 공유, 굴림 훅은 3-1.5 에서 메꿈). 이것만 해결하면 일방/합 비대칭은 끝난다.
-  - 근본 원인: `ClashContext` 가 **주사위 하나의 최종 굴림값**(`ModifiedRollA/B`)과 **두 주사위의 비교**를
-    한 그릇에 담고 있다. 힘은 앞엣것인데 뒤엣것에 묶여서, 비교 상대가 없으면 같이 사라진다.
-  - **A안(권장)**: `DiceRollContext(Owner, Dice, ModifiedRoll)` 신설 + `OnModifyRoll` 훅을 상태이상·패시브
-    양쪽에 추가. 힘/마비/AttackBoost 를 이사. `ResolveDiceClash` 는 주사위별로 훅을 돌린 값으로
-    `ClashContext` 를 초기화하고, `ResolveUnopposedDice` 는 같은 훅으로 `DamageContext` 를 만든다.
-    두 경로가 같은 훅을 공유하므로 앞으로 또 빠지지 않는다. `OnBeforeClash` 는 사용자 0이 되어 삭제 후보.
-  - **B안**: 일방에서도 `ClashContext` 를 만들어 재사용. 변경은 작지만 상대 주사위 자리가 null 이 되어
-    `IClashContext.Defender` 가 null 이 되고, "클래시가 아닌데 `ClashContext`" 라 3-1.5 에서 배운 것과
-    정면으로 부딪힌다.
-- **3-1.6. 상태이상으로 죽어도 그 주사위의 공격이 나간다** — `RunQueue` 의 `IsValidAction`(IsDead 검사)은
+- **3-1.6. 상태이상으로 죽어도 그 주사위의 공격이 나간다** **← 다음 작업. 3-1.10 과 묶어서.**
+  - 둘 다 `ResolveCombat` / `DicePool` 의 **주사위 수명** 문제라 같은 파일을 만진다.
+  - **착수 전 확인할 것: 원작에서 캐릭터가 죽은 시점에 그 캐릭터의 남은 주사위가 소멸하는가.**
+    답이 "소멸"이면 `ResolveCombat` 의 `while` 에 생존 검사를 넣는 방향인데, 그때
+    **남은 주사위를 어떻게 치울지**가 따라온다 — 그냥 `break` 하면 `DicePool` 에 `Ready` 인 주사위가
+    남은 채로 턴이 끝난다(`ResetForNextTurn` 이 정리하긴 한다).
+  - 대조군: 출혈 스택을 크게 걸어 첫 굴림에 죽게 만들고, 죽은 뒤에도 `DamageLog` 가 더 나가는지 확인.
+  `RunQueue` 의 `IsValidAction`(IsDead 검사)은
   액션을 큐에서 꺼낼 때 한 번만 돈다. 그래서 출혈로 공격자가 죽어도 그 굴림의 `DamageEvent` 는 그대로 나간다.
   **3-1.5 가 만든 버그가 아니라 클래시 경로에 원래 있던 동작**이다
   (`CombatExecutor.cs:134` 에서 터지고 137~144 에서 이벤트가 나감).
   원작 규칙 확인 필요 — 죽은 시점에 남은 주사위가 소멸하는 게 맞다면 `ResolveCombat` 의 `while` 루프에
   생존 검사를 넣는 방향.
-- **3-1.8. `ClashContext` 가 `IClashContext` 를 구현할 이유가 없다 (지금은 무해, 나중에 물린다)**
-  `ClashContext.cs:11` 의 `CharacterRuntime IClashContext.Defender => OwnerB;` — **"B가 방어자"는 틀린 전제다.**
-  A/B 는 "큐에서 먼저 나온 쪽"과 "상대"일 뿐이고 실제 공수는 주사위 타입과 승패로 갈린다.
-  `DiceRuleTable` 이 케이스마다 `(attacker, defender)` 를 일일이 지정하는 게 그 증거 —
-  같은 A승이라도 `Counter vs Block`(248) 은 `DamageContext(A, B)`, `Block vs Counter`(264) 는
-  `StaggerContext(A, B)`, `Evade vs Counter`(296) 는 `StaggerContext(A, A)`(자기 회복)로 전부 다르다.
-  - **지금 안 터지는 이유**: 소비자가 0. `.Defender` 를 읽는 곳은 `DamageEvent`/`StaggerEvent`/`StatusDamageEvent`
-    뿐이고 거기 오는 건 `rule.Resolve()` 가 만든 `DamageContext`/`StaggerContext` 다.
-    `DiceRule` 의 `Func<ClashContext, IClashContext>` 에서 `ClashContext` 는 **입력**일 뿐.
-  - 누가 `IsCancelled` 를 보려고 인터페이스로 받는 순간 틀린 전제가 딸려온다.
-  - 고치는 법: `ClashContext` 에서 `: IClashContext` 를 뗀다. `IsCancelled` 는 이미 public 프로퍼티라
-    인터페이스 없이 접근된다. 떼고 컴파일이 통과하면 그게 소비자 0의 증명이다.
-- **3-1.9. 잔가지 (3-1.7 할 때 같이)**
-  - `StatusEffectRuntime.cs:31` 의 파라미터명이 `IsOwnerA` (대문자 시작). 오버라이드들은 `isOwnerA`.
-    named argument 는 base 시그니처가 기준이라 헷갈린다.
-  - `Refresh()` 참조 0건 — 3-2 에서 `AddStatus` 분기를 합치며 호출이 사라졌다. no-op 이기도 하니 삭제 후보.
-  - ~~`StatusAddLog` 에 `delayed` 추가~~ — 불필요로 판명(2026-07-27). `StatusUI.Refresh` 가 로그 내용이 아니라
-    **모델을 직접 다시 읽는** 구조라 로그는 "뭔가 바뀌었다" 신호로만 쓰인다. `HpUI` 와 같은 방식.
+- **3-1.10. `DiceRecoverEvent` 가 실제로는 효과가 없어 보인다 (2026-07-30 발견, 미확인)**
+  의도는 "일방에서 굴리지 않고 보관한 방어·회피 주사위를 나중에 꺼내 쓴다"인데 커서가 막고 있다:
+  - `DicePool.Advance(Consume)` 가 `_cursor++` 를 하는데 `Recover()` 는 **상태만** 되돌리고 커서는 안 건드린다
+  - `Peek()` 은 `_cursor` 부터 **앞으로만** 훑고, `Inject` 는 새 주사위를 `_cursor` **위치에** 꽂는다
+  - 그래서 보관된 주사위는 `Ready` 로 돌아와도 그 턴 안에 다시 잡히지 않고,
+    `ResetForNextTurn` 이 `_cursor = 0` 과 함께 전부 `Destroy` 한다
+  - 3-1.6 과 같이 볼 것. 둘 다 `ResolveCombat`/`DicePool` 의 주사위 수명 문제다.
+- **3-1.11. `DiceClashLog` 가 보정 전 `CurrentRoll` 을 찍는다** — 합에서 검증할 때 로그 굴림값과
+  데미지가 어긋나 보인다. `clashCtx.ModifiedRollA/B` 로 바꾸거나 원본과 보정값을 둘 다 싣는 선택지.
+  일부러 안 고쳤다 — 3-1.7 검증 중에 바꾸면 "훅이 도는 것"과 "로그가 바뀐 것"을 구분할 수 없어서.
 - **3-3. 훅 순회를 스냅샷 → 재사용 없는 인덱스 루프로** — `ToArray()` 할당 제거.
   **공유 버퍼 필드 하나로 돌려쓰면 재진입 때문에 깨진다**(바깥 루프가 쓰던 배열을 안쪽이 덮어씀).
   올바른 방향은 `_triggerDepth` 카운터로 "순회 중엔 제거·정렬 금지"를 강제하는 것:

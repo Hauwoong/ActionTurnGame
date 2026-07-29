@@ -36,12 +36,11 @@ public class StrengthEffect : StatusEffectRuntime
     public StrengthEffect(CharacterRuntime owner, int stack)
         : base(owner, stack, duration: 1, priority: 2, StatusEffectType.Strength) { }
 
-    public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
+    public override void OnModifyRoll(DiceRollContext ctx)
     {
-        if (isOwnerA)
-            ctx.ModifiedRollA += Stack;
-        else
-            ctx.ModifiedRollB += Stack;
+        if (ctx.Dice.Type != DiceType.Attack) return;
+
+        ctx.ModifiedRoll += Stack;
     }
 }
 
@@ -51,11 +50,8 @@ public class ParalysisEffect : StatusEffectRuntime
     public ParalysisEffect(CharacterRuntime owner, int stack)
         : base(owner, stack, duration: 1,  priority: 3, StatusEffectType.Paralysis) { }
 
-    public override void OnBeforeClash(ClashContext ctx, bool isOwnerA)
+    public override void OnModifyRoll(DiceRollContext ctx)
     {
-        if (isOwnerA)
-            ctx.ModifiedRollA -= Stack;
-        else
-            ctx.ModifiedRollB -= Stack;
+        ctx.ModifiedRoll -= Stack;
     }
 }

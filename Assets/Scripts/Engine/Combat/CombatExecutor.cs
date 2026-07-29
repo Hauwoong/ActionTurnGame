@@ -117,10 +117,10 @@ public class CombatExecutor
         entryA.Dice.Roll(_rng);
         entryB.Dice.Roll(_rng);
 
-        var clashCtx = new ClashContext(entryA.Dice, entryB.Dice, charA, charB);
+        var modifyedRollA = charA.TriggerModifyRoll(entryA.Dice);
+        var modifyedRollB = charB.TriggerModifyRoll(entryB.Dice);
 
-        charA.TriggerBeforeClash(clashCtx, isOwnerA: true);
-        charB.TriggerBeforeClash(clashCtx, isOwnerA: false);
+        var clashCtx = new ClashContext(charA, charB, modifyedRollA, modifyedRollB);
 
         var rule = _ruleTable.GetRule(entryA.Dice.Type, entryB.Dice.Type);
         var (result, advanceA, advanceB, ctx) = rule.Resolve(clashCtx);
@@ -147,22 +147,26 @@ public class CombatExecutor
     void ResolveUnopposedDice(int characterId, int targetId)
     {
         var entry = _runtime.PeekDice(characterId).Value;
+
+        if (entry.Dice.Type != DiceType.Attack)
+        {
+            _runtime.EnqueueEvent(new DiceConsumedEvent(characterId));
+            return;
+        }
+
         var attacker = _runtime.GetCharacterRuntime(characterId);
         var target = _runtime.GetCharacterRuntime(targetId);
 
         entry.Dice.Roll(_rng); // 주사위 굴리기 추가
+
         attacker.TriggerDiceRoll();
 
-        if (entry.Dice.Type == DiceType.Attack)
-        {
-            var ctx = new DamageContext(attacker, target, entry.Dice.CurrentRoll);
-            _runtime.EnqueueEvent(new DamageEvent(ctx));
-            _runtime.EnqueueEvent(new DiceDestroyedEvent(characterId));
-        }
-        else
-        {
-            _runtime.EnqueueEvent(new DiceConsumedEvent(characterId));
-        }
+        var modifyedRoll = attacker.TriggerModifyRoll(entry.Dice);
+   
+        var ctx = new DamageContext(attacker, target, modifyedRoll);
+        _runtime.EnqueueEvent(new DamageEvent(ctx));
+        _runtime.EnqueueEvent(new DiceDestroyedEvent(characterId));
+       
     }
 
     bool IsValidAction(ActionInstance action)
