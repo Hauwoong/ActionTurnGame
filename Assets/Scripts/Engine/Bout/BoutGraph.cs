@@ -21,6 +21,9 @@ public class BoutGraph
 
     public void RegisterAction(ActionInstance action)
     {
+        if (actionBySlot.TryGetValue(action.SourceSlot, out var current))
+            CancelAction(current);
+
         actionBySlot[action.SourceSlot] = action;
 
         AddToTargetMap(action);
@@ -30,6 +33,8 @@ public class BoutGraph
 
     public void CancelAction(ActionInstance action)
     {
+        RemoveFromActionBySlot(action);
+
         RemoveFromTargetMap(action);
 
         RemoveEdgesInvolving(action);
@@ -49,6 +54,12 @@ public class BoutGraph
         }
 
         targetMap[targetSlot].Add(action);
+    }
+
+    void RemoveFromActionBySlot(ActionInstance action)
+    {
+        if (actionBySlot.TryGetValue(action.SourceSlot, out var current) && ReferenceEquals(current, action))
+            actionBySlot.Remove(action.SourceSlot);
     }
 
     void RemoveFromTargetMap(ActionInstance action)
