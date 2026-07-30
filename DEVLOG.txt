@@ -4221,3 +4221,235 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
 - 둘째 루프 전체 — B의 주사위 수 > A 여야 도는데 Attack vs Attack 이 destroyBoth 라 항상 동시에 바닥난다
 - DiscardRemaining 의 방어 주사위 보관 분기 — 방어 주사위를 만들 카드가 없다
 - 게다가 보관은 3-1.10(커서) 때문에 지금은 다시 잡히지도 않는다
+
+## 2026-07-30 — 카드 3장 추가, 그리고 브레이크포인트가 준 거짓 신호
+
+### 문제
+
+■ 검증 부채 4건이 카드 부족으로 막혀 있었다
+- 카드가 Strike(Attack 1개) 하나뿐이라 3-1.5 / 3-1.7 / 3-1.6(첫 루프·둘째 루프·보관 분기)을
+  전부 만들 수가 없었다. Guard / Combo / Execute 3장을 추가해 한꺼번에 열었다
+
+■ 3-1.6 검증 중 "호출이 안 된다"를 두 번 연속 오진했다
+- 처음엔 "ResolveCombat 이 안 불린다", 좁혀서 "RunQueue:80 의 BoutStartEvent 가 안 불린다".
+  근거는 둘 다 브레이크포인트가 안 걸린다는 것뿐이었다
+- 그런데 HP 는 정확히 50 깎이고 전투 종료까지 떴다. 관측과 게임 상태가 정면으로 모순
+
+### 고민
+
+■ 모순이면 어느 쪽을 의심하나 — HP 감소 경로를 전수조사했다
+- TakeDamage 호출자는 2곳뿐이다: DamageEvent.cs:21 / StatusDamageEvent.cs:16
+- DamageEvent 를 만드는 곳: CombatExecutor:183(일방), ClashContextEvent:18 ← CombatExecutor:152(합).
+  둘 다 ResolveCombat 안이다
+- StatusDamageEvent 를 만드는 곳: Bleed.OnDiceRoll ← TriggerDiceRoll ← CombatExecutor:137/138/178.
+  셋 다 ResolveCombat 안이다
+- 유일한 밖은 Burn.OnTurnEnd 인데 적용 경로가 없다. StatusAddEvent 생산자는 BattleManager 의
+  DebugAdd* 4개뿐이고 그중 Burn 을 넣는 게 없다 → BurnEffect 는 현재 도달 불가 코드
+- 결론: HP 가 깎였다는 사실 자체가 ResolveCombat 이 돌았다는 증거다. 틀린 건 관측이었다
+
+■ Step() 을 의심했는데 아니었다
+- 불변량이 있다. EnqueueEvent 는 정확히 1개를 넣고 그 자리에서 Step() 이 정확히 1개를 뺀다.
+  이 쌍이 원자적이라 큐는 호출 밖에서 항상 비어 있고, Step() 이 꺼내는 건 언제나 방금 넣은 그것이다.
+  Step() 의 호출자가 EnqueueEvent 뿐이라는 것도 같은 얘기다 → 이벤트가 유실될 구조가 아니다
+- Step() 의 진짜 위험은 유실이 아니라 예외 전파다. RunQueue → BoutStartEvent → ResolveCombat
+  → ResolveUnopposedDice → DamageEvent → DeathEvent → BattleEndEvent 가 한 스택이라
+  UI 콜백 하나가 던지면 ResolveCombat 의 while 까지 통째로 풀린다
+- 이번엔 그것도 아니었다. BattleEndLog 는 구독자 0건이고, BattleManager.EndBattle 은
+  BattleEndEvent 가 아니라 EndTurn 에서 ExecuteCombat() 이 끝난 뒤에 불린다(BattleManager.cs:101-109)
+
+### 해결법
+
+■ 카드 3장 — 전부 Data 계층, 엔진 변경 0
+- Guard: Block 4~7 ×1. 3-1.5 / 3-1.7 겸용이다. 주사위가 1개라 교란이 없다
+- Combo: Attack 1~3 ×3. 값을 일부러 낮게 — 도중에 누가 죽으면 둘째 루프 관측이 흐려진다
+- Execute: Attack 50~50 / Block 4~7 / Attack 3~6. 주사위 순서가 설계의 핵심이다.
+  일방으로 쓰면 1번이 즉사시키고, 잔여 둘이 DiscardRemaining 의 두 분기(Attack→Destroy /
+  Block→Consume)로 갈린다. 한 번 굴려서 양쪽 분기가 다 찍힌다
+
+■ 3-1.5 는 반드시 합이어야 한다
+- 3-1.9 가 ResolveUnopposedDice 에서 방어·회피를 굴리지 않게 바꿨으므로, 방어 주사위가 굴러가는
+  자리는 ResolveDiceClash 하나뿐이다. 그래서 3-1.5 와 3-1.7 은 같은 카드 / 다른 세팅이고,
+  그 자체로 서로의 대조군이 된다
+
+■ 덱은 Ally01 만 고치면 된다 (CLAUDE.md 계획은 양쪽이라고 적혀 있었다)
+- 적 AI 가 없어 액션 등록 경로가 PlayerActionInput.RegisterToSlot 하나뿐이고,
+  ActionRegisteredEvent.Apply 에 소유자 검사가 없으며 손에서 카드를 빼지도 않는다
+- 그래서 아군 손의 카드를 적 슬롯에 걸 수 있고 같은 턴에 양쪽으로 쓸 수도 있다.
+  검증 세팅의 자유도가 생각보다 크다
+- 덱은 셔플되고 드로우가 턴당 1장이라, 한 항목에 집중할 때는 그 카드만 3장 넣는 게 빠르다
+
+■ 브레이크포인트가 안 걸린 이유
+- Code Optimization 이 Release 면 조용히 무시된다. 에디터 오른쪽 아래 벌레 아이콘 → Debug
+
+### 배운 점
+
+- 관측과 게임 상태가 모순이면 코드가 아니라 도구를 먼저 의심한다. 브레이크포인트가 두 번 연속
+  거짓 신호를 줬는데 두 번 다 그것을 사실로 받고 위쪽 코드를 팠다. "데미지는 제대로 들어가는데
+  어떻게 안 불리나"는 사용자가 잡았다
+- 그 반박이 가능했던 건 경로가 전수조사 가능했기 때문이다. TakeDamage 호출자 2곳, 그걸 만드는 곳
+  4곳으로 닫혀 있어서 "전부 ResolveCombat 안"이 증명됐다. 상태 변경을 Event.Apply 안으로만
+  몰아둔 규칙이 진단에서 배당금을 냈다
+- 도달 불가 코드가 진단을 도울 때가 있다. Burn 이 유일한 예외 경로였는데 StatusAddEvent 생산자를
+  세보니 Burn 을 넣는 게 없어 후보에서 지워졌다
+- 로그를 안 만든 선택의 비용은 검증할 때 청구된다. 바로 앞 엔트리에서 잔여 소멸 이벤트 둘에
+  로그를 안 붙이기로 했다("소비자 0, 뒤따르는 BoutEndLog 가 갱신 신호"). 규칙 위반은 아니었다 —
+  Event/Log 1:1 은 Log → Event 방향이다. 문제는 결정 자체가 아니라 조합이었다:
+  그 둘이 정확히 "검증 대기"로 미뤄둔 항목이었는데, 미뤄둔 항목에서 관측 창구를 뺐다
+- 카드 같은 데이터 부족은 엔진 작업을 막지 않지만 검증을 막는다. 검증 부채 4건이 카드 한 종류
+  때문에 쌓였고, 3장을 만들자 같은 날 둘이 곧바로 통과했다
+
+### 검증
+
+■ 통과 (플레이)
+- 3-1.7 — 일방에서 Guard 의 Block 주사위가 굴러가지 않고 출혈도 안 터진다. 3-1.9 회귀 없음
+- 3-1.5 — 같은 카드로 합을 잡으면 출혈이 터진다. 방어 주사위에서의 발동 확인
+- Execute 일방 — 50 데미지 → 적 사망 → 전투 종료. 이 상태 변화가 곧 BoutStartEvent /
+  ResolveCombat / DamageEvent / DeathEvent 사슬이 전부 돌았다는 증거다
+
+■ 검증 대기 (카드 문제는 해소됐다. 이제 막는 것은 관측 창구)
+- DiscardRemaining 의 두 분기가 실제로 갈렸는지 — 상황은 Execute 로 만들어졌고 실행도 됐지만
+  눈으로 확인할 로그가 없다. 다음 작업은 DiceDiscardRemainingLog / DiceDestroyRemainingLog 신설.
+  개수를 실으려면 DicePool.DiscardRemaining 을 void → 반환으로 (AddStatus 가 결과 스택을,
+  EnergyRecoverEvent 가 실제 회복량을 싣는 것과 같은 패턴)
+- 둘째 루프 전체 — Combo(3개) vs Strike(1개) 로 상황을 만들 수 있게 됐다
+
+### 후속 — 같은 날 (위 "검증 대기" 항목 해소 + 버그 하나 추가 발견)
+
+■ Execute 의 Block 주사위가 Attack 이었다 — 엔진이 아니라 데이터 오진
+- DiscardRemaining 의 보관 분기가 안 도는 것처럼 보였다. Recover() 진입 시점에
+  [Destroyed, Destroyed, Destroyed] 였다
+- Execute.asset 을 열어보니 주사위 셋이 전부 Type: 0 이었다. Min/Max 는 4~7 로 맞게 넣었는데
+  Type 드롭다운만 기본값(Attack = 0)에 남아 있었다
+- 그래서 if (dice.Type == DiceType.Attack) 이 참이 되어 셋 다 Destroy 로 갔다. 엔진은 정상이었고
+  그 데이터에 대한 정답이 [Destroyed, Destroyed, Destroyed] 였다
+- Type 을 Block 으로 고치자 [Destroyed, Consumed, Destroyed] 확인. 보관 분기 통과
+- 관측 지점으로 DicePool.Recover() 의 foreach 줄이 정확하다. DiscardRemaining 직후이고
+  Consumed 가 마지막으로 보이는 순간이다 — 그 루프가 곧 Ready 로 바꿔버린다
+- 일방이면 BoutEndEvent 의 DefenderId 가 null 이라 DiceRecoverEvent 가 공격자에게 한 번만 나간다.
+  그래서 "누구 풀인가"로 헷갈릴 여지가 없다. 합이었다면 두 번 걸렸다
+
+■ ResetDiceForNextTurn() 호출자 0건 — 실제 버그, 수정 완료
+- DicePool.ResetForNextTurn 은 CharacterRuntime.ResetDiceForNextTurn 으로만 노출되는데
+  그 메서드를 부르는 곳이 없었다. TurnEndEvent.Apply 는 TriggerTurnEnd + AddLog 두 줄뿐이었다
+- DEVLOG:2746 에 "TurnEndEvent → TriggerTurnEnd(), ResetDiceForNextTurn() 호출" 로 적혀 있으니
+  어느 리팩토링에서 유실된 것이다
+- 지금까지 안 터진 건 우연이다. _cursor 가 0으로 안 돌아가고 새 주사위는 리스트 뒤에 append 되니
+  Peek 이 항상 새것부터 봤다. 대신 굴리지 않은 주사위가 턴을 넘어 남고 _dice 가 전투 내내 누적됐다
+- 호출 자리는 TurnEndEvent.Apply 의 TriggerTurnEnd() 뒤, AddLog 앞.
+  앞에 두면 턴 종료 훅이 이미 비워진 풀을 보고, 뒤에 두면 AddLog 가 동기라 UI 가 변경 전 값을 읽는다
+  (2026-07-22 DamageEvent 와 같은 구도). TickTurnEnd 의 "훅 먼저, 정리 나중"과 같은 순서다
+- 이벤트를 새로 만들지 않고 Event.Apply 안에서 직접 불렀다. DeathEvent 가 DestroyRemainingDice 를
+  직접 부르는 것과 같은 선례이고, 외부 소비자가 0이라 로그도 없다
+- ResetForNextTurn 의 두 줄은 짝이다. _cursor = 0 은 나머지가 전부 Destroyed 라는 보장 위에서만
+  안전하다. 커서만 되돌리고 잔여를 안 지우면 다음 턴 Peek 이 지난 턴의 Ready 주사위부터 집는다
+
+■ 검증 — _cursor 한 숫자로 판정했다
+- DicePool.cs:64 는 _cursor = 0; 이므로 대입 전 값이 "지난 턴에 어디까지 진행됐나"를 그대로 준다.
+  브레이크포인트를 옮기지 않고 이미 멈춰 있는 자리에서 읽었다
+- 덱을 Combo(Attack 1~3 ×3) 3장으로 두고 2턴: 아군 풀이 1턴 _cursor 3 / 2턴 _cursor 6.
+  적 풀은 카드를 안 써서 _dice.Count 가 0 이라, 그게 아군/적 구분 기준이 됐다
+- 2턴차가 6 이라는 것이 Peek 이 시체 구간(0~2)을 건너뛰고 새 주사위(3~5)를 집었다는 증거다.
+  3 이었다면 버그였다. 턴당 브레이크포인트 2회(캐릭터 2명), 데미지 회귀 없음
+
+■ 남은 결정 — ResetForNextTurn 이 _dice.Clear() 를 해야 하나
+- 누적은 확인됐다(2턴차 Count 6). 성능은 논거가 못 된다 — 턴당 3개 규모다
+- 논거는 _dice 가 "이번 턴의 주사위"와 "지난 턴들의 이력" 두 뜻을 겸하게 된다는 것이다.
+  3-1.10 의 Ready 이중 의미, _cursor = -1 센티넬과 같은 병이다
+- 안전성은 확인했다. _dice 는 private 이고 외부 인덱싱 경로가 없다. 로그는 DiceHandle 값만 들고
+  있어 엔트리를 참조하지 않는다. CombatExecutor 의 entry 는 한 합 안에서만 산다
+- DEVLOG:4145("DestroyAllDice(Clear 방식)는 삭제")와 부딪히지 않는다. 그건 전투 중 연산이고,
+  상태 기준이어야 했던 이유는 합 도중 주사위의 운명을 구분해야 했기 때문이다. 턴 경계는 구분할 게 없다
+- 호출부 수정과 같이 하지 않았다. 한 번에 둘을 바꾸면 "리셋이 돌기 시작한 것"과 "리스트가 줄어든 것"
+  중 무엇이 회귀를 냈는지 구분할 수 없다
+
+■ CLAUDE.md 3-1.10 의 전제가 틀렸다 (정정)
+- "ResetForNextTurn 이 _cursor = 0 과 함께 전부 Destroy 한다"고 적혀 있었는데 안 불리고 있었다.
+  3-1.10 의 결론(보관된 주사위가 커서 때문에 그 턴에 다시 안 잡힌다)은 여전히 맞지만,
+  "다음 턴에 정리된다"는 부분은 사실이 아니었다 — 보관된 주사위는 Ready 로 영구히 남았다
+- 이번 수정으로 그 전제가 비로소 참이 됐다
+
+■ 배운 점 추가
+- 검증용으로 새로 만든 데이터는 그 자체가 검증 대상이다. enum 필드는 기본값이 0 이라
+  인스펙터에서 숫자만 채우고 드롭다운을 안 건드리면 조용히 첫 항목이 된다.
+  게다가 이 주사위는 잔여 범위에 있어 굴려지지도 않으니 어디서도 티가 나지 않았다
+- "분기가 안 돈다"와 "조건식이 참이었다"는 증상이 완전히 같다. 코드 경로를 의심하기 전에
+  조건식의 입력값을 먼저 볼 것. 이번엔 에셋 파일을 직접 열어보는 게 가장 빨랐다
+- 호출자 0건은 "데드 코드"가 아니라 "유실된 배선"일 수 있다. Bout.cs 때 세운 기준(참조 0건만으로
+  판단하지 말 것)의 반대 방향이다. 그때는 지워야 할 것이 남아 있었고, 이번엔 불러야 할 것이 안 불렸다.
+  DEVLOG 에 "여기서 부른다"고 적어둔 기록이 판별에 결정적이었다
+
+### 정정 — 위 "보관 분기 통과"는 무효였다. 주사위가 역순으로 적재되고 있다
+
+■ 무엇이 틀렸나
+- 위 후속 섹션에 "Type 을 Block 으로 고치자 [Destroyed, Consumed, Destroyed] 확인. 보관 분기 통과"로
+  적었는데, 그 관측은 두 시나리오를 구분하지 못한다:
+
+  정순(의도)  1번 Attack 50 → 적 사망 → 잔여 둘이 DiscardRemaining → Block Consume / Attack Destroy
+  역순(실제)  1번 Attack 3~6 → 생존 / 2번 Block 일방 → DiceConsumedEvent 로 Consume /
+              3번 Attack 50 → 적 사망, 잔여 없음 → DiscardRemaining 미호출
+
+  둘 다 Recover() 진입 시점에 [Destroyed, Consumed, Destroyed] 를 만든다. Consumed 의 출처가
+  DiscardRemaining 인지 ResolveUnopposedDice 의 비-Attack 분기인지 그 배열로는 알 수 없다
+- 판별은 DicePool.cs:88(dice.Consume();) 브레이크포인트뿐이다. 걸리지 않았다 → 역순 확정, 검증 무효
+- 3-1.6 은 첫 루프도 함께 무효다. 역순이면 즉사 주사위가 마지막에 오므로 잔여가 애초에 없다
+
+■ 원인 — DicePool.Add 호출자 0건, 적재가 Inject 로 되어 있다
+- CharacterRuntime.UseAction 의 적재 루프가 _dicePool.Inject(entry) 를 부른다(:228).
+  Inject 는 _dice.Insert(_cursor, entry) 이고 턴 시작에 _cursor 가 0 이다
+- Insert(0, d0) → [d0] / Insert(0, d1) → [d1, d0] / Insert(0, d2) → [d2, d1, d0].
+  카드에 적은 순서가 그대로 뒤집힌다
+- 지금까지 안 보인 이유: Guard 는 주사위 1개, Combo 는 셋이 전부 동일해서 역순이 무해하다.
+  Strike 도 1개다. 순서가 드러나는 카드가 Execute 뿐이었고 그게 오늘 처음 생겼다
+- 커서가 리스트 끝에 있을 때는 Insert(count, e) == append 라 Inject 와 Add 가 일치한다.
+  그래서 "전투 중 추가"는 정상으로 보였고 초기 적재만 깨져 있었다
+
+■ 고칠 방향 (미수정)
+- UseAction 의 적재 루프를 Add 로. Peek() 이 _cursor 부터 앞으로만 훑으니 새 주사위가 커서 뒤에 있으면
+  반드시 잡힌다 — 턴 시작(커서 0 + 시체만)이든 DiscardRemaining 직후(커서 == _dice.Count)든 성립한다
+- Inject 는 남긴다. 용도가 다르다(전투 중 큐의 현재 위치에 끼워 넣어 다음에 바로 쓰기).
+  단 여러 개를 연속 Inject 하면 같은 역순 함정이므로 주석 필요
+
+■ 유효한 채로 남는 검증
+- 3-1.7 / 3-1.5 — Guard 1개, Strike 1개라 순서 무관
+- ResetDiceForNextTurn (_cursor 3 → 6) — Combo 셋이 동일하고 커서 산술은 순서와 무관
+
+■ 배운 점
+- 관측 지점은 "값이 보이는가"가 아니라 "두 가설을 갈라주는가"로 골라야 한다. Recover() 는 Consumed 가
+  보이는 자리였지만 그 출처를 구분하지 못했다. 갈라주는 자리는 분기 안(DicePool.cs:88) 하나뿐이었고,
+  처음에 후보로 적어놓고도 더 편한 쪽을 골랐다가 위양성을 만들었다
+- "참조 0건"은 데드 코드가 아니라 배선 사고의 지문일 수 있다. 이번 세션에 같은 모양을 두 번 만났다:
+  ResetDiceForNextTurn(부를 곳에서 안 불렀다), Add(부를 곳에서 다른 메서드를 불렀다).
+  Bout.cs 때 세운 기준("참조 0건만으로 데드 코드 판단 말 것")의 반대 방향 사례다
+- 데이터가 단순하면 버그도 숨는다. 주사위 1개 카드와 동일 주사위 카드만 있는 동안은 적재 순서가
+  관측 불가능했다. 검증용 데이터를 비대칭으로 만든 것(Execute 의 서로 다른 주사위 3개)이
+  의도치 않게 이 버그를 드러냈다
+- 위 후속 섹션의 "새 주사위는 리스트 뒤에 append 된다"는 서술도 틀렸다. Inject 는 커서 위치에 꽂는다
+
+### 해소 — 역순 적재 수정 + 3-1.6 재검증 통과
+
+■ 수정
+- CharacterRuntime.UseAction 의 적재 루프를 _dicePool.Inject(entry) → Add(entry) 로
+- Add 가 순서를 보존하는 쪽이다. Peek() 이 _cursor 부터 인덱스 증가 방향으로 훑으므로
+  "뒤에 넣고 앞에서 읽기" = FIFO. 뒤집히는 조합은 "앞에 넣고 앞에서 읽기"였다
+- 스택(Push/Pop) 직관과 반대라서 헷갈렸던 자리다. 원래 Inject 를 고른 이유가
+  "리스트에 넣으면 1 2 3 이 3 2 1 로 쌓일까 봐"였는데, 실제로는 그 우려가
+  Insert(0, ...) 쪽에서 현실이 됐다
+
+■ 검증 (플레이)
+- Execute 일방 → DicePool.cs:88(dice.Consume();) 브레이크포인트 걸림.
+  그 줄이 DiscardRemaining 의 보관 분기 자체이므로 첫 루프와 보관 분기가 동시에 확정된다
+- Combo 2턴 회귀 → _cursor 1턴 3 / 2턴 6. Add × ResetDiceForNextTurn 조합 정상.
+  Add 가 새 주사위를 시체 뒤에 붙이는데 Peek 이 커서 0에서 시체를 건너뛰어 도달한다 —
+  리셋이 잔여를 전부 Destroyed 로 만들어주기 때문에 성립한다. 두 수정이 물리는 유일한 지점이었다
+- 둘째 루프 정상 경로는 아직 미확인. Ally Strike(1개) ↔ Enemy Combo(3개) 합으로 만들 수 있다
+
+■ 이번 건에서 남는 것
+- 관측 지점은 "값이 보이는가"가 아니라 "두 가설을 갈라주는가"로 고른다.
+  Recover() 는 Consumed 가 보이는 자리였지만 출처를 구분하지 못해 위양성을 만들었다.
+  갈라주는 자리는 분기 안(DicePool.cs:88) 하나뿐이었고, 처음에 후보로 적어놓고도
+  더 편한 쪽을 골랐다가 한 번 되돌렸다
+- 검증 데이터를 비대칭으로 만들면 숨은 버그가 드러난다. 주사위 1개 카드와 동일 주사위 카드만
+  있는 동안 적재 순서는 관측 불가능했다. Execute 의 서로 다른 주사위 3개가 우연히 드러냈다
+- 커서가 리스트 끝이면 Insert(count, e) == append 라 Inject 와 Add 가 일치한다.
+  그래서 "전투 중 추가"는 정상으로 보이고 초기 적재만 깨져 있었다.
+  같은 코드가 조건에 따라 맞기도 하고 틀리기도 하면 그 조건을 주석에 적어야 한다
