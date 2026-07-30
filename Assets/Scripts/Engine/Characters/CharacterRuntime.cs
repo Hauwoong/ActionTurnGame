@@ -225,7 +225,7 @@ public class CharacterRuntime : IEventSink
         foreach (var entry in entries)
         {
             _diceById[entry.Handle.DiceId] = entry;
-            _dicePool.Inject(entry);
+            _dicePool.Add(entry);
         }
     }
     public DiceEntry? Peek() => _dicePool.Peek();

@@ -1,4 +1,4 @@
-
+﻿
 public class TurnEndEvent : ICombatEvent
 {
     public int CharacterId { get; }
@@ -11,6 +11,7 @@ public class TurnEndEvent : ICombatEvent
     {
         var character = runtime.GetCharacterRuntime(CharacterId);
         character.TriggerTurnEnd();
+        character.ResetDiceForNextTurn();
         runtime.AddLog(new TurnEndLog(CharacterId));
     }
 }
