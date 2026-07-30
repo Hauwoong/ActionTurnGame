@@ -194,24 +194,6 @@ public class CharacterRuntime : IEventSink
         _currentEnergy -= amount;
         if (_currentEnergy < 0) _currentEnergy = 0;
     }
-    public void IncreaseMaxHp(int amount)
-    {
-        _maxHp += amount;
-        _currentHp += amount;
-    }
-
-    public void IncreaseMaxStagger(int amount)
-    {
-        _maxStagger += amount;
-        _currentStagger += amount;
-    }
-
-    public void IncreaseMaxEnergy(int amount)
-    {
-        _maxEnergy += amount;
-        _currentEnergy += amount;
-    }
-
     public void UseAction(ActionInstance action)
     {
         if (!CanUseAction(action)) return;

@@ -27,7 +27,6 @@ public abstract class StatusEffectRuntime
 
         else Stack += amount;
     }
-    public virtual void ReduceStack(int amount) => Stack -= amount;
     public virtual void OnTurnStart(TurnStartContext ctx) { }
     public virtual void OnBeforeDamage(IDamageContext ctx) { }
     public virtual void OnAfterDamage(IDamageContext ctx) { }

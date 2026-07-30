@@ -11,7 +11,6 @@ public class BattleRuntime : IEventSink
     public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
 
     private readonly Dictionary<SpeedSlot, SpeedSlotRuntime> _slotRuntimeMap = new(); // 전 캐릭터의 속도 슬롯을 평탄화한 조회 맵. SpeedSlot->Runtime 역참조.
-    public IReadOnlyDictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntimeMap => _slotRuntimeMap;
 
     // ──────────── 전투 · 합(Bout) ────────────
     public CombatExecutor Executor { get; private set; }
@@ -28,7 +27,6 @@ public class BattleRuntime : IEventSink
 
     // ──────────── 이벤트 ────────────
     private readonly Queue<ICombatEvent> _eventQueue = new();
-    public bool HasEvents => _eventQueue.Count > 0; // 미사용 / 배수 루프를 염두에 뒀던 흔적(현재 Step이 즉시 처리해 항상 false).
 
     // ──────────── 로그 ────────────
     private readonly List<CombatLog> _combatLogs = new();
@@ -77,14 +75,6 @@ public class BattleRuntime : IEventSink
     /// <returns>해당 캐릭터의 CharacterRuntime</returns>
     public CharacterRuntime GetCharacterRuntime(int characterId)
         => _characters[characterId];
-
-    /// <summary>
-    /// 슬롯 키(캐릭터 번호 + 슬롯 번호)로 그 슬롯의 런타임을 가져온다.
-    /// </summary>
-    /// <param name="slot">찾을 슬롯 키</param>
-    /// <returns>해당 슬롯의 SpeedSlotRuntime</returns>
-    public SpeedSlotRuntime GetSpeedSlotRuntime(SpeedSlot slot)
-        => _slotRuntimeMap[slot];
 
     // ──────────── 주사위 ────────────
     /// <summary>
