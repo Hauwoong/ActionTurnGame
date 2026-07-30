@@ -293,6 +293,136 @@
 - 부작용: 전투 종료 후 남은 `DeathEvent` 가 처리되면 `BattleEndLog` 중복 가능
 - 고치면 DFS → BFS 로 실행 순서가 바뀌므로 전투 로그 비교 검증 필요
 
+### 8. `BoutGraph` — 액션 등록/취소 정합성 (2026-07-31 발견)
+
+**원작 규칙 (사용자 확인 완료)**
+- 적 액션은 턴 시작에 고정. 슬롯에 행동이 있거나, 그 턴 내내 없거나 둘 중 하나
+- **조건 A (상호)**: 적이 노리는 내 슬롯에 행동을 걸고 그 적 슬롯을 지목. **속도 무관**
+- **조건 B (속도)**: 내 슬롯 속도 > 적 슬롯 속도면 **무조건** 합. 상대가 누굴 노리든 무관
+- **탈취**: 조건 B 로 다른 슬롯이 같은 대상에 걸면 기존 합이 풀리고 새 합이 된다.
+  풀린 쪽은 **합 후보로 복귀**. 후보는 Tab 으로 순환 (Tab 은 미구현)
+- 슬롯 덮어쓰기 가능. 우클릭 취소도 가능 (둘 다 합법)
+
+**할 일**
+
+- ~~1. `CancelAction` 이 `actionBySlot` 에서 안 지운다~~ — **완료 (2026-07-31).**
+  `RemoveFromActionBySlot` 신설, `CancelAction` **맨 앞**에 배치(`ReevaluateAffectedSlots` 가
+  `actionBySlot` 을 읽으므로 그보다 앞이어야 한다. "첫 줄 이후로는 이 액션이 없는 세계" 불변량).
+  `ReferenceEquals` 로 동일 인스턴스 확인 후에만 제거 — `FlushExpired` 의 `_effectMap` 처리와 같은 선례.
+- ~~2. `RegisterAction` 의 덮어쓰기가 정리를 안 한다~~ — **완료 (2026-07-31).**
+  맨 앞에서 기존 액션을 찾아 `CancelAction` 을 태운 뒤 등록. 원작이 우클릭 취소와 덮어쓰기를 둘 다
+  허용하므로 두 입력이 같은 코드를 지나 결과가 어긋날 수 없다.
+- **3. 조건 A 로 성립한 합이 조건 B 에 탈취당하면 후보 목록에서 사라진다** (남음) —
+  `AddInterceptCandidate` 가 `TryBuildInterceptClash` 안에서만 불린다(`BoutGraph.cs:89`).
+  범위는 **내 슬롯이 적 슬롯보다 느려 조건 A 로만 붙은 경우** 한정. 규칙의 "풀린 합은 후보로 복귀"가
+  이 경우에 성립하지 않는다. Tab 순환을 만들 때 같이 볼 것.
+- ~~4. `ReevaluateAffectedSlots` 가 `SourceSlot` 쪽을 안 본다~~ — **논점 아님으로 판명.**
+  아래 5번(인터셉트 게이트)이 들어가면 인터셉트 합은 항상 플레이어가 만든 것이고,
+  그 슬롯을 덮어쓰면 `UpdateRelationsFor(새 액션)` 이 같은 조건을 재평가해 **스스로 복구한다.**
+  복구가 안 되는 경우는 적이 만든 합뿐인데 그게 애초에 없어진다.
+- **5. `TryBuildInterceptClash` 가 적 액션에도 적용된다 + 팀 검사가 없다** (승격) —
+  **조건 B 는 플레이어 전용이다**(사용자 확인). 적이 더 빠르고 내 슬롯을 노려도, 내가 딴 데를 보면
+  **합이 아니라 일방 피격**이다. 그런데 `UpdateRelationsFor` 는 `RegisterAction` 안에 있어
+  적 액션 등록 때도 돌고, 그때 인터셉트가 적 쪽에서 성립해버린다.
+  - 조건 A(`TryBuildDirectClash`)는 대칭이므로 게이트 불필요. **`TryBuildInterceptClash` 하나만.**
+  - **실제 흐름에서는 아직 도달하지 않는다** — 적 액션은 턴 시작에 전부 등록되고 그때는
+    플레이어 액션이 없어 첫 줄(`actionBySlot.ContainsKey(target)`)에서 return 된다.
+    지금 문제로 보이는 건 적 AI 가 없어 적 액션을 손으로 나중에 넣기 때문(테스트 아티팩트).
+  - 고치려면 `BoutGraph` 가 팀을 알아야 한다. **`SpeedSlotRuntime` 이 `Team` 을 갖게 하는 쪽**을 권한다 —
+    `BoutGraph` 가 이미 `slotRuntime` 사전에서 `Speed` 를 꺼내 쓰므로 배선 추가가 0이다.
+  - **주의**: "플레이어 진영 = Ally" 를 코드에 박는 것이다. 자동 전투·관전이 생기면
+    "지금 배치하는 쪽"으로 바뀌어야 한다.
+  - **적 AI 를 붙일 때 같이 하는 게 맞다.** 지금 넣으면 검증 수단이 손으로 적 액션을 넣는 것뿐이라
+    또 아티팩트를 본다.
+
+**미해결 질문**: 조건 A 가 이미 성립한 조건 B 합을 **탈취할 수 있나?**
+`TryBuildDirectClash` 첫 줄이 `if (edges.ContainsKey(target)) return;` 이라(`BoutGraph.cs:117`) 지금은 못 뺏는다.
+3번을 어떻게 고칠지가 이 답에 달려 있다.
+
+### 8-B. 카드 배치 흐름 (2026-07-31 완료)
+
+원작대로 **카드가 슬롯에 올라가면 손에서 빠지고, 우클릭 취소나 덮어쓰기로 손에 돌아온다.**
+
+- `ActionRegisteredEvent` — 맨 앞에서 기존 액션의 카드를 `ReturnCardEvent` 로 돌려보낸 뒤
+  등록하고 `UseCardEvent` 를 낸다. **옛 액션 조회는 `RegisterAction` 앞**이어야 한다(뒤면 덮어써져 못 읽음).
+  `UseCardEvent` 는 `AddLog` 앞 — 상태 먼저, 로그 나중.
+- `ActionCancelledEvent` — `CancelAction` → `ReturnCardEvent` → `AddLog`.
+- `ReturnCardEvent` / `ReturnCardLog` 신설. **이름이 "취소"에 묶이면 안 된다** — 취소와 덮어쓰기
+  두 곳에서 나가므로 목적지(손)만 말하는 `Return` 을 골랐다.
+- `CardZone.Remove` 가 `bool` 반환으로. `UseCard`/`DiscardCard`/`ExileCard`/`ReturnCard` 전부
+  **제거가 성공했을 때만** 목적지에 넣는다. 이전에는 손에 없는 카드도 `_used` 에 복제됐다.
+- 우클릭 취소 배선: `SlotDebugItem` 이 `IPointerClickHandler` 를 구현하고 `Right` 만 통과시킨다.
+  Unity `Button` 은 좌클릭만 처리하므로 충돌 없다. `PlayerActionInput.CancelSlot` 에 `Runtime` null 가드.
+
+**검증 지표는 손패 총 장수다.** 등록·취소·덮어쓰기를 반복해도 보존돼야 한다. 개별 동작이 맞아 보여도
+어딘가 새면 장수로 드러난다(실제로 `ReturnCard` 가 `_hand.Add` 대신 `_hand.Remove` 를 부르던 것을 이걸로 잡았다).
+
+**부작용**: **한 장으로 두 슬롯 걸기가 이제 불가능하다.** 그동안의 검증 세팅이 전부 여기 기대고 있었다.
+슬롯 2개를 채우려면 손에 2장이 필요한데 드로우가 턴당 1장이라, 5번(드로우 장수 변수화)이 앞당겨질 수 있다.
+
+**남은 구멍**: 아군 카드를 적 슬롯에 걸면 `UseCardEvent` 의 캐릭터가 슬롯 주인이라 **적 손에서 빼려다
+실패하고 적 `_used` 에 들어간다.** 원작에선 불가능한 조작이므로 `RegisterToSlot` 에서 막아야 하지만,
+지금 막으면 적 액션을 넣을 방법이 없어져 검증이 불가능하다. 적 AI 와 함께 처리.
+
+### 9. 배선 누락 전수조사 (2026-07-31 제안)
+
+**오늘 하루에 "만들어놓고 그 자리에서 안 부름"을 일곱 건 만났다** — 전부 검증하다 우연히 걸린 것이지
+찾아서 잡은 게 아니다:
+
+| 대상 | 증상 |
+|---|---|
+| `DicePool.Add` | 호출자 0건, 적재가 `Inject` 로 되어 있어 **주사위 역순** (수정 완료) |
+| `CharacterRuntime.ResetDiceForNextTurn` | 호출자 0건, 턴 끝 정리가 통째로 안 돎 (수정 완료) |
+| `CharacterRuntime._diceById` | 쓰기 전용. 읽는 곳 0건 |
+| `CharacterRuntime._activeSpeedSlotCount` | 쓰기 전용. 감정 레벨이 슬롯 수를 못 올림 |
+| `PlayerActionInput.CancelSlot` | 호출자 0건 — 우클릭 취소 입력이 없다 |
+| `UseCardEvent` | 생산자 0건 — **카드가 손에서 안 빠진다** |
+| `BoutGraph.interceptCandidates` | UI 표시(개수)만 있고 Tab 순환 미구현 |
+
+엔진을 두껍게 만들고 배선을 나중으로 미룬 시기의 흔적으로 보인다.
+
+**주의**: `Bout.cs` 때 세운 기준("참조 0건만으로 데드 코드 판단 말 것")의 **반대 방향** 사례들이다.
+그때는 지워야 할 것이 남아 있었고, 이번엔 불러야 할 것이 안 불렸다. 분류할 때 둘을 섞지 말 것.
+
+#### 전수조사 결과 (2026-07-31 실시, `Engine/` public 멤버 308개)
+
+**삭제 완료 (4)** — 전부 중복이거나 대체됨:
+- `CharacterRuntime.IncreaseMaxHp` / `IncreaseMaxStagger` / `IncreaseMaxEnergy` —
+  `ChangeMaxHp`/`ChangeMaxStagger`/`ChangeMaxEnergy` 가 따로 있고 `ChangeMax*Event` 가 그쪽을 부른다.
+  같은 일을 하는 메서드가 두 벌이었다
+- `BattleRuntime.HasEvents` / `BattleRuntime.GetSpeedSlotRuntime`
+- `StatusEffectRuntime.ReduceStack` — Bleed/Burn 이 `Stack = Stack / 2` 로 필드를 직접 만진다.
+  **반대 선택지였던 "효과들이 이걸 쓰도록 통일"은 채택하지 않았다** — 지금 스택 감소가 `AddStack` 을
+  안 거치는 유일한 경로라 일관성이 깨져 있다는 점은 남아 있다
+
+**배선 필요 (1 신규)**:
+- **`SpeedSlotRuntime.MarkUsed`** — 호출자 0건인데 **`Used` 는 UI 가 읽는다**(`SlotDebugItem.cs:56`).
+  항상 `false` 라 그 UI 분기가 영영 안 돈다. `Reset()` 이 `Used = false` 로 되돌리니 턴 경계 처리는
+  이미 준비돼 있고 **부르는 곳만 없다**. 합이 끝난 슬롯 표시용 — `RunQueue` 의 `visited.Add(slot)`
+  자리나 `BoutEndEvent` 가 후보
+
+**삭제 후보 (1 신규, 미처리)**:
+- `BattleRuntime.SlotRuntimeMap` — 지운 `GetSpeedSlotRuntime` 과 같은 종류다. `_slotRuntimeMap` 은
+  생성자에서 `BoutGraph` 에 넘겨져 `BoutGraph.SlotRuntime` 으로 쓰이므로 `BattleRuntime` 쪽 접근자는 잉여
+
+**미래용 — 남김 (7)**:
+- **`BattleRuntime.CombatLogs` + `LogDispatcher.DispatchAll(IReadOnlyList<CombatLog>)`** —
+  **이 둘이 짝이고 리플레이 인프라의 절반이다.** 전자가 기록을 모으고 후자가 UI 에 재생한다.
+  "리플레이는 시드 + 입력열, 이력은 로그"라는 결론이 우연이 아니라 이미 그 구조가 만들어져 있고
+  배선만 안 된 것
+- `DicePool.Inject` — 전투 중 주사위 추가용. 명시적으로 남기기로 결정
+- `DiceData.Effects` — `DiceEffect` enum 이 비어 있음
+- `CardResolver.BuildCardEffects` — TODO 주석 있음
+- `CardManager.Discard` / `Exile` — UI 용 읽기 전용 접근자
+
+**오탐 — 건드리면 안 됨 (1)**:
+- `SpeedSlot.GetHashCode` — `override` 라 `Dictionary`/`HashSet` 이 암묵 호출한다.
+  `BoutGraph.edges`, `CombatExecutor.visited` 가 전부 여기 의존
+
+**조사 한계**: 이름 충돌은 거짓 음성을 만든다(`Clear`/`Count` 처럼 다른 타입에도 있는 이름은
+"쓰이는 중"으로 집계돼 빠진다). 반대 방향은 없으니 **위 목록은 확실하고, 놓친 게 더 있을 수는 있다.**
+1차 스캔은 제네릭 타입의 공백(`Dictionary<A, B>`)도 놓쳤다 — `SlotRuntimeMap` 이 2차에서야 나왔다.
+
 ---
 
 ## 작업 방식 (최우선 — 다른 지시보다 우선함)
