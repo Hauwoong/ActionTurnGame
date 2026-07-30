@@ -35,6 +35,7 @@ public class PlayerActionInput : MonoBehaviour
     public void CancelSlot(SpeedSlot slot)
     {
         var runtime = battleManager.Runtime;
+        if (runtime == null) return;
         runtime.EnqueueEvent(new ActionCancelledEvent(slot));
     }
 

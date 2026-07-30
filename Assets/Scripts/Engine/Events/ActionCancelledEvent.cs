@@ -1,4 +1,4 @@
-public class ActionCancelledEvent : ICombatEvent
+﻿public class ActionCancelledEvent : ICombatEvent
 {
     private readonly SpeedSlot _slot;
 
@@ -12,6 +12,8 @@ public class ActionCancelledEvent : ICombatEvent
         if (runtime.BoutGraph.ActionBySlot.TryGetValue(_slot, out var action))
         {
             runtime.BoutGraph.CancelAction(action);
+
+            runtime.EnqueueEvent(new ReturnCardEvent(_slot.CharacterId, action.Card));
 
             runtime.AddLog(new ActionCancelledLog(
                 action.ActionId,

@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-public class SlotDebugItem : MonoBehaviour, IDropHandler
+public class SlotDebugItem : MonoBehaviour, IDropHandler, IPointerClickHandler
 {
     [SerializeField] private TextMeshProUGUI ownerText;
     [SerializeField] private TextMeshProUGUI speedText;
@@ -73,5 +73,10 @@ public class SlotDebugItem : MonoBehaviour, IDropHandler
         if (!_input.IsDraggingCard()) return;
 
         _input.RegisterToSlot(_slot);
+    }
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Right) return;
+        _input.CancelSlot(_slot);
     }
 }

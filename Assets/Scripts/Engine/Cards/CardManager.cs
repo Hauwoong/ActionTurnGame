@@ -50,22 +50,27 @@ public class CardManager
 
     public void UseCard(CardModel card)
     {
-        _hand.Remove(card);
-        _used.Add(card);
+        if(_hand.Remove(card))
+            _used.Add(card);
     }
 
     public void DiscardCard(CardModel card)
     {
-        _hand.Remove(card);
-        _discard.Add(card);
+        if(_hand.Remove(card))
+            _discard.Add(card);
     }
 
     public void ExileCard(CardModel card)
     {
-        _hand.Remove(card);
-        _exile.Add(card);
+        if(_hand.Remove(card))
+            _exile.Add(card);
     }
+    public void ReturnCard(CardModel card)
+    {
+        if (_used.Remove(card))
+            _hand.Add(card);
 
+    }
     public void EndTurn(IRng rng)
     {
         _deck.AddRange(_used.TakeAll());

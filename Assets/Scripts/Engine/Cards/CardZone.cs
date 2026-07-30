@@ -7,7 +7,7 @@ public class CardZone
     public int Count => _cards.Count;
 
     public void Add(CardModel card) => _cards.Add(card);
-    public void Remove(CardModel card) => _cards.Remove(card);
+    public bool Remove(CardModel card) => _cards.Remove(card);
 
     public CardModel DrawTop()
     {

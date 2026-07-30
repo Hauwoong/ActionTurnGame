@@ -31,11 +31,12 @@ public class CardHandUI : MonoBehaviour
     {
         Unbind();
         _runtime = runtime;
-        runtime.LogDispatcher.Register<DrawCardLog>(OnDrawCard);
-        runtime.LogDispatcher.Register<UseCardLog>(OnUseCard);
-        runtime.LogDispatcher.Register<DiscardCardLog>(OnDiscardCard);
-        runtime.LogDispatcher.Register<ExileCardLog>(OnExileCard);
-        runtime.LogDispatcher.Register<EndTurnCardLog>(OnEndTurnCard);
+        _runtime.LogDispatcher.Register<DrawCardLog>(OnDrawCard);
+        _runtime.LogDispatcher.Register<UseCardLog>(OnUseCard);
+        _runtime.LogDispatcher.Register<DiscardCardLog>(OnDiscardCard);
+        _runtime.LogDispatcher.Register<ExileCardLog>(OnExileCard);
+        _runtime.LogDispatcher.Register<EndTurnCardLog>(OnEndTurnCard);
+        _runtime.LogDispatcher.Register<ReturnCardLog>(OnReturnCard);
         Refresh();
     }
 
@@ -47,6 +48,7 @@ public class CardHandUI : MonoBehaviour
         _runtime.LogDispatcher.Unregister<DiscardCardLog>(OnDiscardCard);
         _runtime.LogDispatcher.Unregister<ExileCardLog>(OnExileCard);
         _runtime.LogDispatcher.Unregister<EndTurnCardLog>(OnEndTurnCard);
+        _runtime.LogDispatcher.Unregister<ReturnCardLog>(OnReturnCard);
         _runtime = null;
     }
 
@@ -71,6 +73,10 @@ public class CardHandUI : MonoBehaviour
     }
 
     private void OnEndTurnCard(EndTurnCardLog log)
+    {
+        if (log.CharacterId == characterId) Refresh();
+    }
+    private void OnReturnCard(ReturnCardLog log)
     {
         if (log.CharacterId == characterId) Refresh();
     }
