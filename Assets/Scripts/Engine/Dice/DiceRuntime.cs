@@ -1,4 +1,4 @@
-
+﻿
 public class DiceRuntime
 {
     public DiceData Data { get; }
@@ -18,7 +18,7 @@ public class DiceRuntime
     public void Use() => State = DiceState.Used;
     public void Consume() => State = DiceState.Consumed;
     public void Destroy() => State = DiceState.Destroyed;
-    public void Recover() => State = DiceState.Ready;
+    public void Store() => State = DiceState.Stored;
 }
 
 public enum DiceState
@@ -26,5 +26,6 @@ public enum DiceState
     Ready,
     Used,
     Consumed,
-    Destroyed
+    Destroyed,
+    Stored
 }

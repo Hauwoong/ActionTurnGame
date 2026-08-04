@@ -205,15 +205,13 @@ public class CharacterRuntime : IEventSink
         );
 
         foreach (var entry in entries)
-        {
             _diceById[entry.Handle.DiceId] = entry;
-            _dicePool.Add(entry);
-        }
+
+        _dicePool.Inject(entries);
     }
     public DiceEntry? Peek() => _dicePool.Peek();
     public void Advance(AdvanceType type) => _dicePool.Advance(type);
-    public void RecoverDice() => _dicePool.Recover();
-    public void DestroyUsedDice() => _dicePool.DestroyUsed();
+    public void EndBoutDice() => _dicePool.EndBout();
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
     public void DiscardRemainingDice() => _dicePool.DiscardRemaining();
     public void DestroyRemainingDice() => _dicePool.DestroyRemaining();

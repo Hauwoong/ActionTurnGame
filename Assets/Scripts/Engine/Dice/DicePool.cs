@@ -5,17 +5,14 @@ public class DicePool
     private readonly List<DiceEntry> _dice = new();
 
     private int _cursor;
-
-    public void Add(DiceEntry entry) => _dice.Add(entry);
-
-    public void Inject(DiceEntry entry) => _dice.Insert(_cursor, entry);
+    public void Inject(List<DiceEntry> entries) => _dice.InsertRange(_cursor, entries);
 
     public DiceEntry? Peek()
     {
         while (_cursor < _dice.Count)
         {
             var state = _dice[_cursor].Dice.State;
-            if (state == DiceState.Ready || state == DiceState.Used)
+            if (state == DiceState.Ready || state == DiceState.Used || state == DiceState.Stored)
                 return _dice[_cursor];
             _cursor++;
         }
@@ -42,15 +39,22 @@ public class DicePool
                 break;
         }
     }
+    public void EndBout() // 한 교전 끝
+    {
+        StoreConsumed();
+        DestroyUsed();
+        ClearDestroyed();
+        _cursor = 0;
+    }
 
-    public void Recover() // 한 합 끝
+    void StoreConsumed()
     {
         foreach (var e in _dice)
             if (e.Dice.State == DiceState.Consumed)
-                e.Dice.Recover();
+                e.Dice.Store();
     }
 
-    public void DestroyUsed()
+    void DestroyUsed()
     {
         foreach (var e in _dice)
         {
@@ -58,13 +62,12 @@ public class DicePool
                 e.Dice.Destroy();
         }
     }
+    void ClearDestroyed() => _dice.RemoveAll(e => e.Dice.State == DiceState.Destroyed);
 
     public void ResetForNextTurn() // 턴 끝
     {
+        _dice.Clear();
         _cursor = 0;
-        foreach (var e in _dice)
-            if (e.Dice.State != DiceState.Destroyed)
-                e.Dice.Destroy();
     }
     public void DestroyRemaining()
     {

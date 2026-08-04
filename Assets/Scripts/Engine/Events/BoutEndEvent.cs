@@ -1,4 +1,4 @@
-public class BoutEndEvent : ICombatEvent
+﻿public class BoutEndEvent : ICombatEvent
 {
     public int AttackerId { get; }
     public int TargetId { get; }
@@ -13,14 +13,11 @@ public class BoutEndEvent : ICombatEvent
 
     public void Apply(BattleRuntime runtime)
     {
-        runtime.EnqueueEvent(new DiceRecoverEvent(AttackerId));
-        runtime.EnqueueEvent(new DiceDestroyUsedEvent(AttackerId));
+        var attacker = runtime.GetCharacterRuntime(AttackerId);
+        var target = runtime.GetCharacterRuntime(TargetId);
 
-        if (DefenderId.HasValue)
-        {
-            runtime.EnqueueEvent(new DiceRecoverEvent(DefenderId.Value));
-            runtime.EnqueueEvent(new DiceDestroyUsedEvent(DefenderId.Value));
-        }
+        attacker.EndBoutDice();
+        target.EndBoutDice();
 
         runtime.AddLog(new BoutEndLog(AttackerId, TargetId));
     }
