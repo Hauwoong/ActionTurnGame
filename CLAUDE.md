@@ -27,6 +27,40 @@
 `_diceById` 채우는 루프는 복구돼 있다(`CharacterRuntime.cs:207`). 읽는 배선은 아직 0건이고
 용도는 3-1.12 에서 확정한 대로 "불변 속성 조회용 대장"이다.
 
+#### 4단계 착수 메모 (2026-08-05 설계 토론)
+
+**핵심: 첫 루프의 주사위 출처를 `idB` → `targetId` 로 바꾸는 것이다.** 대칭 구조로 고치는 게
+아니라 **B 자리에 "합 상대" 대신 "맞는 사람"을 넣는 것**이다.
+
+- **`idB` 는 사실상 잉여다.** `RunQueue` 가 `opponent = ActionBySlot[targetSlot]` 로 잡으므로
+  `opponent.SourceSlot == targetSlot` 이고, 따라서 **`b != null` 이면 `idB == targetId` 가 항상 참**이다.
+  지금 `idB`(`int?`)가 들고 있는 정보는 캐릭터가 아니라 **"상대가 bout 참가자인가"라는 bool** 이다.
+  일방이면 `idB` 만 null 이 되고 `targetId` 는 멀쩡히 살아 있다 — 그게 지금 대상 풀을 못 보는 이유
+- **둘째 루프는 `b != null` 게이트를 유지한다.** 거기까지 `targetId` 로 바꾸면 **일방으로 맞은
+  사람이 남은 주사위로 반격**한다. 원작에서 일방 피격은 반격 기회가 아니다.
+  → **첫 루프 = "맞는 사람" 기준 / 둘째 루프 = "합 상대" 기준.** 잔재가 아니라 실제 규칙 차이다
+
+**`PeekForDefence` 같은 걸 따로 만들 필요가 없다.** 대상 풀에서 나올 수 있는 건 `Stored` 뿐이다:
+- 주사위는 **bout 이 시작할 때** 실린다(`BoutStartEvent.cs:20~28` 의 `UseAction`). 액션 등록
+  시점이 아니다. 그래서 **아직 bout 을 안 치른 캐릭터의 풀은 비어 있다**
+- bout 은 DFS 로 하나씩 동기 처리되므로 **남의 bout 이 도는 동안 내 풀에 `Ready` 가 있을 수 없다**
+- bout 이 끝날 때도 `Ready` 가 안 남는다 — 모든 탈출 경로가 커서를 끝까지 민다
+  (정상 소진 / 대상 사망 → `DiscardRemaining` / 본인 사망 → `DestroyRemaining` /
+  `IsValidAction` false → bout 자체가 안 생겨 적재도 없음). 거기에 `EndBout` 이 정리를 끝낸다
+
+**새 불변량 — "bout 종료 시 커서는 항상 끝에 있다".** 위 성질이 4단계의 근거가 되는 순간
+이건 **지켜야 할 규칙**이 된다(지금은 결과적으로 성립할 뿐 강제되지 않는다). 깨지면 남의 bout 에서
+내 `Ready` 공격 주사위가 방어에 끌려 나오고, **증상은 "자기 차례에 주사위가 모자람"으로 보여
+원인을 엉뚱한 데서 찾게 된다.** `ResolveCombat` 의 while 에서 "아무것도 안 하고 빠지기"가
+없어야 한다는 기존 규칙과 같은 종류다. "bout 밖에서는 모든 커서가 0" 과 짝이다.
+
+**구조 메모 — 지금은 A 중심이고, 그건 큐 때문이다.** `RunQueue` 가 속도순으로 액션을 하나 뽑고
+뽑힌 쪽이 A, 상대가 B 가 된다. 대등한 관계가 아니라 "누가 먼저 뽑혔나"가 역할을 정한다.
+그래서 `a` 는 null 일 수 없고 `b` 는 null 일 수 있으며, 루프를 끝내는 것도 A 뿐이고
+(`if (diceA == null) break;`) 둘째 루프는 B 의 뒤처리 부록이다.
+**단 주사위를 해석하는 층(`ResolveDiceClash`)은 완전 대칭이다** — 3-1.7 이 `isOwnerA` 를 없앤 결과다.
+비대칭은 "누가 bout 을 주도하나"에만 있고 "주사위끼리 어떻게 부딪히나"에는 없다.
+
 2단계에서 이렇게 됐다: `DiceRecoverEvent`/`DiceRecoverLog`/`DiceDestroyUsedEvent`/`DiceDestroyUsedLog`
 **삭제**, `CharacterRuntime` 은 `EndBoutDice()` 하나만 노출, `DicePool` 의 `StoreConsumed`/
 `DestroyUsed`/`ClearDestroyed` 는 `private`, `ResetForNextTurn` 은 `_dice.Clear()` + `_cursor = 0`.
