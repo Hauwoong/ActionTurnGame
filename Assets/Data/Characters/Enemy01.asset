@@ -16,9 +16,9 @@ MonoBehaviour:
   _maxHp: 50
   _maxStagger: 25
   _maxEnergy: 3
-  _minSpeed: 1
-  _maxSpeed: 6
-  _baseSpeedSlotCount: 1
+  _minSpeed: 7
+  _maxSpeed: 9
+  _baseSpeedSlotCount: 2
   _maxEmotionLevel: 5
   _maxEmotionStack: 10
   _emotionGainOnDamageDealt: 0

@@ -18,7 +18,7 @@ MonoBehaviour:
   _maxEnergy: 3
   _minSpeed: 1
   _maxSpeed: 6
-  _baseSpeedSlotCount: 1
+  _baseSpeedSlotCount: 2
   _maxEmotionLevel: 5
   _maxEmotionStack: 10
   _emotionGainOnDamageDealt: 0
@@ -28,9 +28,6 @@ MonoBehaviour:
   _emotionGainOnStaggerHeal: 0
   _passives: []
   _initialDeck:
-  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
-  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
-  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
-  - {fileID: 11400000, guid: a9cf4b3784cb79b479da4ad2921d3852, type: 2}
   - {fileID: 11400000, guid: 6d5ed7db59d90fd4aa6dd33ea85af6ca, type: 2}
-  - {fileID: 11400000, guid: e36e6a1552fe23240acc69cf9fa0593e, type: 2}
+  - {fileID: 11400000, guid: a9cf4b3784cb79b479da4ad2921d3852, type: 2}
+  - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}

@@ -19,7 +19,7 @@ MonoBehaviour:
     Min: 50
     Max: 50
     Effects: 
-  - Type: 0
+  - Type: 1
     Min: 4
     Max: 7
     Effects: 
