@@ -198,7 +198,7 @@ public class CombatExecutor
         {
             AdvanceType.Destroy => new DiceDestroyedEvent(characterId),
             AdvanceType.Consume => new DiceConsumedEvent(characterId),
-            AdvanceType.Reuse => null, // Reuse는 아무것도 안 함
+            AdvanceType.Reuse => new DiceReusedEvent(characterId),
             _ => null
         };
     }

@@ -39,29 +39,21 @@ public class DicePool
                 break;
         }
     }
+
     public void EndBout() // 한 교전 끝
     {
-        StoreConsumed();
-        DestroyUsed();
+        StoreSurvivors();
         ClearDestroyed();
         _cursor = 0;
     }
 
-    void StoreConsumed()
+    void StoreSurvivors()
     {
         foreach (var e in _dice)
-            if (e.Dice.State == DiceState.Consumed)
+            if (e.Dice.State == DiceState.Consumed || e.Dice.State == DiceState.Used)
                 e.Dice.Store();
     }
 
-    void DestroyUsed()
-    {
-        foreach (var e in _dice)
-        {
-            if (e.Dice.State == DiceState.Used)
-                e.Dice.Destroy();
-        }
-    }
     void ClearDestroyed() => _dice.RemoveAll(e => e.Dice.State == DiceState.Destroyed);
 
     public void ResetForNextTurn() // 턴 끝
@@ -69,6 +61,7 @@ public class DicePool
         _dice.Clear();
         _cursor = 0;
     }
+
     public void DestroyRemaining()
     {
         for (int i = _cursor; i < _dice.Count; i++)
@@ -78,6 +71,7 @@ public class DicePool
             _cursor++;
         }
     }
+
     public void DiscardRemaining()
     {
         for (int i = _cursor; i < _dice.Count; i++)
