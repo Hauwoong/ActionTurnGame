@@ -215,7 +215,13 @@ public class CharacterRuntime : IEventSink
     public void ResetDiceForNextTurn() => _dicePool.ResetForNextTurn();
     public void DiscardRemainingDice() => _dicePool.DiscardRemaining();
     public void DestroyRemainingDice() => _dicePool.DestroyRemaining();
+    public DiceInfo? GetDiceInfo(int diceId)
+    {
+        if (_diceById.TryGetValue(diceId, out var entry))
+            return new DiceInfo(entry.Dice.Type, entry.Dice.Data.Min, entry.Dice.Data.Max);
 
+        return null;
+    }
     public int AddStatus(StatusEffectType type, int stack, bool delayed = false)
     {
         if (!_effectMap.TryGetValue(type, out var effect) || effect.IsExpired)

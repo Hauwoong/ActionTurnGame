@@ -38,7 +38,7 @@ public class StrengthEffect : StatusEffectRuntime
 
     public override void OnModifyRoll(DiceRollContext ctx)
     {
-        if (ctx.Dice.Type != DiceType.Attack) return;
+        if (ctx.Dice.Type != DiceType.Attack && ctx.Dice.Type != DiceType.Counter) return;
 
         ctx.ModifiedRoll += Stack;
     }

@@ -141,7 +141,8 @@ public class CombatExecutor
         _runtime.AddLog(new DiceClashLog(
             entryA.Handle, entryB.Handle,
             entryA.Dice.CurrentRoll, entryB.Dice.CurrentRoll,
-            result, advanceA, advanceB
+            modifyedRollA, modifyedRollB,
+            advanceA, advanceB, result
         ));
 
         if (ctx != null)
@@ -174,6 +175,8 @@ public class CombatExecutor
         attacker.TriggerDiceRoll();
 
         if (attacker.IsDead) return;
+
+        _runtime.AddLog(new UnopposedLog(entry.Handle, targetId, entry.Dice.CurrentRoll, modifyedRoll));
 
         var ctx = new DamageContext(attacker, target, modifyedRoll);
         _runtime.EnqueueEvent(new DamageEvent(ctx));

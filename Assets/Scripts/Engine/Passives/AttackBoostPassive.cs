@@ -11,7 +11,7 @@ public class AttackBoostPassive : PassiveEffect
 
     public override void OnModifyRoll(DiceRollContext ctx)
     {
-        if (ctx.Dice.Type != DiceType.Attack) return;
+        if (ctx.Dice.Type != DiceType.Attack && ctx.Dice.Type != DiceType.Counter) return;
 
         ctx.ModifiedRoll += _amount;
     }
