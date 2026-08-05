@@ -2,10 +2,25 @@
 
 ## 다음 작업 (2026-08-05 갱신)
 
-### ▶ 다음 시작 지점 — 3-1.10 의 **4단계**
+### ▶ 다음 시작 지점 — **미정. 아래에서 고를 것**
 
-1~3단계는 **플레이 검증까지 끝났다** (2026-08-05). 남은 건 4단계(`ResolveUnopposedDice` 가
-대상 풀 peek)와 5단계(`Used` 를 턴 끝 소멸로).
+**3-1.10 이 1~5단계 전부 끝났다 (2026-08-06, 검증 완료).** 주사위 저장분·수명 작업이 종료됐다.
+같이 3-1.12(파괴분을 `_dice` 에 안 쌓기)도 `EndBout` 의 `ClearDestroyed()` 로 끝났다.
+
+후보 (권장 순):
+
+1. **3-1.11 — `DiceClashLog` 가 보정 전 `CurrentRoll` 을 찍는다.** 작고, 3-1.7 검증이 끝나
+   이제 안전하다. **5단계에서 "횟수와 이력은 `CombatLogs` 가 담당한다"고 역할을 확정한 참이라
+   로그 정확성의 값어치가 올라갔다** — 그 대장이 틀린 숫자를 적고 있으면 안 된다
+2. **`BoutStartLog` / `BoutEndLog` 에 합 여부를 싣기** (아래 "미확인"). 같은 이유. 지금
+   `BoutEndEvent` 는 `DefenderId` 를 받아놓고 안 읽어서 **로그가 이벤트보다 정보가 적다**
+3. **4번 2단계 — `CharacterModel` 신설.** 주사위·상태이상과 완전히 독립이라 머리를 쉬어가는 선택지.
+   덩어리가 크다
+4. **`_diceById` 읽는 배선** — 3-1.12 에서 "불변 속성 조회용 대장"으로 용도는 확정했는데
+   읽는 곳이 여전히 0건이다. "용도를 확정했으면 읽는 배선까지 같은 날 넣어야 한다"는
+   교훈(2026-08-04)이 아직 안 지켜진 항목
+
+**엔진이 일단락되면 주석 작업**(사용자 결정: 한꺼번에 단다). 그때 넣을 것은 아래 목록 참고.
 
 **주석은 엔진이 끝난 뒤 한꺼번에 단다** (사용자 결정, 2026-08-05). 그때 같이 넣을 것:
 - `EndBout` 위 — "**멱등이어야 한다**"(합에서 `TargetId == DefenderId` 라 같은 캐릭터를
@@ -21,24 +36,63 @@
 | 1 | `DiceState.Stored` + `Peek` 확장 + `DiceRuntime.Store()` | ✔ **검증 완료** |
 | 2 | `DicePool.EndBout()` / `BoutEndEvent` 직접 호출 / 이벤트 4개 삭제 | ✔ **검증 완료** |
 | 3 | `Inject(List<DiceEntry>)` = `InsertRange(_cursor, ...)`, `Add` 삭제 | ✔ **검증 완료** |
-| 4 | `ResolveUnopposedDice` 가 **대상 풀 peek** | 미착수 |
-| 5 | `Used` 를 턴 끝 소멸로 (`EndBout` 의 `DestroyUsed()` 줄 처리) | 미착수 |
+| 4 | `ResolveCombat` 두 루프를 **`targetId` 기준으로** (`a`/`b`/`idB` 소멸) | ✔ **검증 완료** |
+| 5 | ~~`Used` 를 턴 끝 소멸로~~ → **`Reuse` 를 이벤트로 배선** + `DestroyUsed()` 삭제 | ✔ **검증 완료** |
+
+**3-1.10 종료.** 3-1.12(파괴분을 `_dice` 에 안 쌓기)도 2단계의 `ClearDestroyed()` 로 함께 끝났다.
+남은 파생 항목은 **`_diceById` 읽는 배선 0건** 하나다.
 
 `_diceById` 채우는 루프는 복구돼 있다(`CharacterRuntime.cs:207`). 읽는 배선은 아직 0건이고
 용도는 3-1.12 에서 확정한 대로 "불변 속성 조회용 대장"이다.
 
-#### 4단계 착수 메모 (2026-08-05 설계 토론)
+#### 4단계 — ✔ **완료·검증 완료 (2026-08-05)**. 아래는 설계 근거 기록
 
-**핵심: 첫 루프의 주사위 출처를 `idB` → `targetId` 로 바꾸는 것이다.** 대칭 구조로 고치는 게
-아니라 **B 자리에 "합 상대" 대신 "맞는 사람"을 넣는 것**이다.
+DEVLOG `2026-08-05 (후속)` 참고. **구현된 형태가 아래 그대로다.**
 
-- **`idB` 는 사실상 잉여다.** `RunQueue` 가 `opponent = ActionBySlot[targetSlot]` 로 잡으므로
+**`ResolveCombat` 의 두 루프를 전부 `targetId` 기준으로 바꾸는 것이었다.
+`ResolveUnopposedDice` 는 한 글자도 안 고쳤다.**
+
+```
+ResolveCombat(int attackerId, int targetId)     // a / b / idB 전부 소멸
+
+  첫 루프    diceB = Peek(targetId)                     // 조건 없음
+             diceB != null ? Clash : Unopposed
+  둘째 루프  while (Peek(targetId) != null) → Unopposed(targetId, attackerId)
+             ( !IsAlive(attackerId) 이면 Discard 하고 break — 지금 그대로 )
+```
+
+- **`a` 는 원래부터 본문에서 한 번도 안 쓰였다.** `idA` 도 `a.SourceSlot.CharacterId` 와 같은
+  값을 따로 받은 중복이다
+- **`idB` 는 잉여다.** `RunQueue` 가 `opponent = ActionBySlot[targetSlot]` 로 잡으므로
   `opponent.SourceSlot == targetSlot` 이고, 따라서 **`b != null` 이면 `idB == targetId` 가 항상 참**이다.
-  지금 `idB`(`int?`)가 들고 있는 정보는 캐릭터가 아니라 **"상대가 bout 참가자인가"라는 bool** 이다.
+  `idB`(`int?`)가 나르던 정보는 캐릭터가 아니라 **"상대가 bout 참가자인가"라는 bool** 이었다.
   일방이면 `idB` 만 null 이 되고 `targetId` 는 멀쩡히 살아 있다 — 그게 지금 대상 풀을 못 보는 이유
-- **둘째 루프는 `b != null` 게이트를 유지한다.** 거기까지 `targetId` 로 바꾸면 **일방으로 맞은
-  사람이 남은 주사위로 반격**한다. 원작에서 일방 피격은 반격 기회가 아니다.
-  → **첫 루프 = "맞는 사람" 기준 / 둘째 루프 = "합 상대" 기준.** 잔재가 아니라 실제 규칙 차이다
+- 호출부는 `ResolveCombat(AttackerId, TargetId)`. `BoutStartEvent` 는 `UseAction(B)` 와
+  `BoutEndEvent` 에 넘길 id 때문에 `B` 를 계속 들고 있으면 된다
+
+**초판의 아래 두 항목은 틀렸다 (2026-08-05 사용자 교정).** 둘 다 "비대칭이 실제 규칙 차이다"라고
+적었는데, 확인해보니 **규칙 차이가 아니다.** 대칭으로 가는 게 맞다.
+
+- ~~"둘째 루프는 `b != null` 게이트를 유지한다. 아니면 일방으로 맞은 사람이 반격한다"~~ —
+  **반격은 안 나온다.** 저장되는 건 정의상 방어 주사위뿐이고(공격 주사위는 상대가 없으면
+  `DicePool.cs:87` 의 `DiscardRemaining` 이 파괴한다), 남은 저장분은 `ResolveUnopposedDice` 의
+  비-Attack 분기로 가서 `Consume` → `EndBout` 이 다시 `Store` 한다. **왕복해서 제자리다.**
+  `DiceRuntime` 의 상태 setter 에 가드가 없어(`DiceRuntime.cs:19~21`) `Stored → Consumed → Stored`
+  전이도 안전하다. 실질 차이는 `DiceConsumedLog` 노이즈 한 줄뿐
+- ~~"일방이면 대상의 저장분은 **공격 주사위**를 맞을 때만 나온다"~~ — **규칙은 "맞붙을 상대가
+  있는가"지 "공격 주사위인가"가 아니다.** 대상 풀에 주사위가 있으면 그 순간 일방이 아니므로
+  때리는 쪽의 방어 주사위도 굴린다. 3-1.9 가 정한 것도 "굴릴 상대가 없으면 저장"이었다.
+  → **`ResolveUnopposedDice` 의 `if (Type != Attack)` 을 루프로 끌어올리면 안 된다.**
+  그대로 두면 그 자리가 이제 진짜로 "대상 풀이 비었을 때"가 되어 의미까지 맞아떨어진다
+
+**혼동의 원인은 항목 제목이었다** — "`ResolveUnopposedDice` 가 대상 풀 peek" 이라고 적어놔서
+그 메서드에 뭘 다는 작업처럼 읽혔다. 실제로는 **호출자가 대상 풀을 보게 되면 그 메서드는
+자동으로 옳아진다.** 표의 4단계 이름도 그래서 바꿨다.
+
+**무한 루프는 안전하다.** 둘째 루프를 대칭으로 열어도 비-Attack 은 `Consume`, Attack 은
+`Destroy` 로 매번 커서가 전진하고, 룰 테이블에 `(Reuse, Reuse)` 조합이 없다
+(Counter vs Counter 도 `(Reuse, Destroy)`). "`ResolveCombat` 의 while 에서 아무것도 안 하고
+빠지는 경로는 없다"는 기존 규칙 유지.
 
 **`PeekForDefence` 같은 걸 따로 만들 필요가 없다.** 대상 풀에서 나올 수 있는 건 `Stored` 뿐이다:
 - 주사위는 **bout 이 시작할 때** 실린다(`BoutStartEvent.cs:20~28` 의 `UseAction`). 액션 등록
@@ -54,18 +108,101 @@
 원인을 엉뚱한 데서 찾게 된다.** `ResolveCombat` 의 while 에서 "아무것도 안 하고 빠지기"가
 없어야 한다는 기존 규칙과 같은 종류다. "bout 밖에서는 모든 커서가 0" 과 짝이다.
 
-**구조 메모 — 지금은 A 중심이고, 그건 큐 때문이다.** `RunQueue` 가 속도순으로 액션을 하나 뽑고
-뽑힌 쪽이 A, 상대가 B 가 된다. 대등한 관계가 아니라 "누가 먼저 뽑혔나"가 역할을 정한다.
-그래서 `a` 는 null 일 수 없고 `b` 는 null 일 수 있으며, 루프를 끝내는 것도 A 뿐이고
-(`if (diceA == null) break;`) 둘째 루프는 B 의 뒤처리 부록이다.
-**단 주사위를 해석하는 층(`ResolveDiceClash`)은 완전 대칭이다** — 3-1.7 이 `isOwnerA` 를 없앤 결과다.
-비대칭은 "누가 bout 을 주도하나"에만 있고 "주사위끼리 어떻게 부딪히나"에는 없다.
+**구조 메모 — A 중심인 건 큐 때문이다.** `RunQueue` 가 속도순으로 액션을 하나 뽑고
+뽑힌 쪽이 A, 맞는 쪽이 target 이 된다. 대등한 관계가 아니라 "누가 먼저 뽑혔나"가 역할을 정한다.
+그래서 루프를 끝내는 것도 A 뿐이고(`if (diceA == null) break;`) 둘째 루프는 대상의 뒤처리 부록이다.
+**주사위를 해석하는 층(`ResolveDiceClash`)은 완전 대칭이다** — 3-1.7 이 `isOwnerA` 를 없앤 결과다.
+4단계 뒤에는 **주사위를 꺼내는 층도 대칭이 된다**(양쪽 다 `Peek(id)`). 남는 비대칭은
+"누가 bout 을 주도하나" 하나뿐이고, 그건 `ResolveDiceClash` 는 물론 `ResolveCombat` 도 안 읽는다.
+
+**4단계 검증 레시피 — 실시 완료, 통과** (출혈 = 굴림 카운터, 배선 0. Ally 5/5 · Enemy 1/1 이라 아군 슬롯이 항상 먼저)
+1. **Ally 슬롯0** = `Guard` → **비어 있는 적 슬롯** 지목 (합이 되면 안 된다. `Bout: -` 확인)
+2. **Enemy 슬롯0** = `Strike` → **비어 있는 Ally 슬롯1** 지목
+3. Ally 에 출혈 5 (`DebugAddBleed`)
+
+bout1 에서 Ally 의 Block 이 저장되고, bout2 에서 Enemy 가 Ally 를 일방으로 때린다.
+- **수정 전**: Ally 는 한 번도 안 굴린다 → 출혈 **5 유지**
+- **수정 후**: 저장 Block 이 방어로 굴러간다 → 출혈 **5→2**. 데미지도 `공격값 - 수비값` 으로 줄어야 한다
+
+두 가설이 서로 다른 숫자를 예측한다 — A 검증 초판이 "양쪽 다 0 을 예측"해서 무정보였던 것과 대비.
 
 2단계에서 이렇게 됐다: `DiceRecoverEvent`/`DiceRecoverLog`/`DiceDestroyUsedEvent`/`DiceDestroyUsedLog`
 **삭제**, `CharacterRuntime` 은 `EndBoutDice()` 하나만 노출, `DicePool` 의 `StoreConsumed`/
 `DestroyUsed`/`ClearDestroyed` 는 `private`, `ResetForNextTurn` 은 `_dice.Clear()` + `_cursor = 0`.
+(5단계에서 `DestroyUsed` 는 삭제되고 `StoreConsumed` 는 `StoreSurvivors` 로 바뀌었다 — `Consumed` 와 `Used` 를 둘 다 `Stored` 로.)
 `BoutEndEvent` 는 `{AttackerId, TargetId}` 만 정리한다(`DefenderId` 는 항상 `TargetId` 와
 같거나 null 이므로 완전하다 — 5대5 에서도 참).
+
+#### 5단계 — ✔ **완료·검증 완료 (2026-08-06)**. `Reuse` 배선 (**원래 계획서와 내용이 다르다**)
+
+DEVLOG `2026-08-06` 참고. **아래 "할 일" 4개가 그대로 구현됐다.**
+
+**발견: `DiceState.Used` 는 도달 불가 상태다.**
+
+```
+DiceRuleTable        Reuse 를 8곳에서 생산 (Counter/Evade 승리)
+  ↓
+ToAdvanceEvent       AdvanceType.Reuse => null        ← CombatExecutor.cs:201
+  ↓
+(이벤트 없음)         DicePool.Advance(Reuse) 호출자 0건
+  ↓
+DiceRuntime.Use()    호출자 0건 → DiceState.Used 가 절대 안 찍힌다
+```
+
+따라서 **`DestroyUsed()` / `Peek` 의 `state == Used` 검사 / `Advance` 의 `Reuse` 케이스 /
+`Use()` 가 전부 도달 불가**다. "지금은 합 끝에 소멸한다"는 계획서의 전제가 성립한 적이 없다.
+
+**왜 안 보였나 — `Reuse` 는 "커서를 안 움직인다"가 전부인데, 아무것도 안 하면 그게 달성된다.**
+주사위가 `Ready` 로 남고 `Peek` 이 다음 iteration 에서 같은 걸 다시 집는다.
+**반격 재굴림은 실제로 동작한다.** 상태 라벨만 안 붙는다. 그래서 지금 반격 주사위는
+결국 `Consume` → `EndBout` 이 `Store` → **턴 내내 저장분으로 살아남고, 원작 규칙과 이미 일치한다.**
+
+**결정 (사용자, 2026-08-05): 배선하는 쪽으로 간다.**
+
+- **근거는 로그가 아니다.** 재사용 횟수는 이미 `DiceClashLog` 의 `advanceA`/`advanceB` 에 있고
+  (`CombatExecutor.cs:145~149`), `CombatLogs` 에서 `DiceHandle` 별로 세면 나온다.
+  **`State` 는 덮어써지는 필드라 횟수를 못 센다** — "가변 객체는 이력이 아니다"(2026-07-30 결론)
+- **진짜 근거는 `Reuse` 만 이벤트를 안 내는 예외라는 것.** 이 프로젝트 규칙
+  "`ResolveCombat` 의 while 에서 아무것도 안 하고 빠지기는 존재하지 않는다"의 유일한 예외이고,
+  지금 안전한 건 "주사위가 커서에 남아 다음 iteration 이 다시 처리한다"는 **암묵 성질** 덕이다.
+  4단계 버그도 암묵 불변량("합에 안 낀 캐릭터의 풀은 비어 있다")이 깨져서 난 것이다
+
+**할 일**
+
+1. `ToAdvanceEvent` 의 `AdvanceType.Reuse => null` → `new DiceReuseEvent(characterId)`.
+   `Apply` 는 `AdvanceDice(id, Reuse)` + `DiceReuseLog`. **커서는 안 움직인다**
+   (`DicePool.Advance` 가 이미 그렇게 돼 있다 — `Use()` 만 하고 `_cursor++` 없음)
+2. **`DestroyUsed()` 삭제.** 죽은 코드일 뿐 아니라 **규칙상으로도 틀렸다** — 살아나면
+   반격 주사위를 bout 끝에 죽여서 "턴 끝까지 산다"를 어긴다
+3. `EndBout` 이 `Consumed` 와 `Used` 를 **둘 다 `Stored`** 로. 안 그러면 bout 밖에서
+   `Used` 와 `Stored` 가 같은 뜻이 되어 **라벨 두 개가 한 뜻**을 갖는다
+   (`Ready` 가 두 뜻을 겸했던 것의 반대 방향 같은 병)
+4. `Peek` 의 `Used` 검사는 **유지** — bout 안에서 다시 집어야 한다
+
+**접은 대안(A안): `Used` 를 통째로 삭제.** enum 값 / `Use()` / `Advance` 의 `Reuse` 케이스 /
+`Peek` 의 `Used` 검사까지. 더 작고 실제 동작과 일치하지만, `Reuse` 만 이벤트 경로 밖에 남는다.
+
+**검증 — 관측 가능한 동작 변화가 0이다. 이걸 먼저 알고 시작할 것.**
+
+- 배선 전: `Reuse` → 아무 일 없음 → 주사위가 `Ready` 로 커서에 남음 → `Peek` 이 다시 집음
+- 배선 후: `Reuse` → `Used` → 주사위가 `Used` 로 커서에 남음 → `Peek` 이 다시 집음
+
+**재굴림 횟수도 데미지도 같다.** 출혈 카운터로는 절대 안 갈린다. 그러니 검증은
+**`DiceReuseEvent.Apply` 브레이크포인트가 걸리는가** 하나이고, 나머지는 회귀 확인이다.
+(브레이크포인트를 쓸 땐 Code Optimization 이 Release 면 거짓 신호가 난다 — 이미 두 번 겪었다)
+
+**`EndBout` 의 `Used → Stored`(3번)는 현재 도달 불가다.** `Reuse` 된 주사위는 커서에 남아
+모든 탈출 경로가 다시 집어가므로 bout 끝에는 이미 `Consumed`/`Destroyed` 다
+(첫 루프는 `Peek` 이 `Used` 를 돌려주니 안 끊기고, 둘째 루프·`DiscardRemaining` 은 비-Attack 이라
+`Consume`, 죽으면 `DestroyRemaining`). **그래서 3번은 검증 대상이 아니라 보험이다.**
+- `Consumed`/`Used` 를 명시적으로 나열할 것. "`Destroyed` 아니면 전부 `Stored`" 로 총함수를
+  만들면 짧지만 **`Ready` 가 남아 있는 버그를 조용히 덮는다**("bout 종료 시 커서는 항상 끝"이 깨진 경우)
+
+**주사위 에셋** — 카운터·회피가 **현재 카드 3장에 둘 다 없다**(`Guard` Block / `Combo` Attack /
+`Execute` Attack·Block·Attack). 브레이크포인트를 걸려면 새로 만들어야 한다.
+`Evade` 를 크게(예: 6~6) 잡아 `Combo`(Attack 1~3)에 이기게 하는 게 제일 쉽다.
+`DiceData.Type` 은 enum 이라 기본값이 `Attack`(0)이니 드롭다운을 반드시 확인할 것 —
+`Execute` 에서 이미 겪었고 증상이 "분기가 안 돈다"와 똑같이 보인다.
 
 #### 검증 결과 (2026-08-05, 플레이 검증 완료)
 
@@ -84,8 +221,8 @@
 같은 턴 bout2 에서 Ally `Strike`(1개) ↔ Enemy `Combo`(3개) 합. Ally 출혈 5→2→1(굴림 2회) =
 Strike 가 떨어진 뒤 `Peek` 이 저장된 Block 으로 이어졌다.
 - **같은 턴이어야 한다.** `ResetForNextTurn` 이 `_dice.Clear()` 라 저장분은 턴을 못 넘긴다
-- 4단계 전이라 "제3자에게 일방으로 맞을 때"는 아직 안 된다. 확인된 건
-  **자기 차례의 합에서 큐가 저장분으로 이어지는 것**뿐이다
+- ~~4단계 전이라 "제3자에게 일방으로 맞을 때"는 아직 안 된다~~ — **4단계와 함께 확인됨
+  (2026-08-05 후속).** 액션 없는 슬롯을 지목한 `Strike` 일방 피격에서 Ally 출혈 5→2
 - **덤으로 `ResolveCombat` 둘째 while 루프 정상 경로도 확인됐다**(2026-07-30 미확인 항목).
   적 Combo 3개 중 남은 것이 일방으로 흘러간다
 - **위양성 경로 하나**: Guard 슬롯이 합이면(`Bout: -` 가 아니면) Block 이 굴러서 똑같이 2회가 나온다.
@@ -96,7 +233,8 @@ Strike 가 떨어진 뒤 `Peek` 이 저장된 Block 으로 이어졌다.
 적 슬롯은 항상 마지막이다. SPD 를 읽고 재시작할 필요가 없어진다.
 덱은 3장(Combo/Guard/Strike)이고 드로우가 턴당 1장이라 **턴3 손패 = 3장 확정**.
 
-**C. 회귀** — 손패 총 장수 보존(8-B 의 지표), 1대1 기존 전투가 그대로 도는지. 미실시.
+**C. 회귀** — 손패 총 장수 보존(8-B 의 지표), 1대1 기존 전투가 그대로 도는지.
+**4단계 뒤에 실시, 통과** (2026-08-05 후속). 저장분 합 이어짐(5→2→1)까지 3건.
 
 **함정 재발 주의**: 브레이크포인트가 거짓 신호를 준 적이 있다(Code Optimization 이 Release).
 음성 결과는 **양성을 한 번 본 뒤에만** 의미가 있다.
@@ -105,9 +243,9 @@ Strike 가 떨어진 뒤 `Peek` 이 저장된 Block 으로 이어졌다.
 
 - **행동 순서 동점 규칙** — 2026-08-05 에 `ActionPriority` 를 고치면서 "속도 높은 쪽 먼저"는
   확정했으나, 동점일 때 **아군 먼저 / 슬롯 0 먼저**로 둔 것은 추측이다. 원작 규칙 확인 필요
-- **저장분은 턴을 넘기나?** 지금 `ResetForNextTurn` 이 `_dice.Clear()` 라 "안 넘긴다"로
-  구현돼 있다. 넘긴다면 `Stored` 만 남기고 지워야 한다. 이 메서드가 하는 일이 이제
-  **"저장분 버리기" 하나뿐**이라 이 답이 곧 이 메서드의 존재 이유다
+- ~~**저장분은 턴을 넘기나?**~~ — **2026-08-05 확정: 안 넘긴다.** 턴이 끝나면 초기화된다.
+  `ResetForNextTurn` 은 지금 그대로(`_dice.Clear()` + `_cursor = 0`)고,
+  이 메서드의 존재 이유가 **"저장분 버리기" 하나**로 확정됐다
 - **`BoutStartLog` / `BoutEndLog` 에 합 여부를 실을 것** (사용자 결정: "로그는 최대한 정확한
   정보를 남기는 게 맞다"). 지금 `BoutEndEvent` 는 `DefenderId` 를 받아놓고 **읽지 않는다**(쓰기 전용).
   로그가 이벤트보다 정보가 적은 상태다. 합이었는지는 **다른 로그로 역산이 안 된다** —
@@ -120,7 +258,11 @@ Strike 가 떨어진 뒤 `Peek` 이 저장된 Block 으로 이어졌다.
 - 합에서 **블락 / 회피 / 카운터** 주사위가 맞붙을 상대가 없으면 굴리지 않고 **저장**된다
 - 저장분은 큐가 이어지는 것뿐이라 **두 경우 모두**에서 나온다:
   주사위가 상대보다 모자라 합이 이어질 때 / **일방 공격을 당할 때(합 상대가 아닌 제3자 포함)**
-- `Used`(반격 재사용) 주사위는 **턴이 끝날 때** 소멸한다 (지금은 합 끝)
+- `Used`(반격 재사용) 주사위는 **턴이 끝날 때** 소멸한다.
+  ~~(지금은 합 끝)~~ — **이 괄호는 틀렸다. 5단계 항목 참고: `DestroyUsed()` 는 도달 불가 코드라
+  bout 끝에 죽인 적이 없다.** 실제로는 `Consumed` → `Stored` 로 턴 내내 살아남고 있어
+  결과적으로 원작 규칙과 일치한다
+- **저장분은 턴을 넘기지 않는다** (2026-08-05 확인). 턴 끝에 초기화
 
 **확정된 자료구조** — `[새, 새, 소비, 소비]` 로 두고 커서는 항상 앞에서 시작한다:
 ```
@@ -161,6 +303,41 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
   실제로 `Execute` 에서 겪었고, 증상이 "분기가 안 돈다"와 완전히 똑같이 보였다
 
 ### 완료 (이번 세션)
+- **3-1.10 5단계 완료 (2026-08-06, 브레이크포인트 검증)** — **`DiceState.Used` 가 한 번도
+  안 찍히고 있었다.** DEVLOG `2026-08-06` 참고. 설계 근거는 위 "5단계" 절.
+  - `ToAdvanceEvent` 의 `AdvanceType.Reuse => null` → `new DiceReusedEvent(characterId)`.
+    `DiceReusedEvent` / `DiceReusedLog` 신설 (이름은 `Consumed`/`Destroyed` 와 맞춰 과거형)
+  - `DestroyUsed()` **삭제**, `StoreConsumed` → **`StoreSurvivors`** (`Consumed` 와 `Used` 를
+    둘 다 `Stored` 로). 옛 `DestroyUsed` 는 죽은 코드일 뿐 아니라 **규칙상 틀렸다** —
+    살아났으면 반격 주사위를 bout 끝에 죽여서 "턴 끝까지 산다"를 어긴다
+  - **`Ready` 는 일부러 안 건드린다.** "`Destroyed` 아니면 전부 `Stored`" 로 총함수를 만들면
+    짧지만 **"bout 종료 시 커서는 항상 끝" 위반을 조용히 덮는다.** 명시적으로 나열해야
+    남은 `Ready` 가 다음 bout 의 `Peek` 에 걸려 증상으로 드러난다
+  - **관측 가능한 동작 변화가 0이었다** — 배선 전에도 `Reuse` 가 원하는 것("커서를 안 움직인다")이
+    아무것도 안 하면 달성됐다. 그래서 검증은 브레이크포인트 하나뿐이고, 검증용
+    **Evade 카드 에셋을 새로 만들었다**(기존 3장에 Counter/Evade 가 없었다)
+  - **`EndBout` 의 `Used → Stored` 는 지금 도달 불가다**(모든 탈출 경로가 커서의 주사위를
+    다시 집어 `Consume`/`Destroy` 한다). 검증 대상이 아니라 보험
+- **3-1.10 4단계 완료 (2026-08-05, 플레이 검증)** — 일방으로 맞는 쪽의 저장분이 이제 방어에 나온다.
+  DEVLOG `2026-08-05 (후속)` 참고. 설계 근거는 위 "4단계" 절.
+  - `ResolveCombat(ActionInstance a, ActionInstance b, int idA, int targetId)`
+    → **`ResolveCombat(int attackerId, int targetId)`**. `a`/`b`/`idB` 전부 소멸.
+    `a` 는 원래부터 본문에서 한 번도 안 쓰였다
+  - 첫 루프 `diceB = Peek(targetId)`, 둘째 루프의 `if (b != null)` 감싸개 삭제.
+    **`ResolveUnopposedDice` 는 무수정** — 도달했다는 것 자체가 "대상 풀이 비었다"는 뜻이 되어
+    남아 있던 `if (Type != Attack)` 이 곧 "맞붙을 상대가 없으니 저장"이 된다
+  - **새로 짠 해석 로직 0.** `ResolveDiceClash` 가 "B 가 합 상대인가"를 묻지 않으므로
+    (3-1.7 이 `isOwnerA` 를 없앤 결과) 그대로 재사용됐다
+  - `diceB` 는 두 가드 **뒤**에서 뽑는다 — `Peek()` 은 시체를 만나면 `_cursor` 를 미는
+    부작용이 있어 순수 읽기가 아니다. 앞에 두면 죽은 대상의 풀을 매 루프 건드린다
+  - **`ResolveUnopposedDice` 의 `if (attacker.IsDead) return;`(`CombatExecutor.cs:179`)은
+    주사위를 전진시키지 않고 빠지는 유일한 경로다.** 무한 루프가 안 나는 근거가 이 파일이 아니라
+    `DeathEvent.cs:14` 의 `DestroyRemainingDice()` 에 있다("`ResolveCombat` 의 while 에서
+    아무것도 안 하고 빠지기는 없다"는 규칙의 예외). 4단계로 **일방 경로에서도 도달**하게 됐다
+  - **일방 피격자에게 저장분이 남으면 둘째 루프가 그걸 `Consume` → `EndBout` 이 다시 `Store`.**
+    상태는 제자리고 `DiceConsumedLog` 만 하나 더 나간다. 버그 아님
+  - **설계 메모 두 항목이 틀렸었다**(둘 다 "실제 규칙 차이다"라고 단정해뒀던 것). 정정 내용과
+    이유는 "4단계" 절에 취소선으로 남겨뒀다 — 지우면 같은 결론을 다시 내게 된다
 - **행동 순서가 뒤집혀 있던 것 수정 (2026-08-05, 플레이 검증)** — **느린 슬롯이 먼저 행동하고 있었다.**
   DEVLOG `2026-08-05` 참고.
   - `PriorityQueue` 는 **max-heap** 이다(`PriorityQueue.cs:39` 자식>부모일 때 올림, `56~57` 큰 자식 선택.
@@ -348,8 +525,9 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
 
 ### 3. 상태이상 — 남은 것
 
-- **3-1.10. 주사위 저장분 (2026-07-30 발견 → 08-04 설계 확정 → 08-05 1~3단계 검증 완료)**
-  ← **다음 작업은 4단계**. 아래는 설계 근거 기록이며, 4·5단계를 짤 때 먼저 읽을 것
+- ~~**3-1.10. 주사위 저장분**~~ — ✔ **종료 (2026-07-30 발견 → 08-04 설계 확정 →
+  08-05-06 1~5단계 검증 완료)**. 아래는 설계 근거 기록이다.
+  **주사위 큐 구조를 다시 흔들고 싶어지면 먼저 읽을 것**
 
   **증상.** `DiceRecoverEvent` 가 실효가 없다. `Advance(Consume)` 은 `_cursor++` 를 하는데
   `Recover()` 는 **상태만** 되돌리고 커서는 안 건드린다. `Peek()` 은 `_cursor` 부터 앞으로만
@@ -404,17 +582,21 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
      그래도 따로 두길 권한다. `Peek` 이 `Consumed` 를 받으면 "소비됐는데 왜 집지?"가 되고,
      이건 `Ready` 가 두 뜻을 겸했던 것과 같은 병이다
 
-  **`ResolveUnopposedDice` 가 대상 풀을 peek 하는 부분**이 유일하게 새로 짜는 로직이다.
-  몸통은 `ResolveDiceClash` 와 거의 같다(굴림 ×2 → `TriggerModifyRoll` ×2 → `TriggerDiceRoll` ×2 →
-  `rule.Resolve` → 로그 → advance). `Attack vs Block` / `Attack vs Evade` 룰은 값까지 이미 원작대로다.
-  차이는 **B 주사위를 어디서 꺼내오나, B 를 어떻게 전진시키나** 둘뿐이라 몸통을 공유하는 게 맞다 —
-  3-1.7 이 `isOwnerA` 를 없애 훅이 자기 주사위만 보게 만들어둬서 지금은 이 공유가 싸다.
+  ~~**`ResolveUnopposedDice` 가 대상 풀을 peek 하는 부분**이 유일하게 새로 짜는 로직이다~~ —
+  **새로 짤 로직은 0이다 (2026-08-05 정정).** `ResolveDiceClash(int idA, int idB)` 가 캐릭터 id
+  두 개만 받아 각자 자기 풀을 `Peek`·`Advance` 하고, **"B 가 합 상대인가"를 묻는 코드가 한 줄도 없다**
+  (`CombatExecutor.cs:123~159`). 3-1.7 이 `isOwnerA` 를 없앤 결과다. 그래서 `ResolveCombat` 이
+  `Peek(targetId)` 로 바꾸기만 하면 그대로 재사용된다. `Attack vs Block` / `Attack vs Evade` 룰은
+  값까지 이미 원작대로다. 자세한 형태는 위 "4단계 착수 메모" 참고.
 
   **합에서 주사위가 모자랄 때는 배선이 0이다.** `ResolveCombat` 이 이미 매 루프 양쪽을 peek 하므로
   (`CombatExecutor.cs:91~92`) `Peek()` 이 저장분까지 이어주기만 하면 `diceB != null` 이 되어
   일방으로 안 빠지고 합이 계속된다.
 
-- **3-1.12. 파괴된 주사위를 `_dice` 에 쌓지 않는다 (2026-08-04 결정, 3-1.10 과 한 덩어리)**
+- ~~**3-1.12. 파괴된 주사위를 `_dice` 에 쌓지 않는다**~~ — ✔ **완료.** 3-1.10 2단계에서
+  `EndBout` 의 `ClearDestroyed()` 로 들어갔다. **남은 것은 `_diceById` 읽는 배선 0건 하나**
+  (아래 표의 역할 분담은 확정됐는데 읽는 쪽이 아직 없다).
+  (2026-08-04 결정, 3-1.10 과 한 덩어리)
   bout 끝마다 `Destroyed` 를 목록에서 제거한다. 그러면 커서가 "시체를 건너뛰는" 전제 위에서
   도는 코드(`Peek`/`Inject`/`DestroyRemaining`)가 통째로 단순해진다. `ResetDiceForNextTurn` 검증 때
   2턴차 `_cursor` 가 `6` 이었던 것도 시체 때문이고, 이걸 넣으면 `2` 가 된다.
@@ -521,7 +703,7 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
 - `DefenderId` 를 `bool WasClash` 로 축약하지 않고 `int?` 로 남긴 이유는 **"로그가 이벤트보다
   정보가 적으면 안 된다"**는 판단이다(사용자). 규모 때문이 아니다
 - **5대5 에서 실제로 드러날 것들**:
-  - **제3자 일방 피격이 흔해진다.** 3-1.10 의 4단계(`ResolveUnopposedDice` 가 대상 풀을 peek)가
+  - **제3자 일방 피격이 흔해진다.** 3-1.10 의 4단계(`ResolveCombat` 이 대상 풀을 peek)가
     1대1 에선 드문 경우지만 5대5 에선 일상이 된다 — 우선순위가 올라간다
   - `RunQueue` 의 `!hasEdge` 폴백. `SpeedSlot` 이 struct 라 `TryGetValue` 실패 시 `default`
     (= 0번 캐릭터 슬롯)가 나온다. 대상이 늘수록 "엉뚱한 0번을 때리는" 오작동 여지가 커진다
@@ -605,11 +787,18 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
 | `PlayerActionInput.CancelSlot` | 호출자 0건 — 우클릭 취소 입력이 없다 |
 | `UseCardEvent` | 생산자 0건 — **카드가 손에서 안 빠진다** |
 | `BoutGraph.interceptCandidates` | UI 표시(개수)만 있고 Tab 순환 미구현 |
+| `DiceRuntime.Use()` / `DiceState.Used` | **여덟 번째 건 (2026-08-05).** `ToAdvanceEvent` 가 `Reuse` 에 null 을 반환해 이벤트가 안 나가고, 그 아래 `Advance(Reuse)` / `Use()` / `Used` / `DestroyUsed()` 가 전부 도달 불가. → 3-1.10 **5단계** |
 
 엔진을 두껍게 만들고 배선을 나중으로 미룬 시기의 흔적으로 보인다.
 
 **주의**: `Bout.cs` 때 세운 기준("참조 0건만으로 데드 코드 판단 말 것")의 **반대 방향** 사례들이다.
 그때는 지워야 할 것이 남아 있었고, 이번엔 불러야 할 것이 안 불렸다. 분류할 때 둘을 섞지 말 것.
+
+**여덟 번째 건은 세 번째 종류다 (2026-08-05).** `Use()`/`Used` 는 안 불렸는데 **동작은 이미
+맞았다** — `Reuse` 가 원하는 것("커서를 안 움직인다")이 아무것도 안 해도 달성되기 때문이다.
+앞의 일곱 건은 안 부르면 증상이 났지만 이건 증상이 없다. **그래서 배선 여부가 정확성 문제가
+아니라 설계 선택이 된다**(3-1.10 5단계에서 배선하는 쪽으로 결정). 증상 없는 미배선은
+"안 불려도 되는 것"일 수 있으니 지울지 부를지를 먼저 정할 것.
 
 #### 전수조사 결과 (2026-07-31 실시, `Engine/` public 멤버 308개)
 
