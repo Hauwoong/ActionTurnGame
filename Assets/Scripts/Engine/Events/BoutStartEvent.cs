@@ -27,7 +27,7 @@
             runtime.UseAction(B);
         }
 
-        runtime.Executor.ResolveCombat(A, B, AttackerId, TargetId);
+        runtime.Executor.ResolveCombat(AttackerId, TargetId);
         runtime.EnqueueEvent(new BoutEndEvent(AttackerId, TargetId, B?.SourceSlot.CharacterId));
     }
 }

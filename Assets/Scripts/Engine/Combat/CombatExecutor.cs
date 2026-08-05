@@ -82,41 +82,37 @@ public class CombatExecutor
         }
     }
 
-    public void ResolveCombat(ActionInstance a, ActionInstance b, int idA, int targetId)
+    public void ResolveCombat(int attackerId, int targetId)
     {
-        int? idB = b?.SourceSlot.CharacterId;
-
         while (true)
         {
-            var diceA = _runtime.PeekDice(idA);
-            var diceB = idB.HasValue ? _runtime.PeekDice(idB.Value) : null;
+            var diceA = _runtime.PeekDice(attackerId);
 
             if (diceA == null) break;
 
             if (!IsAlive(targetId)) 
             {
-                _runtime.EnqueueEvent(new DiceDiscardRemainingEvent(idA));
+                _runtime.EnqueueEvent(new DiceDiscardRemainingEvent(attackerId));
                 break;
             }
 
+            var diceB = _runtime.PeekDice(targetId);
+
             if (diceB != null)
-                ResolveDiceClash(idA, idB.Value);
+                ResolveDiceClash(attackerId, targetId);
             else
-                ResolveUnopposedDice(idA, targetId);
+                ResolveUnopposedDice(attackerId, targetId);
         }
-
-        if (b != null)
+        
+        while (_runtime.PeekDice(targetId) != null)
         {
-            while (_runtime.PeekDice(idB.Value) != null)
+            if (!IsAlive(attackerId))
             {
-                if (!IsAlive(idA))
-                {
-                    _runtime.EnqueueEvent(new DiceDiscardRemainingEvent(idB.Value));
-                    break;
-                }
-
-                ResolveUnopposedDice(idB.Value, idA);
+                _runtime.EnqueueEvent(new DiceDiscardRemainingEvent(targetId));
+                break;
             }
+
+            ResolveUnopposedDice(targetId, attackerId);
         }
     }
 
