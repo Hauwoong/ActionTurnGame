@@ -327,8 +327,8 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
     **`DiceEntry` 를 밖으로 안 내보내는 게 요점** — 내보내면 UI 가 `CurrentRoll`(덮어써진
     마지막 값)을 읽어서 로그 옆에 나란히 틀린 숫자를 찍는다. 3-1.12 의 "불변 속성만" 규칙을
     주석이 아니라 **타입이 강제**하게 만든 것
-- **3-1.13 — 힘/`AttackBoostPassive` 가 `Counter` 를 안 올려주던 것 수정 (2026-08-06)**.
-  `IsOffensive` 헬퍼는 남았다(위 후보 1번)
+- **3-1.13 — 힘/`AttackBoostPassive` 가 `Counter` 를 안 올려주던 것 수정 (2026-08-06, 플레이 검증)**.
+  `DiceUI` 에서 `[6->9]` 화살표로 확인. `IsOffensive` 헬퍼는 남았다(위 후보 1번)
 - **3-1.10 5단계 완료 (2026-08-06, 브레이크포인트 검증)** — **`DiceState.Used` 가 한 번도
   안 찍히고 있었다.** DEVLOG `2026-08-06` 참고. 설계 근거는 위 "5단계" 절.
   - `ToAdvanceEvent` 의 `AdvanceType.Reuse => null` → `new DiceReusedEvent(characterId)`.
@@ -645,8 +645,10 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
     받치고 있다. 9번 전수조사에 "`_diceById` 쓰기 전용" 으로 남겨둔 미결 항목의 답이 이것이다
   - **주의**: `_diceById` 조회로 **`CurrentRoll` 을 읽으면 안 된다.** 덮어써져서 마지막 값뿐이다.
     불변 속성만. 굴림값이 필요하면 로그에서 가져온다
-- **3-1.13. 힘이 카운터 주사위를 안 올려줬다 (2026-08-06 발견 → 같은 날 수정)**
+- **3-1.13. 힘이 카운터 주사위를 안 올려줬다 (2026-08-06 발견 → 같은 날 수정·검증 완료)**
   ✔ **`StatusEffects.cs:41`(힘) / `AttackBoostPassive.cs:14` 둘 다 `Counter` 통과하도록 고침.**
+  **검증: `DiceUI` 에서 `[id:0 Counter 6~6] [6->9]` 화살표 확인** — 방금 만든 로그 콘솔이
+  브레이크포인트 없이 대조군까지 보여줬다.
   `Counter` 는 데미지를 내는 공격형 주사위다(룰 테이블에서 Counter 승리가 `DamageContext` 를 만든다).
 
   **← 남은 것: `IsOffensive` 확장 메서드.** 지금은 두 곳 다 `!= Attack && != Counter` 인라인이다.
