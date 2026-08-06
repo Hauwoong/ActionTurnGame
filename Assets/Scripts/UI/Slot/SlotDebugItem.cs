@@ -46,16 +46,14 @@ public class SlotDebugItem : MonoBehaviour, IDropHandler, IPointerClickHandler
         bool hasBout = graph.edges.TryGetValue(_slot, out var boutPartner);
         boutText.text = hasBout ? $"Bout: {boutPartner.CharacterId}-{boutPartner.SlotIndex}" : "Bout: -";
 
-        UpdateColor(slotRuntime, hasBout, interceptCount);
+        UpdateColor(hasBout, interceptCount);
     }
 
-    private void UpdateColor(SpeedSlotRuntime slotRuntime, bool hasBout, int interceptCount)
+    private void UpdateColor(bool hasBout, int interceptCount)
     {
         if (bg == null) return;
 
-        if (slotRuntime.Used)
-            bg.color = Color.gray;
-        else if (hasBout)
+        if (hasBout)
             bg.color = Color.red;
         else if (interceptCount > 0)
             bg.color = new Color(1f, 0.6f, 0f);

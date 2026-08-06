@@ -1,4 +1,4 @@
-
+﻿
 public class SpeedSlotRuntime  
 {
     public SpeedSlot Slot { get; }
@@ -6,7 +6,6 @@ public class SpeedSlotRuntime
     public int MinSpeed { get; }
     public int MaxSpeed { get; }
     public int Speed { get; private set; }
-    public bool Used { get; private set; }
 
     public SpeedSlotRuntime(SpeedSlot slot, int minSpeed, int maxSpeed)
     {
@@ -18,11 +17,5 @@ public class SpeedSlotRuntime
     public void Roll(IRng rng)
     {
         Speed = rng.Range(MinSpeed, MaxSpeed);
-        Used = false;
-    }
-
-    public void MarkUsed()
-    {
-        Used = true;
     }
 }

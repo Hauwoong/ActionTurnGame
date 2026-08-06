@@ -59,7 +59,7 @@ public class BattleRuntime : IEventSink
 
     // ──────────── 캐릭터 · 슬롯 ────────────
     /// <summary>
-    /// 전 캐릭터의 모든 속도 슬롯을 다시 굴린다(Used 플래그도 초기화). 턴 시작 때 BattleManager가 호출
+    /// 전 캐릭터의 모든 속도 슬롯을 다시 굴린다. 턴 시작 때 BattleManager가 호출
     /// </summary>
     public void RollSpeedDice()
     {
