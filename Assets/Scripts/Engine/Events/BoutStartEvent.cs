@@ -15,7 +15,9 @@
 
     public void Apply(BattleRuntime runtime)
     {
-        runtime.AddLog(new BoutStartLog(AttackerId, TargetId));
+        bool wasClash = B != null;
+
+        runtime.AddLog(new BoutStartLog(AttackerId, TargetId, wasClash));
 
         if (A != null)
         {
@@ -28,6 +30,6 @@
         }
 
         runtime.Executor.ResolveCombat(AttackerId, TargetId);
-        runtime.EnqueueEvent(new BoutEndEvent(AttackerId, TargetId, B?.SourceSlot.CharacterId));
+        runtime.EnqueueEvent(new BoutEndEvent(AttackerId, TargetId, wasClash));
     }
 }

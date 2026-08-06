@@ -2,13 +2,13 @@
 {
     public int AttackerId { get; }
     public int TargetId { get; }
-    public int? DefenderId { get; }
+    public bool WasClash { get; }
 
-    public BoutEndEvent(int attackerId, int targetId, int? defenderId)
+    public BoutEndEvent(int attackerId, int targetId, bool wasClash)
     {
         AttackerId = attackerId;
         TargetId = targetId;
-        DefenderId = defenderId;
+        WasClash = wasClash;
     }
 
     public void Apply(BattleRuntime runtime)
@@ -19,6 +19,6 @@
         attacker.EndBoutDice();
         target.EndBoutDice();
 
-        runtime.AddLog(new BoutEndLog(AttackerId, TargetId));
+        runtime.AddLog(new BoutEndLog(AttackerId, TargetId, WasClash));
     }
 }
