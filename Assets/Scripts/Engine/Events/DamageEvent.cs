@@ -19,7 +19,7 @@ public class DamageEvent : ICombatEvent
         if (!_ctx.IsCancelled)
         {
             _ctx.Defender.TakeDamage(_ctx.FinalDamage);
-            runtime.AddLog(new DamageLog(_ctx.Defender.CharacterId, _ctx.FinalDamage));
+            runtime.AddLog(new DamageLog(_ctx.Attacker.CharacterId, _ctx.Defender.CharacterId, _ctx.FinalDamage));
 
             _ctx.Attacker.TriggerAfterDamage(_ctx);
             _ctx.Defender.TriggerAfterDamage(_ctx);

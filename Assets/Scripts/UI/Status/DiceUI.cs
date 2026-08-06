@@ -36,6 +36,8 @@ public class DiceUI : MonoBehaviour
         _runtime.LogDispatcher.Register<DiceConsumedLog>(OnDiceConsumed);
         _runtime.LogDispatcher.Register<DiceDestroyedLog>(OnDiceDestroyed);
         _runtime.LogDispatcher.Register<DiceReusedLog>(OnDiceReused);
+        _runtime.LogDispatcher.Register<BoutStartLog>(OnBoutStart);
+        _runtime.LogDispatcher.Register<StaggerLog>(OnStagger);
 
         Clear();
     }
@@ -49,6 +51,8 @@ public class DiceUI : MonoBehaviour
         _runtime.LogDispatcher.Unregister<DiceConsumedLog>(OnDiceConsumed);
         _runtime.LogDispatcher.Unregister<DiceDestroyedLog>(OnDiceDestroyed);
         _runtime.LogDispatcher.Unregister<DiceReusedLog>(OnDiceReused);
+        _runtime.LogDispatcher.Unregister<BoutStartLog>(OnBoutStart);
+        _runtime.LogDispatcher.Unregister<StaggerLog>(OnStagger);
 
         _runtime = null;
     }
@@ -83,7 +87,7 @@ public class DiceUI : MonoBehaviour
     }
     private void OnDamage(DamageLog log)
     {
-        Append("[Dmg] "+log.TargetId.ToString() + " takes " + log.Amount.ToString());
+        Append("[Dmg] "+ log.AttackerId.ToString() + " -> " + log.TargetId.ToString() + " takes " + log.Amount.ToString());
     }
     private void OnDiceConsumed(DiceConsumedLog log)
     {
@@ -96,6 +100,14 @@ public class DiceUI : MonoBehaviour
     private void OnDiceReused(DiceReusedLog log)
     {
         Append("[Reused] "+Describe(log.Handle));
+    }
+    private void OnBoutStart(BoutStartLog log)
+    {
+        Append("[Bout] "+log.AttackerId.ToString() + " -> " + log.TargetId.ToString() + (log.WasClash ? " (clash)" : " (unopposed)"));
+    }
+    private void OnStagger(StaggerLog log)
+    {
+        Append("[Stagger] "+log.AttackerId.ToString() + " -> " + log.CharacterId.ToString() + " takes " + log.Amount + (log.IsRecover ? " (recover)" : " (staggered)"));
     }
     private void Clear()
     {

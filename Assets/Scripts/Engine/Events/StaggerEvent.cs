@@ -22,6 +22,7 @@
                 _ctx.Defender.TakeStagger(_ctx.FinalValue);
             runtime.AddLog(new StaggerLog
             (
+                _ctx.Attacker.CharacterId,
                 _ctx.IsHeal ? _ctx.Attacker.CharacterId : _ctx.Defender.CharacterId,
                 _ctx.FinalValue,
                 _ctx.IsHeal
