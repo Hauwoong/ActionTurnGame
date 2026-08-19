@@ -9,8 +9,8 @@
 남은 큰 덩어리는 **아래 3번(`CharacterModel`) 하나**이고, 그 밖에는
 8번 3·5번 항목(적 AI 와 함께) / 3-3 훅 순회 정도가 남아 있다.
 
-**착수 전에 정할 것: 2단계와 3단계의 경계.** 자세한 것은 아래 4번 항목 참고 —
-`CharacterState.Passives` 가 `IReadOnlyList<PassiveData>` 라 **2단계만 하면 누수가 그대로 남는다.**
+**사용자 결정 (2026-08-19): 3단계(`PassiveModel`)를 먼저, B안(다형성 `CreateEffect`)으로,
+검증용 패시브 에셋을 먼저 만든다.** 자세한 것은 아래 4번 항목.
 
 2026-08-05~06 세션에서 끝난 것: **3-1.10 (1~5단계 전부)**, **3-1.12**, **3-1.11 + `UnopposedLog` 배선**,
 **3-1.13 (힘/패시브가 `Counter` 를 안 올려주던 것) + `IsOffensive` 까지 완결**,
@@ -781,20 +781,92 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
   `PassiveFactory` 가 모델을 받게. SO 는 `ToModel()` 만 갖는 껍데기로.
 - **4단계**: Engine asmdef 신설 + **No Engine References** 켜서 기계 검증.
 
-**미결 — 2단계와 3단계의 경계 (2026-08-19 발견).** 계획이 2/3단계를 갈라놨는데 실제로는 엉켜 있다:
-`CharacterState.Passives` 가 `IReadOnlyList<PassiveData>` 고 생성자가 `passive is IStatModifierPassive`
-로 SO 를 직접 부른다(`CharacterState.cs:41`). **2단계만 하면 `CharacterModel` 이 `List<PassiveData>` 를
-들고 있어 누수가 그대로다.** 세 갈래:
-1. `Passives` 는 SO 인 채로 두고 스탯만 순수화 — 변경 폭이 작지만 중간 상태가 어정쩡하다
-2. 2+3단계를 한 덩어리로 — 깔끔하지만 `PassiveModel` 추상 계층까지 한 번에
-3. **3단계를 먼저** — `PassiveModel` 이 서면 `CharacterModel` 은 그냥 필드 복사라 쉬워진다
+#### 2/3단계의 경계 — **결정: 3단계 먼저, B안** (2026-08-19)
+
+계획이 2/3단계를 갈라놨는데 실제로는 엉켜 있었다. `CharacterState.Passives` 가
+`IReadOnlyList<PassiveData>` 고 생성자가 `passive is IStatModifierPassive` 로 SO 를 직접
+부른다(`CharacterState.cs:41`). **2단계만 하면 `CharacterModel` 이 `List<PassiveData>` 를 들고
+있어 누수가 그대로다.** 그래서 **3단계를 먼저** 한다 — `PassiveModel` 이 서면 `CharacterModel` 은
+필드 복사만 남아, 큰 덩어리가 "설계가 필요한 부분"과 "기계적인 부분"으로 갈린다.
 
 관문 패턴 자체는 `CardData.ToModel()` 선례가 이미 정해뒀다. `CardModel` 이 `DiceData` 를 그대로
 들고 가는 것이 문제가 안 되는 이유는 **`DiceData` 가 Engine 소속 순수 클래스**이기 때문이고
 (`Engine/Dice/DiceData.cs`), `PassiveData` 는 SO 라 그 면제가 안 된다.
 
-**검증 세팅이 지금까지와 다르다.** 출혈 카운터가 아니라 "패시브 붙은 캐릭터의 `MaxHp`/슬롯 수가
-그대로인가" 라 오히려 단순하다.
+**발견 1 — 패시브 파이프라인은 한 번도 안 돌았다.** `Ally01`/`Enemy01` 둘 다 `_passives: []` 이고
+`PassiveData` 에셋이 0개다. `.asset` 마이그레이션 위험이 0이라 **구조를 바꾸기에 제일 싼 시점**이고,
+동시에 **플레이 검증을 하려면 에셋을 먼저 만들어야 한다**(`Evade`/`Counter` 카드 때와 같은 상황).
+
+**발견 2 — `PassiveEffect.Type` 은 쓰기 전용이다.** 생성자에서 받아 노출하는데 읽는 곳이 0건이다
+(`StatusEffectRuntime.Type` 이 `_effectMap` 키로 쓰이는 것과 대비 — `CharacterRuntime.cs:414`).
+따라서 **`PassiveType` enum 의 유일한 독자는 `PassiveFactory.Create` 의 `switch` 하나**고,
+그 enum 이 나르는 정보는 "어느 서브클래스인가" = **타입 자체가 이미 갖고 있는 것의 복사본**이다.
+`DefenderId`/`idB` 와 같은 종류의 중복이고, 다른 점은 여기선 그게 디스패치 태그로 쓰인다는 것뿐이다.
+
+**채택 — B안 (다형성 디스패치)**
+```
+PassiveModel (abstract) { abstract PassiveEffect CreateEffect(CharacterRuntime owner); }
+  ├ AttackBoostModel  → new AttackBoostPassive(owner, Amount)
+  ├ SpeedSlotModel    → new SpeedSlotPassive(owner)
+  └ EmotionOnAttackModel / MaxHpBoostModel : IStatModifierPassive → null
+PassiveFactory / PassiveType / PassiveEffect.Type 삭제
+CharacterRuntime: var passive = model.CreateEffect(this);
+```
+- 다운캐스트(`((AttackBoostData)data).Amount`)와 `_ => throw` 가 소멸한다. 후자는 `abstract` 라
+  **컴파일러가 강제**한다. 새 패시브 하나에 고칠 곳이 넷(SO/Model/enum/switch) → **둘**(SO/Model)
+- 실익의 핵심은 **"enum 이 늘면 조용히 틀린다"를 구조적으로 못 나게 하는 것.**
+  3-1.13(힘이 `Counter` 를 빼먹은 것)이 그 병이었고 `IsOffensive` 는 완화였지 방지가 아니었다
+- **접은 A안**: 현행 구조 유지 + 모델만 끼우기. 변경은 최소지만 위 넷이 그대로 남는다
+- **반론도 남겨둔다**: "모델은 순수 데이터여야" → `PassiveModel` 도 `PassiveEffect` 도 둘 다 Engine 이라
+  계층 위반이 아니고, 스탯 수정형은 이미 `Apply(builder)` 라는 행동을 갖고 있다.
+  "패시브 모델은 순수 데이터"라는 전제가 성립한 적이 없다
+- **`null` 반환은 B안에도 남는다.** 스탯 수정형은 런타임 훅이 없다 — 실재하는 개념이고,
+  지금 factory 주석에 적힌 그 사실이 **클래스 자신에게로** 옮겨간다
+
+**순서**
+1. `PassiveModel` + 서브클래스 4개. `IStatModifierPassive` 구현을 SO 에서 모델로 이사(본문 그대로)
+2. `PassiveData` 에 `abstract PassiveModel ToModel()` + 4개 구현. SO 는 `[SerializeField] amount` +
+   `ToModel()` 만 남는 껍데기
+3. `CharacterState.Passives` → `IReadOnlyList<PassiveModel>`
+4. `CharacterRuntime.cs:79` 를 `model.CreateEffect(this)` 로, `PassiveFactory.cs` 삭제
+5. `PassiveType` / `PassiveEffect.Type` 삭제
+
+**함정 — 3번의 변환 순서.** `CharacterState` 생성자가 `source.Passives`(SO)를 **두 번** 쓴다:
+`Apply` 순회(`:39`)와 리스트 복사(`:67`). **모델 리스트를 먼저 만들고 두 곳 다 그걸 순회해야**
+SO 참조가 0이 된다. 한쪽만 바꾸면 `Apply` 가 SO 와 모델 양쪽에 남는다.
+`CardModel` 변환이 이미 같은 생성자에 있으니 나란히 두면 된다.
+
+**`.asset` 은 안 깨진다.** `[SerializeField] amount` 필드명과 SO 클래스명을 안 건드리므로
+`FormerlySerializedAs` 불필요 — 애초에 에셋이 0개라 더더욱. (`AttackBoostData` 만 이름이 `...Data` 이고
+나머지 셋은 `...PassiveData` 인데, **개명은 이번 작업과 섞지 말 것**)
+
+**3단계가 끝나면 남는 누수는 `CharacterData` 하나다.** `CharacterStateBuilder` 는 여전히 SO 를
+받는데 그건 2단계 몫이다.
+
+#### 검증용 패시브 에셋 (3단계 착수 전에 만든다 — 사용자 결정 2026-08-19)
+
+**두 개면 두 경로를 다 덮는다.** 나머지 둘은 각각의 형제라 같은 코드 경로를 지난다.
+
+| 에셋 | 경로 | 관측 창구 |
+|---|---|---|
+| `MaxHpBoost` (+20) | **빌드 타임** — `IStatModifierPassive` → `CharacterStateBuilder` | `HpUI` 가 `50/50` → `70/70` |
+| `AttackBoost` (+3) | **런타임 훅** — `PassiveEffect.OnModifyRoll` | `DiceUI` 의 `[6->9]` 화살표 |
+
+- 붙일 대상은 **`Ally01`** (characterId 0 — `HpUI`/`StatusUI`/`DiceUI` 가 전부 여기 묶여 있다)
+- **`AttackBoost` 검증에는 `Counter` 카드(Counter 6~6)를 쓴다.** 고정값이라 `[6->9]` 가 확정이고,
+  **`Evade` 카드(Evade 6~6)가 그대로 대조군**이다 — `IsOffensive` 가 아니므로 `[6->6]` 이어야 한다.
+  둘이 서로를 갈라주므로 "패시브가 도는가"와 "전 타입에 붙는가"가 한 번에 구분된다.
+  주사위를 굴리려면 합이어야 한다(비-Attack 은 일방에서 저장된다) — `Combo`(1~3)에 붙이면 확정 승리
+- **`SpeedSlot` 은 검증에 쓰지 말 것.** 감정 레벨이 필요해 세팅이 번거로운 데다,
+  `_activeSpeedSlotCount` 가 여전히 쓰기 전용이라(9번) 슬롯 수가 실제로 안 늘어난다
+- **함정: `amount` 는 `int` 라 기본값이 0이다.** 인스펙터에서 안 채우면 패시브가 정상적으로 도는데
+  효과가 0이라 **증상이 "패시브가 안 돈다"와 똑같이 보인다.** `DiceData.Type` 이 조용히 `Attack` 이던
+  `Execute` 건과 같은 종류다
+- **만들고 나서 `File > Save Project`.** ScriptableObject 편집은 메모리에서 dirty 로만 있고
+  에디터 안에서는 정상으로 보인다. `git status` 로 `Ally01.asset` 의 `_passives` 가 실제로 채워졌는지
+  확인할 것 — `Evade`/`Counter` 가 `_dices: []` 인 채로 커밋될 뻔했다
+- **대조군을 지금(고치기 전에) 돌려서 통과를 확인한다.** 이게 "에셋 먼저"의 이유다.
+  나중에 만들면 새 코드와 새 에셋이 동시에 들어와 뭐가 원인인지 못 가른다
 
 ### 5. 카드 뽑기 장수를 상수 → 변수로 — 구 3번
 `Engine/Events/TurnStartEvent.cs` 가 `new DrawCardEvent(CharacterId, 1)` 로 고정.
