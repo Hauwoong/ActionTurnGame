@@ -36,11 +36,11 @@ public class BattleManager : MonoBehaviour
     /// </summary>
     /// <param name="characters">데이터 추출할 캐릭터</param>
     /// <returns>등록된 캐릭터 데이터 List</returns>
-    IEnumerable<CharacterData> ExtractData(IEnumerable<Character> characters)
+    IEnumerable<CharacterModel> ExtractData(IEnumerable<Character> characters)
     {
         int index = 0;
 
-        List<CharacterData> datas = new List<CharacterData>();
+        List<CharacterModel> datas = new List<CharacterModel>();
         foreach (var character in characters)
         {
             int current = index++;
@@ -63,7 +63,7 @@ public class BattleManager : MonoBehaviour
                     _cardArtByName[card.CardName] = card.Artwork;
             }
 
-            datas.Add(character.CharacterData);
+            datas.Add(character.CharacterData.ToModel());
         }
         return datas;
     }

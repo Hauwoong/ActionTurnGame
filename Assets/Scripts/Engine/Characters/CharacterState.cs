@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 
 // 불변 스냅샷 계층 CharacterData(청사진)로 한 번 빌드되고 CharacterRuntime(가변)이 시작값으로 읽는다.
-// 생성자가 청사진 -> 스냅샷 변환 관문: builder로 스탯 패시브 적용 + CardData -> CardModel 치환
 public sealed class CharacterState
 {
     public int CharacterId { get; }
@@ -23,36 +22,22 @@ public sealed class CharacterState
     public IReadOnlyList<CardModel> InitialDeck { get; }
 
     /// <summary>
-    /// 청사진(CharacterData)를 불변 스냅샷으로 굳히는 변환 관문
-    /// 스탯 수정 패시브를 builder로 적용하고, 덱을 CardData -> CardModel로 치환한다
+    /// 청사진(CharacterModel)를 불변 스냅샷으로 굳히는 변환 관문
     /// </summary>
     /// <param name="source">변환할 캐릭터 청사진</param>
     /// <param name="id">전투 전역 캐릭터 번호</param>
     /// <param name="team">소속 진영(Ally/Enemy)</param>
-    public CharacterState(CharacterData source, int id, Team team)
+    public CharacterState(CharacterModel source, int id, Team team)
     {
         CharacterId = id;
         Team = team;
 
-        var passives = new List<PassiveModel>();
-        foreach (var passive in source.Passives)
-        {
-            passives.Add(passive.ToModel());
-        }
-
         // builder로 자원 수정 패시브 적용
         var builder = new CharacterStateBuilder(source);
-        foreach (var passive in passives)
+        foreach (var passive in source.Passives)
         {
             if (passive is IStatModifierPassive statModifier)
                 statModifier.Apply(builder);
-        }
-
-        // initialDeck에서 CardData => CardModel로 치환
-        var initialDeck = new List<CardModel>();
-        foreach (var cardData in source.InitialDeck)
-        {
-            initialDeck.Add(cardData.ToModel());
         }
 
         // builder.x = 스탯 수정 패시브(IStatModifierPassive)가 건드릴 수 있는 값 -> builder 거쳐 보정된 결과.
@@ -70,7 +55,7 @@ public sealed class CharacterState
         EmotionGainOnStagger = builder.EmotionGainOnStagger;
         EmotionGainOnStaggered = builder.EmotionGainOnStaggered;
         EmotionGainOnStaggerHeal = builder.EmotionGainOnStaggerHeal;
-        Passives = passives;
-        InitialDeck = initialDeck;
+        Passives = source.Passives;
+        InitialDeck = source.InitialDeck;
     }
 }

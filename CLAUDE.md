@@ -2,17 +2,16 @@
 
 ## 다음 작업 (2026-08-20 갱신)
 
-### ▶ 다음 시작 지점 — **4번 2단계 `CharacterModel`** (3단계는 끝났다)
+### ▶ 다음 시작 지점 — **4번 4단계 (Engine asmdef + No Engine References)**
 
 **2026-08-06 에 1~2번(`BoutStart`·`BoutEndLog` 합 여부 / `DamageLog`·`StaggerLog` 공격자)과
 `IsOffensive` 를 끝냈고, 2026-08-19 에 6번 잔재 정리도 끝냈다.**
 남은 큰 덩어리는 **아래 3번(`CharacterModel`) 하나**이고, 그 밖에는
 8번 3·5번 항목(적 AI 와 함께) / 3-3 훅 순회 정도가 남아 있다.
 
-~~**사용자 결정 (2026-08-19): 3단계(`PassiveModel`)를 먼저, B안(다형성 `CreateEffect`)으로,
-검증용 패시브 에셋을 먼저 만든다.**~~ — ✔ **3단계 완료 (2026-08-20, 플레이 검증).**
-**남은 SO 누수는 `CharacterData` 3곳뿐이다** (`CharacterState`/`CharacterStateBuilder`/`BattleSnapShot`
-각각 생성자 하나씩). 자세한 것은 아래 4번 항목.
+✔ **3단계·2단계 모두 완료 (2026-08-20, 플레이 검증).**
+**`Engine/` 안의 SO 참조가 0건이다** — `CharacterData`/`CardData`/`PassiveData` 가 나오는 곳은
+이제 주석뿐이다. 남은 것은 **4단계(asmdef 로 기계 검증)** 하나. 자세한 것은 아래 4번 항목.
 
 2026-08-05~06 세션에서 끝난 것: **3-1.10 (1~5단계 전부)**, **3-1.12**, **3-1.11 + `UnopposedLog` 배선**,
 **3-1.13 (힘/패시브가 `Counter` 를 안 올려주던 것) + `IsOffensive` 까지 완결**,
@@ -25,13 +24,25 @@
    아래 "완료" 목록 참고
 2. ~~**`DamageLog` / `StaggerLog` 에 공격자**~~ — ✔ **완료 (2026-08-06, 플레이 검증).**
    아래 "완료" 목록 참고
-3. **4번 2단계 — `CharacterModel` 신설.** 주사위·상태이상과 완전히 독립이라 머리를 쉬어가는 선택지.
-   덩어리가 크고 검증 세팅도 다르다
+3. ~~**4번 2단계 — `CharacterModel` 신설**~~ — ✔ **완료 (2026-08-20, 플레이 검증).**
+   3단계를 먼저 한 덕에 기계적인 작업이 됐다. 아래 4번 항목 참고
 
 **엔진이 일단락되면 주석 작업**(사용자 결정: 한꺼번에 단다). 그때 넣을 것은 아래 목록 참고 —
 `CombatExecutor.cs:162` / `DicePool.cs:81` 의 "여기 `Attack` 만인 건 저장 규칙 때문"도 그때 같이.
 
-**주석은 엔진이 끝난 뒤 한꺼번에 단다** (사용자 결정, 2026-08-05). 그때 같이 넣을 것:
+**주석은 엔진이 끝난 뒤 한꺼번에 단다** (사용자 결정, 2026-08-05, 2026-08-20 재확인).
+
+**⚠ 먼저 볼 것 — 4번 2단계로 거짓이 된 주석들 (2026-08-20).** 안 달린 게 아니라 **틀렸다.**
+`CharacterState` 는 이제 카드·패시브 변환을 하지 않는다(그 일은 `CharacterData.ToModel()` 로 갔다):
+- `CharacterState.cs:3~4` 파일 머리 — "`CharacterData`(청사진)로 빌드", "`CardData` → `CardModel` 치환"
+- `CharacterState.cs:26~27` XML — 같은 내용. 새 설명은 "**패시브를 적용해 얼린다**" 가 맞다
+- `BattleSnapShot.cs:16` — "양 진영 `CharacterData` 를 …" → `CharacterModel`
+- `BattleManager.cs:34` XML — "`Character` → `CharacterData`(Asset) 로 즉시 평가" → `CharacterModel`
+- `CharacterStateBuilder.cs` `<param>` — "청사진" 이 이제 모델을 가리킨다
+- **"3계층" 이라고 적힌 곳 전부** (`BattleSnapShot.cs:4`, 이 문서 개요) — 4계층이 됐다:
+  `CharacterData`(SO 청사진) → `CharacterModel`(순수 청사진) → `CharacterState`(스냅샷) → `CharacterRuntime`(가변)
+
+그때 같이 넣을 것:
 - `EndBout` 위 — "**멱등이어야 한다**"(합에서 방어자가 곧 `TargetId` 라 `BoutEndEvent` 가
   같은 캐릭터를 두 번 부르는 것에 기대고 있다)
 - `Inject` 위 — "**bout 시작에 `_cursor == 0`** 이라는 불변량에 의존"(깨지면 새 주사위가
@@ -769,11 +780,43 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
     `AddStack` 이 public 이라 UI 가 부를 수 있다(`SpeedSlots` 도 동일). 막으려면 읽기 전용 view 타입이
     필요한데, 그건 `SpeedSlots` 까지 같이 바꿔야 의미가 있다.
 
-### 4. Engine → Data 의존 끊기 — 구 2번 (1·3단계 완료, 2·4단계 남음)
+### 4. Engine → Data 의존 끊기 — 구 2번 (1·2·3단계 완료, **4단계만 남음**)
 
-남은 SO 누수 (2026-08-20 기준):
-- `CharacterData` ← `CharacterState`, `CharacterStateBuilder`, `BattleSnapShot` (**생성자 하나씩, 이게 전부**)
-- ~~`PassiveData` ← `CharacterState`, `PassiveFactory`~~ — ✔ **3단계로 해소. `Engine/` 안의 `PassiveData` 참조 0건**
+**`Engine/` 안의 SO 참조가 0건이다 (2026-08-20).** `CharacterData`/`CardData`/`PassiveData` 가
+나오는 곳은 주석뿐이고, 그 주석들은 지금 **거짓**이다(위 "거짓이 된 주석" 목록).
+
+- ~~`CharacterData` ← `CharacterState`, `CharacterStateBuilder`, `BattleSnapShot`~~ — ✔ **2단계로 해소**
+- ~~`PassiveData` ← `CharacterState`, `PassiveFactory`~~ — ✔ **3단계로 해소**
+
+#### 2단계 — ✔ **완료·플레이 검증 완료 (2026-08-20)**
+
+`CharacterModel`(순수, 프로퍼티 16개 전부 `{ get; }`) 신설 + `CharacterData.ToModel()`.
+`CharacterState`/`CharacterStateBuilder`/`BattleSnapShot` 이 모델을 받고,
+`BattleManager.ExtractData` 가 `List<CharacterModel>` 을 돌려준다.
+
+- **`CharacterState` 의 변환 루프 두 개가 사라졌다.** 카드·패시브 변환이 `ToModel()` 로 이사해서
+  `Passives = source.Passives;` / `InitialDeck = source.InitialDeck;` 두 줄이 됐다.
+  **선택이 아니라 강제다** — `CharacterState` 에서 SO 를 뺏으면 그 루프는 거기 있을 수가 없다.
+  결과적으로 **SO → 모델 변환이 관문 한 곳(`CharacterData.ToModel()`)으로 모였다**
+- **`CharacterModel` 생성자는 값 16개를 받는다. SO 를 받으면 안 된다** — 첫 제출이
+  `CharacterModel(CharacterData data)` 였는데, 그러면 `Engine/` 에 SO 참조가 하나 **늘어난다**.
+  `CardModel` 이 `CardData` 를 안 받는 것과 같은 이유
+- **인자가 거의 다 `int` 라 순서를 바꿔도 컴파일이 통과한다.** 그래서 호출부에서
+  **named argument** 를 쓴다(`maxHp: _maxHp`). 생산자가 `ToModel()` 한 곳뿐이라 이것으로 완전히 막힌다.
+  `init` 프로퍼티는 Unity 6 에서 `IsExternalInit` 심이 필요할 수 있어 접었다
+- **`CharacterData` 에 `InitialDeck` 프로퍼티만 남겼다.** artwork 레지스트리가 `CardData.Artwork` 를
+  읽어야 하는데 `CardModel` 에는 없기 때문이다(Scene 계층이라 SO 를 봐도 된다).
+  `ToModel()` 은 private `_initialDeck` 를 직접 쓰므로 **이 프로퍼티의 유일한 독자가 그 루프**다
+- **3단계와 성격이 정반대였다.** 순수 타입 교체라 **컴파일러가 전부 잡아준다** —
+  3단계의 `is IStatModifierPassive` 처럼 조용히 false 가 되는 경로가 없었다.
+  유일한 조용한 위험이 위의 `int` 인자 순서였고, named argument 로 덮었다
+
+#### 4단계 (남음) — Engine asmdef + **No Engine References**
+
+지금은 "SO 참조 0건" 이 `grep` 으로만 지켜진다. asmdef 를 세우면 **컴파일러가 지킨다.**
+`Engine/` 에 asmdef 를 만들고 Unity 참조를 끊으면, 누가 실수로 `using UnityEngine` 이나
+SO 타입을 들이는 순간 빌드가 깨진다. **오늘 한 것을 기계가 지켜주게 만드는 단계**라
+지금이 제일 싸다 — 참조가 0인 상태에서 켜는 것과 나중에 켜는 것은 난이도가 다르다.
 
 진행 계획:
 - **2단계**: `CharacterModel` 신설 + `CharacterData.ToModel()`. `CharacterState`/`Builder`/`BattleSnapShot` 이
@@ -1185,7 +1228,8 @@ Claude 가 하지 않는 일:
 
 ## 프로젝트 개요
 Unity / C# 카드 + 주사위 전투 시스템 (LOR 스타일).
-3계층: `CharacterData`(청사진) → `CharacterState`(스냅샷) → `CharacterRuntime`(가변).
+4계층: `CharacterData`(SO 청사진) → `CharacterModel`(순수 청사진) → `CharacterState`(스냅샷) →
+`CharacterRuntime`(가변). `CharacterModel` 은 2026-08-20 에 생겼다 — Engine 이 SO 를 안 보게 하는 관문.
 
 **목표: Unity 에 최대한 의존하지 않는 자체 전투 엔진.**
 `Engine/` 에는 `using UnityEngine` 이 한 줄도 없다. 남은 누수는 위 "다음 작업 4".

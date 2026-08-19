@@ -5457,3 +5457,50 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
 - **Save Project 함정을 또 겪었다** (오늘 두 번째, 통산 세 번째). 인스펙터 편집은
   메모리에서 dirty 로만 있어 플레이는 정상으로 돌아간다. 디스크에는 amount: 0 과
   _passives: [] 가 그대로 있었다. git status 가 유일한 계기다
+
+## 2026-08-20 (후속) — CharacterModel: 모델이 SO 를 받으면 계층이 늘어난다
+
+### 문제
+
+- 3단계로 PassiveData 누수를 끊고 나니 남은 SO 누수는 CharacterData 세 곳뿐이었다.
+  CharacterState / CharacterStateBuilder / BattleSnapShot 의 생성자 하나씩
+- 예고한 대로 기계적인 작업이 됐다. 설계 판단이 필요한 부분(Passives 를 뭘로 담을 것인가)은
+  3단계가 이미 답해뒀다 — IReadOnlyList<PassiveModel>
+
+### 고민
+
+- 첫 제출의 생성자가 CharacterModel(CharacterData data) 였다. 컴파일 에러는 named argument
+  불일치로 났는데, 진짜 문제는 그 시그니처 자체였다. Engine/ 의 모델이 SO 를 받으면
+  끊으려던 누수가 3곳에서 4곳으로 는다. CardModel 이 CardData 를 안 받는 것과 같은 이유다
+- 그래서 값 16개를 받는 긴 생성자가 됐는데, 거의 다 int 라 순서를 바꿔도 컴파일이 통과한다.
+  MaxHp 자리에 MaxStagger 를 넣어도 아무도 안 잡아준다. 생산자가 ToModel() 한 곳뿐이므로
+  호출부에서 named argument 를 쓰는 것으로 원천봉쇄했다
+- init 프로퍼티 + 객체 초기화자가 더 읽기 좋지만 Unity 6 에서 IsExternalInit 심이 필요할 수
+  있어 접었다. 그 실험을 이 작업과 섞을 이유가 없다
+- CharacterData 의 public 프로퍼티를 어디까지 지울지가 남았다. InitialDeck 만 남겼다 —
+  artwork 레지스트리가 CardData.Artwork 를 읽어야 하는데 CardModel 에는 Sprite 가 없다.
+  BattleManager 는 Scene 계층이라 SO 를 봐도 된다
+
+### 해결
+
+- CharacterModel(순수, 프로퍼티 16개 전부 { get; }) + CharacterData.ToModel()
+- CharacterState 의 변환 루프 두 개가 사라지고 Passives = source.Passives; 두 줄이 됐다.
+  카드·패시브 변환이 ToModel() 로 이사했기 때문이고, 이것은 선택이 아니라 강제다 —
+  CharacterState 에서 SO 를 뺏으면 그 루프는 거기 있을 수가 없다
+- Engine/ 안의 SO 참조가 0건이 됐다. CharacterData/CardData/PassiveData 가 나오는 곳은 주석뿐이다
+- 대조군 셋 유지: HpUI 70/70, Counter(6~6) 합에서 [6->9], Evade(6~6)는 [6->6]
+
+### 배운 점
+
+- **변환 관문은 "값을 아는 쪽" 에 둔다.** 모델이 SO 를 받으면 관문이 아니라 통로가 되고
+  의존은 그대로 남는다. 방향을 판단하는 기준은 "누가 누구를 참조하게 되는가" 하나다
+- **한 계층을 순수하게 만들면 그 계층이 하던 변환도 같이 밀려난다.** CharacterState 가
+  카드·패시브를 변환하고 있었던 것은 그것이 SO 를 통째로 받고 있었기 때문이다. SO 를 뺏자
+  변환 코드가 갈 곳을 잃고 ToModel() 로 모였다. 결과적으로 흩어져 있던 변환이 한 곳이 됐다
+- **컴파일러가 잡아주는 리팩터링과 아닌 것을 구분해야 한다.** 3단계는 is 검사가 조용히
+  false 가 되는 경로가 있어서 순서를 짜야 했지만, 2단계는 순수 타입 교체라 한 번에 쓸어도
+  컴파일러가 전부 잡아줬다. 유일한 예외가 같은 타입 인자들의 순서였고 그것만 따로 막았다
+- **주석은 코드보다 늦게 썩는 게 아니라 같이 썩는다.** CharacterState 머리의
+  "CardData -> CardModel 치환" 은 이제 거짓이다. 안 달린 주석은 없는 것뿐이지만 거짓인
+  주석은 사람을 틀린 곳으로 보낸다. 주석 일괄 작업을 미루기로 한 이상 목록에 따로
+  "거짓이 된 주석" 절을 만들어 우선순위를 갈라뒀다

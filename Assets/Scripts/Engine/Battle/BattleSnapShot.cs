@@ -18,7 +18,7 @@ public class BattleSnapShot
     /// <param name="allies">아군 진영 청사진</param>
     /// <param name="enemies">적군 진영 청사진</param>
     /// <param name="seed">전투 결정성 시드</param>
-    public BattleSnapShot(IEnumerable<CharacterData> allies, IEnumerable<CharacterData> enemies, int seed)
+    public BattleSnapShot(IEnumerable<CharacterModel> allies, IEnumerable<CharacterModel> enemies, int seed)
     {
         Seed = seed;
 
@@ -33,7 +33,7 @@ public class BattleSnapShot
     /// </summary>
     /// <param name="characters">추가할 진영의 청사진들</param>
     /// <param name="team">이 진영의 소속(Ally/Enemy)</param>
-    void AddAll(IEnumerable<CharacterData> characters, Team team)
+    void AddAll(IEnumerable<CharacterModel> characters, Team team)
     {
         foreach (var character in characters)
         {

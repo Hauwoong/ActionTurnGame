@@ -16,7 +16,7 @@ public class CharacterStateBuilder
     /// 청사진 값을 작업대에 복사해 패시브 적용 전 초기값으로 세팅한다
     /// </summary>
     /// <param name="source">기준이 될 캐릭터 청사진</param>
-    public CharacterStateBuilder(CharacterData source)
+    public CharacterStateBuilder(CharacterModel source)
     {
         MaxHp = source.MaxHp;
         MaxStagger = source.MaxStagger;

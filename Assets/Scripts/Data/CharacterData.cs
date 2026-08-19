@@ -27,21 +27,40 @@ public class CharacterData : ScriptableObject
     [Header("Passives & Deck")]
     [SerializeField] private List<PassiveData> _passives = new();
     [SerializeField] private List<CardData> _initialDeck = new();
-
-    public string Name => _name;
-    public int MaxHp => _maxHp;
-    public int MaxStagger => _maxStagger;
-    public int MaxEnergy => _maxEnergy;
-    public int MinSpeed => _minSpeed;
-    public int MaxSpeed => _maxSpeed;
-    public int BaseSpeedSlotCount => _baseSpeedSlotCount;
-    public int MaxEmotionLevel => _maxEmotionLevel;
-    public int MaxEmotionStack => _maxEmotionStack;
-    public int EmotionGainOnDamageDealt => _emotionGainOnDamageDealt;
-    public int EmotionGainOnDamageReceived => _emotionGainOnDamageReceived;
-    public int EmotionGainOnStagger => _emotionGainOnStagger;
-    public int EmotionGainOnStaggered => _emotionGainOnStaggered;
-    public int EmotionGainOnStaggerHeal => _emotionGainOnStaggerHeal;
-    public IReadOnlyList<PassiveData> Passives => _passives;
     public IReadOnlyList<CardData> InitialDeck => _initialDeck;
+
+    public CharacterModel ToModel()
+    {
+        var passives = new List<PassiveModel>();
+        foreach (var passive in _passives)
+        {
+            passives.Add(passive.ToModel());
+        }
+
+        var intialDeck = new List<CardModel>();
+        foreach (var card in _initialDeck)
+        {
+            intialDeck.Add(card.ToModel());
+        }
+
+        return new CharacterModel(
+            name : _name,
+            maxHp : _maxHp,
+            maxStagger : _maxStagger,
+            maxEnergy : _maxEnergy,
+            minSpeed : _minSpeed,
+            maxSpeed : _maxSpeed,
+            baseSpeedSlotCount : _baseSpeedSlotCount,
+            maxEmotionLevel : _maxEmotionLevel,
+            maxEmotionStack : _maxEmotionStack,
+            emotionGainOnDamageDealt : _emotionGainOnDamageDealt,
+            emotionGainOnDamageReceived : _emotionGainOnDamageReceived,
+            emotionGainOnStagger : _emotionGainOnStagger,
+            emotionGainOnStaggered : _emotionGainOnStaggered,
+            emotionGainOnStaggerHeal : _emotionGainOnStaggerHeal,
+            passives : passives,
+            initialDeck : intialDeck
+        );
+    }
+
 }
