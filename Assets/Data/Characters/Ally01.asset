@@ -26,7 +26,9 @@ MonoBehaviour:
   _emotionGainOnStagger: 0
   _emotionGainOnStaggered: 0
   _emotionGainOnStaggerHeal: 0
-  _passives: []
+  _passives:
+  - {fileID: 11400000, guid: 6199c520bd2de8346a2143251bbcbccc, type: 2}
+  - {fileID: 11400000, guid: ab5c5587ab1e8e14ca7823d44fb1c5b6, type: 2}
   _initialDeck:
   - {fileID: 11400000, guid: db1e316c55e5b4243bb7943861ff8bf3, type: 2}
   - {fileID: 11400000, guid: a9cf4b3784cb79b479da4ad2921d3852, type: 2}
