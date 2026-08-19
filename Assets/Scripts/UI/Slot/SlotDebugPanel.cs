@@ -54,7 +54,6 @@ public class SlotDebugPanel : MonoBehaviour
     private void OnActionCancelled(ActionCancelledLog log) => Refresh();
     private void OnBoutStart(BoutStartLog log)
     {
-        UnityEngine.Debug.Log($"[BoutStart] {log.AttackerId} -> {log.TargetId}");
         Refresh();
     }
     private void OnBoutEnd(BoutEndLog log) => Refresh();

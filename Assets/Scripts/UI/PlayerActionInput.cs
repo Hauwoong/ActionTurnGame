@@ -10,12 +10,10 @@ public class PlayerActionInput : MonoBehaviour
     public void SelectSpeedSlot(SpeedSlot slot)
     {
         selectedSlot = slot;
-        Debug.Log($"Speed Dice {selectedSlot.Value.SlotIndex} selected");
     }
 
     public void StartDraggingCard(CardModel card)
     {
-        Debug.Log("Drag Start");
         draggingCard = card;
     }
 

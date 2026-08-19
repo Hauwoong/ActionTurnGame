@@ -5348,3 +5348,53 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
   그 문장 하나가 A/B 판단의 근거였으므로 그대로 갔으면 결론이 반대로 났다
 - **필드를 지우면 그 필드를 나르려고 만든 통로도 같이 지운다.** UpdateColor 의 매개변수가
   그것이다. 오늘 아침 DefenderId 도 같은 모양이었다 — 값을 나르는데 쓰는 데가 없는 상태
+
+## 2026-08-19 — 잔재 정리: TurnUI 는 필드가 아니라 파일 전체가 죽어 있었다
+
+### 문제
+
+- CLAUDE.md 6번 "잔재 정리" 목록을 소화하는 몸풀기 작업이었다. 항목은 넷 —
+  SpeedSlotUI.cs / TurnUI 의 미사용 필드 2개 / BattleRuntime.HasEvents /
+  SlotDebugPanel.cs:57 의 진단용 Debug.Log
+- 착수하고 보니 목록이 현실과 두 군데 어긋나 있었다. HasEvents 와 9번의 SlotRuntimeMap 은
+  **이미 지워져 있었고**, TurnUI 는 **필드 2개가 아니라 파일 전체**가 죽어 있었다
+
+### 고민
+
+- 필드 2줄을 지우고 나니 TurnUI 에 남은 것은 아무도 안 부르는 래퍼 메서드 하나
+  (onClickEndButton -> battleManager.EndTurn())와 null 검사만 하는 Start() 뿐이었다.
+  사용자가 "BattleManager 가 이미 EndTurn 을 갖고 있는데 TurnUI 는 왜 필요하냐" 고 물어서 드러났다
+- 확인해보니 죽은 정도가 아니라 애초에 씬에 없었다. Main.unity 에 TurnUI 의 guid 가 0건이고,
+  End Turn 버튼의 m_OnClick 은 BattleManager.EndTurn 을 직접 부르고 있다(Main.unity:3199~3202).
+  onClickEndButton 을 부르는 바인딩은 씬 전체에 0건
+- 남길 이유로 "나중에 턴 표시 UI 를 만들 때 쓴다" 를 검토했다. 그런데 그때 맞는 형태는
+  HpUI/StatusUI 처럼 TurnStartLog 을 구독하는 컴포넌트라 지금 껍데기에서 재사용할 게 없다
+- 메서드 이름 onClickEndButton 은 "메서드는 PascalCase" 규칙 위반이지만 **개명만 하면
+  위험하다.** UnityEvent 가 메서드 이름을 문자열로 들고 있어서 컴파일은 통과하는데
+  버튼이 조용히 아무것도 안 하게 된다. 개명은 인스펙터 재바인딩과 짝이다.
+  파일을 통째로 지우기로 하면서 이 문제도 같이 사라졌다
+
+### 해결
+
+- SpeedSlotUI.cs / TurnUI.cs 를 .meta 와 함께 삭제 (둘 다 씬 참조 0건)
+- SlotDebugPanel.cs:57 과 PlayerActionInput.cs:13,18 의 진단용 Debug.Log 3건 삭제.
+  앞의 것은 DiceUI 가 BoutStartLog 을 구독해 같은 내용을 bout 구분선으로 찍으므로 정보 손실 0
+- 덤으로 SpeedSlotPassvieData -> SpeedSlotPassiveData 오타 수정. 이 스크립트를 쓰는 .asset 이
+  하나도 없어서 공짜였다 (guid 참조가 자기 .meta 뿐)
+- 작업 중 TurnUI.cs 를 통째로 지우는 실수가 있었으나 git restore 로 복구 후 재작업
+
+### 배운 점
+
+- **UI 스크립트의 죽음은 grep 으로 판단할 수 없다.** MonoBehaviour 는 코드가 아니라 씬이 부르고,
+  UnityEvent 는 메서드 이름을 문자열로 들고 있어 코드 검색에 안 잡힌다. .meta 의 guid 로
+  .unity/.prefab 을 뒤지는 것이 유일한 확인 방법이다. Bout.cs 때 세운 "참조 0건만으로 판단 말 것"
+  기준의 UI 판인데, 방향이 반대다 — 그때는 참조가 없는데 살아 있었고 이번엔 참조가 없는 게
+  진짜였는데 **그걸 증명한 것이 grep 이 아니라 씬 파일**이었다
+- **목록이 진단을 얕게 만든다.** 6번에 "TurnUI 의 필드 2개" 라고 적혀 있어서 필드만 보고 끝냈다.
+  적어둔 문장이 시야를 그 크기로 고정한 것이다. 잔재 목록의 항목을 소화할 때는
+  적힌 범위가 맞는지부터 다시 볼 것 — 그 목록은 과거의 진단이지 현재의 사실이 아니다
+- **실수로 지운 .cs 는 반드시 git 에서 복구한다. 다시 타이핑하면 안 된다.** Unity 가 .meta 를
+  새 GUID 로 발급해서 씬에 붙어 있던 컴포넌트가 Missing 이 된다. 코드 내용이 같아도 결과가 다르다
+- **오타 수정에도 유효기간이 있다.** SpeedSlotPassvieData 는 쓰는 에셋이 아직 없어서 공짜였다.
+  에셋이 하나라도 생긴 뒤였으면 Strike.asset 리셋 직전까지 갔던 FormerlySerializedAs 건과
+  같은 종류의 작업이 됐다. **이런 것은 발견 즉시가 제일 싸다**

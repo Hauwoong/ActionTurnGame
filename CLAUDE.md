@@ -1,12 +1,16 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-08-06 갱신)
+## 다음 작업 (2026-08-19 갱신)
 
-### ▶ 다음 시작 지점 — **미정. "로그가 사실을 다 담게 하기" 덩어리는 전부 끝났다**
+### ▶ 다음 시작 지점 — **아래 3번 (4번 2단계 `CharacterModel`)**
 
-**2026-08-06 에 1~3번(`IsOffensive` / `BoutStart`·`BoutEndLog` 합 여부 / `DamageLog`·`StaggerLog`
-공격자)을 전부 끝냈다.** 남은 큰 덩어리는 아래 3번(`CharacterModel`)이고, 그 밖에는
-6번 잔재 정리 / 8번 3·5번 항목(적 AI 와 함께) / 3-3 훅 순회 정도가 남아 있다.
+**2026-08-06 에 1~2번(`BoutStart`·`BoutEndLog` 합 여부 / `DamageLog`·`StaggerLog` 공격자)과
+`IsOffensive` 를 끝냈고, 2026-08-19 에 6번 잔재 정리도 끝냈다.**
+남은 큰 덩어리는 **아래 3번(`CharacterModel`) 하나**이고, 그 밖에는
+8번 3·5번 항목(적 AI 와 함께) / 3-3 훅 순회 정도가 남아 있다.
+
+**착수 전에 정할 것: 2단계와 3단계의 경계.** 자세한 것은 아래 4번 항목 참고 —
+`CharacterState.Passives` 가 `IReadOnlyList<PassiveData>` 라 **2단계만 하면 누수가 그대로 남는다.**
 
 2026-08-05~06 세션에서 끝난 것: **3-1.10 (1~5단계 전부)**, **3-1.12**, **3-1.11 + `UnopposedLog` 배선**,
 **3-1.13 (힘/패시브가 `Counter` 를 안 올려주던 것) + `IsOffensive` 까지 완결**,
@@ -771,11 +775,26 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
 
 진행 계획:
 - **2단계**: `CharacterModel` 신설 + `CharacterData.ToModel()`. `CharacterState`/`Builder`/`BattleSnapShot` 이
-  순수 모델을 받게. 참조 0건인 `CharacterState.Source` 프로퍼티도 이때 삭제.
-  `CharacterData` 는 이미 private 필드 + 프로퍼티 구조라 직렬화 마이그레이션 불필요.
+  순수 모델을 받게. `CharacterData` 는 이미 private 필드 + 프로퍼티 구조라 직렬화 마이그레이션 불필요.
+  (~~`CharacterState.Source` 도 이때 삭제~~ — 2026-07-26 에 이미 지워졌다)
 - **3단계**: `PassiveModel`(추상 + 타입별 서브클래스) 신설, `IStatModifierPassive` 구현을 모델 쪽으로 이사,
   `PassiveFactory` 가 모델을 받게. SO 는 `ToModel()` 만 갖는 껍데기로.
 - **4단계**: Engine asmdef 신설 + **No Engine References** 켜서 기계 검증.
+
+**미결 — 2단계와 3단계의 경계 (2026-08-19 발견).** 계획이 2/3단계를 갈라놨는데 실제로는 엉켜 있다:
+`CharacterState.Passives` 가 `IReadOnlyList<PassiveData>` 고 생성자가 `passive is IStatModifierPassive`
+로 SO 를 직접 부른다(`CharacterState.cs:41`). **2단계만 하면 `CharacterModel` 이 `List<PassiveData>` 를
+들고 있어 누수가 그대로다.** 세 갈래:
+1. `Passives` 는 SO 인 채로 두고 스탯만 순수화 — 변경 폭이 작지만 중간 상태가 어정쩡하다
+2. 2+3단계를 한 덩어리로 — 깔끔하지만 `PassiveModel` 추상 계층까지 한 번에
+3. **3단계를 먼저** — `PassiveModel` 이 서면 `CharacterModel` 은 그냥 필드 복사라 쉬워진다
+
+관문 패턴 자체는 `CardData.ToModel()` 선례가 이미 정해뒀다. `CardModel` 이 `DiceData` 를 그대로
+들고 가는 것이 문제가 안 되는 이유는 **`DiceData` 가 Engine 소속 순수 클래스**이기 때문이고
+(`Engine/Dice/DiceData.cs`), `PassiveData` 는 SO 라 그 면제가 안 된다.
+
+**검증 세팅이 지금까지와 다르다.** 출혈 카운터가 아니라 "패시브 붙은 캐릭터의 `MaxHp`/슬롯 수가
+그대로인가" 라 오히려 단순하다.
 
 ### 5. 카드 뽑기 장수를 상수 → 변수로 — 구 3번
 `Engine/Events/TurnStartEvent.cs` 가 `new DrawCardEvent(CharacterId, 1)` 로 고정.
@@ -783,13 +802,33 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
 - 기본 장수 → `CharacterData` → `CharacterState` → `CharacterRuntime`
 - 일시 보정 → `StatusEffectRuntime` 이 이미 `OnTurnStart` 훅과 만료 처리를 갖고 있으므로 그쪽이 적합
 
-### 6. 잔재 정리 — 구 4번
-- `UI/Slot/SpeedSlotUI.cs` — 참조 0건. `SlotDebugItem` 이 대체함
-- `TurnUI` 의 `endTurnButton` / `turnText` 필드 — 선언만 되고 쓰이지 않음
-- `BattleRuntime.HasEvents` — 참조 0건. 배수 루프를 염두에 뒀던 흔적이라 7번과 같이 판단할 것
-- `SlotDebugPanel.cs:57` 의 진단용 `Debug.Log("[BoutStart] ...")` — 매 bout 마다 스택 트레이스까지
-  찍힌다. 2026-07-22 의 `HpUI` 건과 같은 종류(그때는 필터 앞에 있어서 "데미지 로그 2번" 오해를 낳았다)
+### 6. 잔재 정리 — 구 4번 — ✔ **완료 (2026-08-19)**
+- ~~`UI/Slot/SpeedSlotUI.cs`~~ — **삭제.** 씬·프리팹 어디에도 안 붙어 있었다(guid 참조 0건)
+- ~~`TurnUI`~~ — **필드 2개가 아니라 파일 통째로 삭제.** 아래 참고
+- ~~`SlotDebugPanel.cs:57` 의 진단용 `Debug.Log("[BoutStart] ...")`~~ — 삭제. `DiceUI` 가
+  `BoutStartLog` 을 구독해 같은 내용을 bout 구분선으로 찍으므로 **정보 손실 0**
+- ~~`PlayerActionInput.cs:13,18`~~ — 목록에 없던 진단용 `Debug.Log` 2건. 같이 삭제
+- ~~`BattleRuntime.HasEvents`~~ — **이미 지워져 있었다.** 목록만 헌 것이었다(9번의 `SlotRuntimeMap` 도 동일)
 - ~~`BattleInput.cs` / `BattleResult.cs` / `BattleRuntime.Start`~~ — 2026-07-26 삭제 완료
+- 덤: `SpeedSlotPassvieData` → **`SpeedSlotPassiveData`** 오타 수정("파일명 = 클래스명" 규칙 위반).
+  이 스크립트를 쓰는 `.asset` 이 하나도 없어서 공짜였다 — **에셋이 생긴 뒤였으면 리셋 위험이 붙는다**
+
+**`TurnUI` 는 필드가 아니라 파일 전체가 죽어 있었다.** 이 목록이 "필드 2개가 안 쓰인다"로 적혀 있어서
+진단이 거기서 멈췄다. 필드를 지우고 나서야 남은 게 껍데기라는 게 보였다:
+- 씬에 `TurnUI` 인스턴스가 없다 (`Main.unity` 에 guid `62c0ea8b...` 가 0건)
+- End Turn 버튼은 `BattleManager.EndTurn` 을 **직접** 부른다(`Main.unity:3199~3202`).
+  `onClickEndButton` 을 부르는 바인딩은 씬 전체에 0건이었다
+- 규칙 위반이던 `onClickEndButton`(메서드는 PascalCase)도 파일과 함께 사라졌다.
+  **이름만 바꿨으면 컴파일은 통과하는데 버튼이 조용히 아무것도 안 하게 된다** — `UnityEvent` 가
+  메서드 이름을 문자열로 들고 있어서, 개명은 인스펙터 재바인딩과 짝이어야 한다
+
+**UI 스크립트의 죽음은 `grep` 으로 판단할 수 없다.** MonoBehaviour 는 코드가 아니라 **씬이** 부르고,
+`UnityEvent` 는 메서드 이름을 **문자열로** 들고 있어 코드 검색에 안 잡힌다.
+`.meta` 의 guid 로 `.unity`/`.prefab` 을 뒤지는 것이 유일한 확인 방법이다.
+(`.cs` 참조 0건만 보고 판단하지 말라는 `Bout.cs` 기준의 UI 판이다)
+
+**턴 표시 UI 를 만들 때는 새로 짠다.** `HpUI`/`StatusUI` 처럼 `TurnStartLog` 을 구독하는 컴포넌트가
+맞는 형태고, 껍데기를 남겨둬도 그때 재사용할 게 없었다.
 
 ### 7. `Step()` 재귀 구조 (급하지 않음) — 구 5번
 `BattleRuntime.EnqueueEvent` 가 enqueue 직후 `Step()` 을 호출하고, `Step()` 은 다른 곳에서
@@ -964,8 +1003,8 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
   **세 번째 종류(증상 없는 미배선)** 다. 그때 세운 기준 — "지울지 부를지를 먼저 정할 것" — 을
   적용한 첫 사례이고, 답이 "지운다" 로 나온 첫 사례이기도 하다
 
-**삭제 후보 (1 신규, 미처리)**:
-- `BattleRuntime.SlotRuntimeMap` — 지운 `GetSpeedSlotRuntime` 과 같은 종류다. `_slotRuntimeMap` 은
+**삭제 후보 (1 신규)** — ✔ **처리됨. 2026-08-19 확인 시 이미 없었다** (`HasEvents` 와 함께 지워진 듯):
+- ~~`BattleRuntime.SlotRuntimeMap`~~ — 지운 `GetSpeedSlotRuntime` 과 같은 종류였다. `_slotRuntimeMap` 은
   생성자에서 `BoutGraph` 에 넘겨져 `BoutGraph.SlotRuntime` 으로 쓰이므로 `BattleRuntime` 쪽 접근자는 잉여
 
 **미래용 — 남김 (7)**:
