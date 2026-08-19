@@ -1,16 +1,18 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-08-19 갱신)
+## 다음 작업 (2026-08-20 갱신)
 
-### ▶ 다음 시작 지점 — **아래 3번 (4번 2단계 `CharacterModel`)**
+### ▶ 다음 시작 지점 — **4번 2단계 `CharacterModel`** (3단계는 끝났다)
 
 **2026-08-06 에 1~2번(`BoutStart`·`BoutEndLog` 합 여부 / `DamageLog`·`StaggerLog` 공격자)과
 `IsOffensive` 를 끝냈고, 2026-08-19 에 6번 잔재 정리도 끝냈다.**
 남은 큰 덩어리는 **아래 3번(`CharacterModel`) 하나**이고, 그 밖에는
 8번 3·5번 항목(적 AI 와 함께) / 3-3 훅 순회 정도가 남아 있다.
 
-**사용자 결정 (2026-08-19): 3단계(`PassiveModel`)를 먼저, B안(다형성 `CreateEffect`)으로,
-검증용 패시브 에셋을 먼저 만든다.** 자세한 것은 아래 4번 항목.
+~~**사용자 결정 (2026-08-19): 3단계(`PassiveModel`)를 먼저, B안(다형성 `CreateEffect`)으로,
+검증용 패시브 에셋을 먼저 만든다.**~~ — ✔ **3단계 완료 (2026-08-20, 플레이 검증).**
+**남은 SO 누수는 `CharacterData` 3곳뿐이다** (`CharacterState`/`CharacterStateBuilder`/`BattleSnapShot`
+각각 생성자 하나씩). 자세한 것은 아래 4번 항목.
 
 2026-08-05~06 세션에서 끝난 것: **3-1.10 (1~5단계 전부)**, **3-1.12**, **3-1.11 + `UnopposedLog` 배선**,
 **3-1.13 (힘/패시브가 `Counter` 를 안 올려주던 것) + `IsOffensive` 까지 완결**,
@@ -767,11 +769,11 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
     `AddStack` 이 public 이라 UI 가 부를 수 있다(`SpeedSlots` 도 동일). 막으려면 읽기 전용 view 타입이
     필요한데, 그건 `SpeedSlots` 까지 같이 바꿔야 의미가 있다.
 
-### 4. Engine → Data 의존 끊기 — 구 2번 (1단계 완료, 2~4단계 남음)
+### 4. Engine → Data 의존 끊기 — 구 2번 (1·3단계 완료, 2·4단계 남음)
 
-남은 SO 누수 (2026-07-23 전수조사 기준):
-- `CharacterData` ← `CharacterState`, `CharacterStateBuilder`, `BattleSnapShot`
-- `PassiveData` ← `CharacterState`, `PassiveFactory` (CLAUDE.md 구판 목록에 빠져 있던 누수)
+남은 SO 누수 (2026-08-20 기준):
+- `CharacterData` ← `CharacterState`, `CharacterStateBuilder`, `BattleSnapShot` (**생성자 하나씩, 이게 전부**)
+- ~~`PassiveData` ← `CharacterState`, `PassiveFactory`~~ — ✔ **3단계로 해소. `Engine/` 안의 `PassiveData` 참조 0건**
 
 진행 계획:
 - **2단계**: `CharacterModel` 신설 + `CharacterData.ToModel()`. `CharacterState`/`Builder`/`BattleSnapShot` 이
@@ -780,6 +782,38 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
 - **3단계**: `PassiveModel`(추상 + 타입별 서브클래스) 신설, `IStatModifierPassive` 구현을 모델 쪽으로 이사,
   `PassiveFactory` 가 모델을 받게. SO 는 `ToModel()` 만 갖는 껍데기로.
 - **4단계**: Engine asmdef 신설 + **No Engine References** 켜서 기계 검증.
+
+#### 3단계 — ✔ **완료·플레이 검증 완료 (2026-08-20)**. 아래는 설계 근거 기록
+
+**결과**: `PassiveModel`(추상) + 서브클래스 4개 신설, `PassiveData` 는 `[SerializeField] amount` +
+`ToModel()` 만 남는 껍데기가 됐다. `PassiveFactory` / `PassiveType` / `PassiveEffect.Type` **삭제**.
+`CharacterState.Passives` 는 `IReadOnlyList<PassiveModel>`. **`Engine/` 안의 `PassiveData` 참조 0건.**
+
+**실제로 밟은 순서 (계획과 다른 부분이 있다)**
+1. 모델 5파일 신설 — 기존 파일은 한 줄도 안 건드린다. 컴파일만 통과하면 끝
+2. `PassiveData` 에 `abstract ToModel()` + 4개 구현 **추가만.** SO 의 `Apply` 는 **남겨둔다**
+3. `CharacterState` 가 모델 리스트를 **먼저** 만들고 builder 루프가 **그걸** 순회
+4. 3-후: SO 에서 `IStatModifierPassive` + `Apply` 제거 (**독자를 옮긴 뒤에**)
+5. `CharacterRuntime` 이 `model.CreateEffect(this)` 를 부르고 `PassiveFactory` 삭제
+6. `PassiveType` 일체 + SO 의 죽은 `Amount` 접근자 3개 삭제
+
+**함정 — "독자를 먼저 옮기고, 옛 구현은 나중에 지운다".** 2단계에서 SO 의
+`IStatModifierPassive` 를 같이 걷어내면 `CharacterState` 의 `passive is IStatModifierPassive` 가
+**항상 false** 가 되는데 **컴파일은 통과한다**(`is` 검사라 타입 에러가 안 난다).
+증상은 `HpUI` 가 `50/50` 이고, "리팩터링 중이라 그런가" 하고 넘기기 딱 좋다.
+
+**함정 — 3단계 도중에는 대조군이 무정보다.** `CharacterState` 를 반만 고친 상태
+(`Passives` 타입은 바꿨는데 `Apply` 루프는 아직 SO 순회)에서도 `HpUI` 는 `70/70` 이 나온다.
+SO 의 `Apply` 가 여전히 돌기 때문이다. **그래서 이 단계의 판정 기준은 화면이 아니라
+`CharacterState.cs` 안의 `source.Passives` 참조 개수(1건)였다.** 검증이 의미를 갖는 건
+4단계 이후다.
+
+**함정 — `[SerializeField] private int amount;` 는 남긴다.** 지운 것은 `public int Amount => amount;`
+접근자뿐이다. 필드를 지우면 에셋의 `amount: 3`/`20` 이 날아가고, 증상이 **"패시브는 도는데
+효과가 0"** 이라 `amount` 를 안 채웠을 때와 완전히 같아진다.
+
+**`PassiveData.Name` 은 남겼다.** 독자 0건이지만 이번 리팩터링이 만든 잔재가 아니고
+에셋에 실제 값이 들어 있다(`passiveName: AttackBoost`). 패시브 UI 를 만들 때 쓸 자리다.
 
 #### 2/3단계의 경계 — **결정: 3단계 먼저, B안** (2026-08-19)
 
@@ -823,18 +857,10 @@ CharacterRuntime: var passive = model.CreateEffect(this);
 - **`null` 반환은 B안에도 남는다.** 스탯 수정형은 런타임 훅이 없다 — 실재하는 개념이고,
   지금 factory 주석에 적힌 그 사실이 **클래스 자신에게로** 옮겨간다
 
-**순서**
-1. `PassiveModel` + 서브클래스 4개. `IStatModifierPassive` 구현을 SO 에서 모델로 이사(본문 그대로)
-2. `PassiveData` 에 `abstract PassiveModel ToModel()` + 4개 구현. SO 는 `[SerializeField] amount` +
-   `ToModel()` 만 남는 껍데기
-3. `CharacterState.Passives` → `IReadOnlyList<PassiveModel>`
-4. `CharacterRuntime.cs:79` 를 `model.CreateEffect(this)` 로, `PassiveFactory.cs` 삭제
-5. `PassiveType` / `PassiveEffect.Type` 삭제
-
-**함정 — 3번의 변환 순서.** `CharacterState` 생성자가 `source.Passives`(SO)를 **두 번** 쓴다:
-`Apply` 순회(`:39`)와 리스트 복사(`:67`). **모델 리스트를 먼저 만들고 두 곳 다 그걸 순회해야**
-SO 참조가 0이 된다. 한쪽만 바꾸면 `Apply` 가 SO 와 모델 양쪽에 남는다.
-`CardModel` 변환이 이미 같은 생성자에 있으니 나란히 두면 된다.
+**함정 — 변환 순서 (실제로 한 번 걸렸다).** `CharacterState` 생성자가 `source.Passives`(SO)를
+**두 번** 썼다: `Apply` 순회와 리스트 복사. **모델 리스트를 먼저 만들고 두 곳 다 그걸 순회해야**
+SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Apply` 루프가 SO 순회로 남았다 —
+**"짝인데 한쪽만" 실수가 미리 경고를 적어둔 상태에서 또 났다.**
 
 **`.asset` 은 안 깨진다.** `[SerializeField] amount` 필드명과 SO 클래스명을 안 건드리므로
 `FormerlySerializedAs` 불필요 — 애초에 에셋이 0개라 더더욱. (`AttackBoostData` 만 이름이 `...Data` 이고

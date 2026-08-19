@@ -74,9 +74,9 @@ public class CharacterRuntime : IEventSink
         _activeSpeedSlotCount = state.SpeedSlotCount;
         CreateSpeedSlots();
 
-        foreach (var passiveData in state.Passives)
+        foreach (var passiveModel in state.Passives)
         {
-            var passive = PassiveFactory.Create(passiveData, this);
+            var passive = passiveModel.CreateEffect(this);
             if (passive != null)
                 _passives.Add(passive);
         }

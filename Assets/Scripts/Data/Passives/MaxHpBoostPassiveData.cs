@@ -1,11 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [CreateAssetMenu(menuName = "Game/Passive/Max Hp Boost")]
-public class MaxHpBoostPassiveData : PassiveData, IStatModifierPassive
+public class MaxHpBoostPassiveData : PassiveData
 {
     [SerializeField] private int amount;
-    public override PassiveType Type => PassiveType.MaxHpBoost;
-    public int Amount => amount;
-    public void Apply(CharacterStateBuilder builder)
-        => builder.MaxHp += Amount;
+    public override PassiveModel ToModel() => new MaxHpBoostModel(amount);
 }

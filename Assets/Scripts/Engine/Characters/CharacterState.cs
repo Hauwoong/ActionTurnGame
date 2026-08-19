@@ -19,7 +19,7 @@ public sealed class CharacterState
     public int EmotionGainOnStagger { get; }
     public int EmotionGainOnStaggered { get; }
     public int EmotionGainOnStaggerHeal { get; }
-    public IReadOnlyList<PassiveData> Passives { get; }
+    public IReadOnlyList<PassiveModel> Passives { get; }
     public IReadOnlyList<CardModel> InitialDeck { get; }
 
     /// <summary>
@@ -34,9 +34,15 @@ public sealed class CharacterState
         CharacterId = id;
         Team = team;
 
+        var passives = new List<PassiveModel>();
+        foreach (var passive in source.Passives)
+        {
+            passives.Add(passive.ToModel());
+        }
+
         // builder로 자원 수정 패시브 적용
         var builder = new CharacterStateBuilder(source);
-        foreach (var passive in source.Passives)
+        foreach (var passive in passives)
         {
             if (passive is IStatModifierPassive statModifier)
                 statModifier.Apply(builder);
@@ -64,7 +70,7 @@ public sealed class CharacterState
         EmotionGainOnStagger = builder.EmotionGainOnStagger;
         EmotionGainOnStaggered = builder.EmotionGainOnStaggered;
         EmotionGainOnStaggerHeal = builder.EmotionGainOnStaggerHeal;
-        Passives = new List<PassiveData>(source.Passives);
+        Passives = passives;
         InitialDeck = initialDeck;
     }
 }

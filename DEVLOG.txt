@@ -5398,3 +5398,62 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
 - **오타 수정에도 유효기간이 있다.** SpeedSlotPassvieData 는 쓰는 에셋이 아직 없어서 공짜였다.
   에셋이 하나라도 생긴 뒤였으면 Strike.asset 리셋 직전까지 갔던 FormerlySerializedAs 건과
   같은 종류의 작업이 됐다. **이런 것은 발견 즉시가 제일 싸다**
+
+## 2026-08-20 — PassiveModel: enum 태그를 새 계층에 복제할 뻔했다
+
+### 문제
+
+- 4번 2단계(CharacterModel)를 열어보니 2/3단계가 계획서처럼 갈라지지 않았다.
+  CharacterState.Passives 가 IReadOnlyList<PassiveData> 고 생성자가
+  passive is IStatModifierPassive 로 SO 를 직접 부른다. 2단계만 하면 CharacterModel 이
+  List<PassiveData> 를 들고 있어 누수가 그대로다
+- 그래서 3단계를 먼저 하기로 했다. PassiveModel 이 서면 CharacterModel 은 필드 복사만 남는다
+
+### 고민
+
+- 디스패치를 어떻게 할 것인가가 유일한 설계 질문이었다. A안은 현행 유지 —
+  PassiveModel 에 PassiveType 를 두고 PassiveFactory 가 switch + 다운캐스트.
+  B안은 abstract PassiveEffect CreateEffect(owner) 로 다형성
+- 조사해보니 PassiveEffect.Type 이 쓰기 전용이었다. 생성자에서 받아 프로퍼티로 노출하는데
+  읽는 곳이 0건이다. 따라서 PassiveType 의 유일한 독자가 PassiveFactory 의 switch 하나뿐이고,
+  그 enum 이 나르는 정보는 "어느 서브클래스인가" = 타입 자체가 이미 갖고 있는 것의 복사본이다
+- B안을 골랐다. 실익은 다운캐스트나 _ => throw 가 사라지는 것보다,
+  "enum 이 늘면 조용히 틀린다" 를 구조적으로 못 나게 하는 것이다. 3-1.13(힘이 Counter 를
+  빼먹은 것)이 그 병이었고 IsOffensive 는 완화였지 방지가 아니었다
+- 패시브 파이프라인이 한 번도 안 돌고 있었다 (Ally01/Enemy01 둘 다 _passives: [],
+  PassiveData 에셋 0개). 마이그레이션 위험이 0이라 제일 싼 시점이었지만, 동시에
+  대조군이 없었다. 그래서 에셋(MaxHpBoost +20 / AttackBoost +3)을 먼저 만들고
+  고치기 전에 세 숫자를 확보했다
+
+### 해결
+
+- PassiveModel(추상) + 서브클래스 4개 신설. 스탯 수정형 둘은 IStatModifierPassive 를
+  같이 구현하고 CreateEffect 는 null 을 돌려준다
+- PassiveData 는 [SerializeField] amount + ToModel() 만 남는 껍데기가 됐다
+- PassiveFactory / PassiveType / PassiveEffect.Type / SO 의 Amount 접근자 3개 삭제
+- Engine/ 안의 PassiveData 참조 0건. 남은 SO 누수는 CharacterData 3곳(생성자 하나씩)
+- 대조군 셋 전부 유지: HpUI 70/70, Counter(6~6) 합에서 [6->9], Evade(6~6)는 [6->6]
+
+### 배운 점
+
+- **컴파일 에러가 다음 단계를 가리킨다.** CharacterState 가 모델을 내보내기 시작하자
+  PassiveFactory.Create(PassiveData) 와 타입이 안 맞았고, 그 순간 "그럼 Model 이
+  abstract Type 을 가져야 하나" 라는 질문이 나왔다. 답은 반대였다 — factory 가 마지막
+  독자였을 뿐이고, 지우면 enum 전체가 독자 0이 된다. **없어질 예정인 태그를 새 계층에
+  복제할 뻔했고, 그러면 "새 패시브 하나에 고칠 곳이 넷" 도 그대로 돌아왔다**
+- **독자를 먼저 옮기고, 옛 구현은 나중에 지운다.** SO 의 IStatModifierPassive 를 먼저
+  걷어냈으면 CharacterState 의 is 검사가 항상 false 가 되는데 컴파일은 통과한다.
+  증상은 HpUI 50/50 이고 "리팩터링 중이라 그런가" 로 넘어가기 딱 좋다.
+  그래서 1단계에서 SO 와 모델이 같은 인터페이스를 잠시 둘 다 구현하는 것을 감수했다
+- **검증이 무정보인 구간을 처음으로 미리 알고 지나갔다.** 3단계 도중에는 HpUI 가 70/70 이
+  나오는데 그건 SO 의 Apply 가 돌아서다. 지금까지는 위양성을 겪은 뒤에 "관측 지점이
+  두 가설을 갈라주지 못했다" 고 적었는데, 이번엔 들어가기 전에 알아채고 판정 기준을
+  화면에서 source.Passives 참조 개수로 바꿨다
+- **"짝인데 한쪽만" 이 경고를 적어둔 상태에서 또 났다.** CharacterState 에서
+  Passives 타입과 리스트 복사만 바뀌고 Apply 루프가 SO 순회로 남았다. 바로 그 함정을
+  직전 메시지에 적어뒀는데도 났다 — 경고를 읽는 것과 손이 그걸 따라가는 것은 다르다
+- **에셋을 먼저 만든 것이 값을 했다.** 파이프라인이 한 번도 안 돌던 상태였으므로,
+  리팩터링 후에 처음 돌렸으면 "원래 안 되던 것" 과 "내가 깬 것" 을 못 갈랐다
+- **Save Project 함정을 또 겪었다** (오늘 두 번째, 통산 세 번째). 인스펙터 편집은
+  메모리에서 dirty 로만 있어 플레이는 정상으로 돌아간다. 디스크에는 amount: 0 과
+  _passives: [] 가 그대로 있었다. git status 가 유일한 계기다

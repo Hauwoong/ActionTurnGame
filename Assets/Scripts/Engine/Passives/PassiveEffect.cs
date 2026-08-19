@@ -2,12 +2,10 @@
 public abstract class PassiveEffect
 {
     protected readonly CharacterRuntime Owner;
-    public PassiveType Type { get; }
 
-    protected PassiveEffect(CharacterRuntime owner, PassiveType type)
+    protected PassiveEffect(CharacterRuntime owner)
     {
         Owner = owner;
-        Type = type;
     }
 
     public virtual void OnBeforeDamage(IDamageContext ctx) { }

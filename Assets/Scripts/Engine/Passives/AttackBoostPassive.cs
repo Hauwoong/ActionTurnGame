@@ -4,7 +4,7 @@ public class AttackBoostPassive : PassiveEffect
     private readonly int _amount;
 
     public AttackBoostPassive(CharacterRuntime owner, int amount)
-        : base(owner, PassiveType.AttackBoost)
+        : base(owner)
     {
         _amount = amount;
     }
