@@ -27,7 +27,7 @@ public class CombatExecutor
             var slot = action.SourceSlot;
             var priority = new ActionPriority
             {
-                Speed = graph.SlotRuntime[slot].Speed,
+                Speed = _runtime.GetSlotRuntime(slot).Speed,
                 CharacterId = slot.CharacterId,
                 SlotIndex = slot.SlotIndex
             };

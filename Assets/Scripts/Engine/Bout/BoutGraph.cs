@@ -4,8 +4,7 @@ public class BoutGraph
     private Dictionary<SpeedSlot, ActionInstance> actionBySlot;
     public Dictionary<SpeedSlot, ActionInstance> ActionBySlot => actionBySlot;
 
-    private readonly IReadOnlyDictionary<SpeedSlot, SpeedSlotRuntime> slotRuntime;
-    public IReadOnlyDictionary<SpeedSlot, SpeedSlotRuntime> SlotRuntime => slotRuntime;
+    private readonly ISlotLookup slotLookup;
 
     private Dictionary<SpeedSlot, List<ActionInstance>> targetMap = new();
 
@@ -13,10 +12,10 @@ public class BoutGraph
 
     public Dictionary<SpeedSlot, List<SpeedSlot>> interceptCandidates = new();
 
-    public BoutGraph(Dictionary<SpeedSlot, ActionInstance> actionBySlot, IReadOnlyDictionary<SpeedSlot, SpeedSlotRuntime> slotRuntime)
+    public BoutGraph(Dictionary<SpeedSlot, ActionInstance> actionBySlot, ISlotLookup slotLookup)
     {
         this.actionBySlot = actionBySlot;
-        this.slotRuntime = slotRuntime;
+        this.slotLookup = slotLookup;
     }
 
     public void RegisterAction(ActionInstance action)
@@ -92,8 +91,8 @@ public class BoutGraph
 
         if (!actionBySlot.ContainsKey(target)) return;
 
-        var sourceSpeed = slotRuntime[source].Speed;
-        var targetSpeed = slotRuntime[target].Speed;
+        var sourceSpeed = slotLookup.GetSlotRuntime(source).Speed;
+        var targetSpeed = slotLookup.GetSlotRuntime(target).Speed;
 
         if (sourceSpeed > targetSpeed)
         {

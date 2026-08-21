@@ -1195,8 +1195,17 @@ SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Ap
   - **실제 흐름에서는 아직 도달하지 않는다** — 적 액션은 턴 시작에 전부 등록되고 그때는
     플레이어 액션이 없어 첫 줄(`actionBySlot.ContainsKey(target)`)에서 return 된다.
     지금 문제로 보이는 건 적 AI 가 없어 적 액션을 손으로 나중에 넣기 때문(테스트 아티팩트).
-  - 고치려면 `BoutGraph` 가 팀을 알아야 한다. **`SpeedSlotRuntime` 이 `Team` 을 갖게 하는 쪽**을 권한다 —
-    `BoutGraph` 가 이미 `slotRuntime` 사전에서 `Speed` 를 꺼내 쓰므로 배선 추가가 0이다.
+  - ~~고치려면 `BoutGraph` 가 팀을 알아야 한다. `SpeedSlotRuntime` 이 `Team` 을 갖게 하는 쪽을 권한다~~
+    — **2026-08-22 사용자 결정으로 뒤집힘. `BoutGraph` 는 팀을 몰라야 한다.**
+    - **원칙 (사용자): "`BoutGraph` 는 멍청해야 한다."** 합과 일방을 나타내는 **그래프**일 뿐이고,
+      "이 공격이 상대편을 향한 게 맞나" 같은 판단과 그로 인한 버그 방지는 **상위 계층의 몫**이다.
+      계층 침범을 막는다는 이유도 있다
+    - 그러면 팀 대신 **"이 액션이 인터셉트를 시도해도 되는가" 라는 비트**를 상위가 넘긴다
+      (예: `RegisterAction(action, bool canIntercept)`). `BoutGraph` 는 규칙을 모르고 시키는 대로만 한다
+    - **`DefenderId` → `bool WasClash` 와 같은 모양이다** — 정체(팀/캐릭터)를 넘기지 말고
+      **실제로 쓰이는 비트**를 넘긴다. 정체를 넘기면 받는 쪽이 규칙을 알아야 해진다
+    - 이 결정 때문에 `ISlotLookup` 을 `int GetSpeed(SpeedSlot)` 로 좁히는 것을 막던 유일한
+      반대 논거("나중에 `Team` 도 같은 경로로 꺼내면 배선 추가 0")가 없어졌다
   - **주의**: "플레이어 진영 = Ally" 를 코드에 박는 것이다. 자동 전투·관전이 생기면
     "지금 배치하는 쪽"으로 바뀌어야 한다.
   - **적 AI 를 붙일 때 같이 하는 게 맞다.** 지금 넣으면 검증 수단이 손으로 적 액션을 넣는 것뿐이라
@@ -1278,14 +1287,26 @@ SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Ap
 - 접은 대안: `SpeedSlots` 를 활성분 view 로 두고 풀을 `SpeedSlotPool` 로. 읽기는 낫지만
   view 타입이나 LINQ 가 필요해 더 비싸다
 
-**⚠ 별건으로 딸린 버그 — `_slotRuntimeMap` 이 갱신되지 않는다.**
-`BattleRuntime` 생성자에서 **딱 한 번** 채우는데 `SpeedSlotPassive` 는 `OnTurnStart` 에서 슬롯을 늘린다.
-**전투 시작 후 늘어난 슬롯은 map 에 영영 안 들어가고** `CombatExecutor.cs:30` 의
-`graph.SlotRuntime[slot]` 이 그 슬롯을 못 찾는다.
-- `_activeSpeedSlotCount` 배선과 **무관하다.** 따로 고쳐야 한다
-- 지금은 안 터진다(`SpeedSlotPassive` 를 쓰는 캐릭터가 0명). 고치려면 "언제 다시 동기화하나"
-  (턴 시작 훅과 `RollSpeedDice` 의 순서)를 정해야 하는데 **검증할 방법이 없다** —
-  **봉인 효과나 감정 슬롯을 실제로 만들 때 같이 할 것**
+~~**⚠ 별건으로 딸린 버그 — `_slotRuntimeMap` 이 갱신되지 않는다.**~~
+✔ **해소 (2026-08-22). 고친 게 아니라 맵을 없앴다.**
+- 증상이었던 것: `BattleRuntime` 생성자에서 **딱 한 번** 채우는데 `SpeedSlotPassive` 는
+  `OnTurnStart` 에서 슬롯을 늘린다. 전투 시작 후 늘어난 슬롯은 map 에 영영 안 들어가고
+  `CombatExecutor.cs:30` 이 그 슬롯을 못 찾았다
+- **조회가 계산 가능하다는 것이 열쇠였다.** `SpeedSlot` 은 `(CharacterId, SlotIndex)` 이고
+  **풀의 위치 = `SlotIndex`** 이므로
+  `GetCharacterRuntime(slot.CharacterId).SpeedSlotPool[slot.SlotIndex]` 한 줄이면 된다.
+  **캐시가 없으면 낡을 일도 없다** — "언제 다시 동기화하나" 라는 질문 자체가 사라졌다
+- 형태: `ISlotLookup` 인터페이스 신설, `BattleRuntime` 이 구현(`IEventSink` 와 같은 패턴으로
+  생성자에서 `this` 를 넘긴다). `BoutGraph` 는 사전 대신 이걸 받고,
+  `CombatExecutor` 는 이미 `BattleRuntime` 을 들고 있어 **직접 부른다** —
+  그래서 `BoutGraph.SlotRuntime` 공개 프로퍼티가 통째로 사라졌다
+- **⚠ 새 불변량: "풀의 위치 = `SlotIndex`" 가 이제 조회의 근거다.** 지금까지는 슬롯을
+  *만들 때만* 쓰이던 성질인데 이제 *찾을 때도* 쓰인다. 깨지면 엉뚱한 슬롯의 속도를 읽고,
+  증상이 "행동 순서가 이상함" 으로 보여 원인을 정렬 쪽에서 찾게 된다.
+  **`SpeedSlotPool` 을 정렬하거나 원소를 제거하면 깨진다**
+- **함정 (실제로 겪음)**: 생성자에서 인자를 받아놓고 **필드에 대입하는 줄을 빠뜨렸다.**
+  컴파일은 통과하고, **조건 B(인터셉트)를 실제로 걸어야만** `NullReferenceException` 이 난다.
+  평소 전투는 멀쩡히 돌아서 "회귀 통과" 로 보인다 — 검증에 인터셉트가 반드시 들어가야 하는 이유
 
 #### 봉인 규칙 확정 (2026-08-22, 사용자 플레이 확인)
 

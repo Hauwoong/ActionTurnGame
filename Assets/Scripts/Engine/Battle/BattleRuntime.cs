@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 // 전투의 가변 심장이자 이벤트 허브. 이벤트는 Apply(this)로 이 객체로 되불러 상태를 바꾼다.
-public class BattleRuntime : IEventSink
+public class BattleRuntime : IEventSink, ISlotLookup
 {
     // ──────────── 결정성(RNG) ────────────
     private readonly int _seed;
@@ -9,8 +9,6 @@ public class BattleRuntime : IEventSink
     // ──────────── 캐릭터 · 슬롯 ────────────
     private readonly Dictionary<int, CharacterRuntime> _characters;
     public IReadOnlyDictionary<int, CharacterRuntime> Characters => _characters;
-
-    private readonly Dictionary<SpeedSlot, SpeedSlotRuntime> _slotRuntimeMap = new(); // 전 캐릭터의 속도 슬롯을 평탄화한 조회 맵. SpeedSlot->Runtime 역참조.
 
     // ──────────── 전투 · 합(Bout) ────────────
     public CombatExecutor Executor { get; private set; }
@@ -51,10 +49,8 @@ public class BattleRuntime : IEventSink
         {
             var runtime = new CharacterRuntime(state, this, Rng);
             _characters[state.CharacterId] = runtime;
-            foreach (var slot in runtime.SpeedSlotPool)
-                _slotRuntimeMap[slot.Slot] = slot;
         }
-        _boutGraph = new BoutGraph(new Dictionary<SpeedSlot, ActionInstance>(), _slotRuntimeMap);
+        _boutGraph = new BoutGraph(new Dictionary<SpeedSlot, ActionInstance>(), this);
     }
 
     // ──────────── 캐릭터 · 슬롯 ────────────
@@ -75,6 +71,9 @@ public class BattleRuntime : IEventSink
     /// <returns>해당 캐릭터의 CharacterRuntime</returns>
     public CharacterRuntime GetCharacterRuntime(int characterId)
         => _characters[characterId];
+
+    public SpeedSlotRuntime GetSlotRuntime(SpeedSlot slot)
+        => GetCharacterRuntime(slot.CharacterId).SpeedSlotPool[slot.SlotIndex];
 
     // ──────────── 주사위 ────────────
     /// <summary>
