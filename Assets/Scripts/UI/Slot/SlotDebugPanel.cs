@@ -65,7 +65,7 @@ public class SlotDebugPanel : MonoBehaviour
 
         foreach (var character in _runtime.Characters.Values)
         {
-            foreach (var slot in character.SpeedSlots)
+            foreach (var slot in character.SpeedSlotPool)
             {
                 var item = Instantiate(itemPrefab, container);
                 item.Bind(slot, _runtime.BoutGraph, input);

@@ -24,7 +24,6 @@ public class CharacterRuntime : IEventSink
     private bool _isStaggered = false;
     private int _emotionLevel;
     private int _emotionStack;
-    private int _activeSpeedSlotCount;
     private int _staggeredTurnsRemaining = 0;
     private readonly CardResolver _cardResolver = new();
 
@@ -50,7 +49,7 @@ public class CharacterRuntime : IEventSink
     public int EmotionGainOnStagger => _state.EmotionGainOnStagger;
     public int EmotionGainOnStaggered => _state.EmotionGainOnStaggered;
     public int EmotionGainOnStaggerHeal => _state.EmotionGainOnStaggerHeal;
-    public IReadOnlyList<SpeedSlotRuntime> SpeedSlots => _speedSlots;
+    public IReadOnlyList<SpeedSlotRuntime> SpeedSlotPool => _speedSlots;
     public IReadOnlyList<StatusEffectRuntime> StatusEffects => _statusEffects;
 
     public CharacterRuntime(CharacterState state, IEventSink eventSink, IRng rng)
@@ -69,8 +68,7 @@ public class CharacterRuntime : IEventSink
 
         _cardManager = new CardManager(new List<CardModel>(state.InitialDeck), rng);
 
-        _activeSpeedSlotCount = state.SpeedSlotCount;
-        CreateSpeedSlots();
+        EnsureSpeedSlotCount(state.SpeedSlotCount);
 
         foreach (var passiveModel in state.Passives)
         {
@@ -172,14 +170,13 @@ public class CharacterRuntime : IEventSink
         _emotionLevel++;
         _emotionStack = 0;
     }
-    public void SetSpeedSlotCount(int count)
+    public void EnsureSpeedSlotCount(int count)
     {
         while (_speedSlots.Count < count)
         {
             var slot = new SpeedSlot(_state.CharacterId, _speedSlots.Count);
             _speedSlots.Add(new SpeedSlotRuntime(slot, _state.MinSpeed, _state.MaxSpeed));
         }
-        _activeSpeedSlotCount = count;
     }
     public void ExitStagger()
     {
@@ -383,15 +380,6 @@ public class CharacterRuntime : IEventSink
 
         foreach (var passive in _passives)
             passive.OnAfterStagger(ctx);
-    }
-
-    void CreateSpeedSlots()
-    {
-        for (int i = 0; i < _state.SpeedSlotCount; i++)
-        {
-            var slot = new SpeedSlot(_state.CharacterId, i);
-            _speedSlots.Add(new SpeedSlotRuntime(slot, _state.MinSpeed, _state.MaxSpeed));
-        }
     }
 
     void EnsureSorted()

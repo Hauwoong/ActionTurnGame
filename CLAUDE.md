@@ -21,37 +21,44 @@ asmdef 로 게이트가 섰고 **이제 컴파일러가 규칙을 지킨다.** �
 **1~3 으로 CLAUDE.md 의 "안 달린 주석" 목록이 전부 소진됐다.**
 `CombatExecutor.cs:162` / `DicePool.cs:81` 의 "여기 `Attack` 만인 건 저장 규칙 때문" 도 들어갔다.
 
-#### ▶▶ 재개 절차 — `CharacterRuntime.cs` (419줄, 메서드 39개)
+#### ▶▶ 재개 절차 — `CharacterRuntime.cs` (메서드 38개)
 
 **각 단계를 따로 커밋한다.** 3단계의 diff 가 "순수 이동" 이어야 대조가 의미를 갖기 때문이다.
 
 1. ✔ **완료** — `EmotionLevelUp` 상한 가드 + 죽은 필드 2개(`_MaxEmotionLevel`/`_maxEmotionStack`) 삭제
-2. **← 여기부터.** `_activeSpeedSlotCount` **B안 배선**. 형태와 소비처 4곳의 차이는 9번 항목의
-   "`_activeSpeedSlotCount` — 배선한다" 절에 전부 적어뒀다. 요약:
-   - `SpeedSlots` → **`SpeedSlotPool`** 개명 + **`ActiveSpeedSlotCount`** 프로퍼티 신설
-   - 컴파일 에러 3곳을 하나씩 판단: `BattleRuntime.cs:54`=풀 전체 /
-     `BattleRuntime.cs:67`(`RollSpeedDice`)=활성분 / `SlotDebugPanel.cs:68`=활성분
-   - **뒤 둘은 짝이다.** 하나만 고치면 속도가 안 굴려진 슬롯이 UI 에 뜨거나 그 반대가 된다
-   - **검증은 회귀뿐** — `_activeSpeedSlotCount == _speedSlots.Count` 라 동작 변화가 0이어야 한다
+2. ✔ **완료 (2026-08-22, 플레이 검증)** — **개수 배선을 했다가 되돌리고 개명만 남겼다.**
+   착수한 다음날 사용자가 원작에서 봉인 규칙을 확인했고, 개수(`int`) 모델로는 표현이 안 되는 게
+   드러났다. 자세한 것은 9번 항목의 **"봉인 규칙 확정"** 절. 남은 결과물:
+   - `SpeedSlots` → **`SpeedSlotPool`** 개명 (3곳). 봉인은 `IsSealed` 플래그로 갈 것이고,
+     그때도 이 이름이 `foreach` 로 봉인 슬롯을 조용히 포함시키는 걸 막아준다
+   - `_activeSpeedSlotCount` **삭제** — 9번 표의 "쓰기 전용" 항목이 배선이 아니라 제거로 닫혔다.
+     한 필드가 **"슬롯을 몇 개 가졌나"(개수)** 와 **"이번 턴에 쓰나"(플래그)** 두 축을 겸하고 있었다
+   - `SetSpeedSlotCount` → **`EnsureSpeedSlotCount`** 개명 + `CreateSpeedSlots` 를 그 안으로 접음.
+     몸통이 `while` 하나만 남아 이름이 하는 일과 어긋났다(`ReturnCard`/`EndBout` 때와 같은 판단).
+     `EnsureSorted` 와 같은 접두사·같은 성격(멱등)이라 어휘를 새로 만들지 않았다
+   - **덤: 어제 걱정한 "절대값 setter라 합성이 안 된다" 가 이걸로 해소됐다.** 아래 그 블록 참고
 3. **카테고리 재정렬** (순수 이동, 주석 금지). 배너는 `BattleRuntime` 스타일
    (`// ──────────── 이름 ────────────`). 목표 순서:
    상태(필드) → 조회(프로퍼티) → 생성자 → 이벤트 → HP·죽음 → 스태거 → 에너지(빛) → 감정 →
    속도 슬롯 → 카드·액션 → 주사위 → 상태이상 → Trigger 훅 → private 헬퍼
    - **실제로 옮겨지는 건 셋뿐이다**: `ExitStagger`(스태거 그룹으로) /
-     `SetSpeedSlotCount`(감정 구간에서 빼냄) / `UseEnergy`(`CanUseAction`·`UseAction` 사이에서 빼냄)
+     `EnsureSpeedSlotCount`(감정 구간에서 빼냄) / `UseEnergy`(`CanUseAction`·`UseAction` 사이에서 빼냄)
    - **Trigger 8개는 파이프라인 순서로**: `TurnStart → ModifyRoll → DiceRoll → BeforeDamage →
      AfterDamage → BeforeStagger → AfterStagger → TurnEnd`. 제일 큰 이득은 `TurnEnd` 가 한복판에서 끝으로 가는 것
-   - **검증: 이동 전후로 메서드 39개, 이름이 전부 일치해야 한다.** 이동 전 목록(정렬):
+   - **검증: 이동 전후로 메서드 38개, 이름이 전부 일치해야 한다.** 이동 전 목록(정렬,
+     2026-08-22 2단계 반영):
      `AddStatus` `Advance` `CanUseAction` `ChangeMaxEnergy` `ChangeMaxHp` `ChangeMaxStagger`
-     `CharacterRuntime`(생성자) `CreateSpeedSlots` `DestroyRemainingDice` `Die` `DiscardRemainingDice`
-     `EmotionLevelUp` `EndBoutDice` `EnqueueEvent` `EnsureSorted` `EnterStagger` `ExitStagger`
+     `CharacterRuntime`(생성자) `DestroyRemainingDice` `Die` `DiscardRemainingDice`
+     `EmotionLevelUp` `EndBoutDice` `EnqueueEvent` `EnsureSorted` `EnsureSpeedSlotCount`
+     `EnterStagger` `ExitStagger`
      `FlushExpired` `GainEmotionStack` `GetDiceInfo` `Peek` `RecoverEnergy` `RecoverStagger`
-     `ResetDiceForNextTurn` `SetSpeedSlotCount` `ShouldDie` `ShouldEnterStagger` `TakeDamage`
+     `ResetDiceForNextTurn` `ShouldDie` `ShouldEnterStagger` `TakeDamage`
      `TakeStagger` `TriggerAfterDamage` `TriggerAfterStagger` `TriggerBeforeDamage`
      `TriggerBeforeStagger` `TriggerDiceRoll` `TriggerModifyRoll` `TriggerTurnEnd` `TriggerTurnStart`
      `UseAction` `UseEnergy`
-     - **2단계에서 `SpeedSlots` 개명이 먼저 들어가면 이 목록은 안 바뀐다**(프로퍼티라 메서드가 아니다)
-4. **메서드 39개 `///` 주석.** 카테고리 순서대로
+     - **2단계가 이 목록을 바꿨다**: `CreateSpeedSlots` 삭제(-1), `SetSpeedSlotCount` →
+       `EnsureSpeedSlotCount` 개명. 39 → **38개**. `SpeedSlotPool` 개명은 프로퍼티라 목록 밖이다
+4. **메서드 38개 `///` 주석.** 카테고리 순서대로
 
 #### 주석 작업에서 반복된 것 — 다음에 먼저 볼 것
 
@@ -1214,7 +1221,7 @@ SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Ap
 | `DicePool.Add` | 호출자 0건, 적재가 `Inject` 로 되어 있어 **주사위 역순** (수정 완료) |
 | `CharacterRuntime.ResetDiceForNextTurn` | 호출자 0건, 턴 끝 정리가 통째로 안 돎 (수정 완료) |
 | `CharacterRuntime._diceById` | 쓰기 전용. 읽는 곳 0건 (→ **3-1.12 에서 용도 확정: 불변 속성 조회용 대장**) |
-| `CharacterRuntime._activeSpeedSlotCount` | 쓰기 전용. **→ 2026-08-21 배선하기로 결정(B안). 아래 참고** |
+| `CharacterRuntime._activeSpeedSlotCount` | 쓰기 전용. **→ 2026-08-22 삭제로 닫힘.** 배선해봤더니 개념 자체가 틀렸다. 아래 참고 |
 | `PlayerActionInput.CancelSlot` | 호출자 0건 — 우클릭 취소 입력이 없다 |
 | `UseCardEvent` | 생산자 0건 — **카드가 손에서 안 빠진다** |
 | `BoutGraph.interceptCandidates` | UI 표시(개수)만 있고 Tab 순환 미구현 |
@@ -1222,9 +1229,12 @@ SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Ap
 
 엔진을 두껍게 만들고 배선을 나중으로 미룬 시기의 흔적으로 보인다.
 
-#### `_activeSpeedSlotCount` — 배선한다 (2026-08-21 사용자 결정, B안)
+#### `_activeSpeedSlotCount` — 개수 배선은 접었다. 남은 것은 개명 (2026-08-22 확정)
 
-**사용자 확인: 나중에 슬롯을 봉인하는 효과를 만든다.** 따라서 "풀 + 활성 개수" 구조가 실제로 필요하다.
+**⚠ 이 절의 "풀 + 활성 개수" 모델은 폐기됐다.** 2026-08-21 에 배선했다가 다음날 봉인 규칙을
+플레이로 확인하고 되돌렸다. 아래 **"봉인 규칙 확정"** 이 결론이고, 이 절에서 살아남은 것은
+**`SpeedSlots` → `SpeedSlotPool` 개명 하나**다. 아래 소비처 표의 2·3행도 그때 뒤집혔다.
+**배선해본 것 자체는 소득이었다** — 개수 모델을 실제로 코드에 넣어봐서 두 축이 갈렸다는 게 드러났다.
 
 **옛 설명이 부정확했다** — "감정 레벨이 슬롯 수를 못 올림" 은 틀렸다. `SetSpeedSlotCount` 의
 `while (_speedSlots.Count < count)` 가 리스트를 실제로 늘린다. **못 하는 것은 줄이는 쪽이다.**
@@ -1256,6 +1266,80 @@ SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Ap
 - 지금은 안 터진다(`SpeedSlotPassive` 를 쓰는 캐릭터가 0명). 고치려면 "언제 다시 동기화하나"
   (턴 시작 훅과 `RollSpeedDice` 의 순서)를 정해야 하는데 **검증할 방법이 없다** —
   **봉인 효과나 감정 슬롯을 실제로 만들 때 같이 할 것**
+
+#### 봉인 규칙 확정 (2026-08-22, 사용자 플레이 확인)
+
+원작을 직접 돌려서 확인한 것이다. **개수 모델이 여기서 죽었다.**
+
+| 관측 | 설계 결론 |
+|---|---|
+| 봉인 슬롯이 **깨진 모습으로 계속 보인다** | 슬롯은 사라지지 않는다 → **`IsSealed` 플래그**. `int` 로는 "존재하는데 못 쓴다" 를 표현할 수 없다 |
+| **항상 맨 왼쪽**을 차지한다 | **표시 규칙**이다. 속도 정렬의 부수효과가 아니다 — 유진(영구 봉인)은 속도가 없는데도 자리가 고정이다 |
+| "지정 불가능" = **거기서 카드만 못 낸다** | 게이트는 `SourceSlot` 한쪽뿐. **타겟으로는 양쪽 다 지정 가능**하다 |
+| 봉인 대상은 맞은 슬롯이 아니라 **상대 슬롯 중 가장 빠른 것** | 대상이 **속도로** 정해진다 → `RollSpeedDice` 뒤라야 의미가 있다 |
+| UI 는 **속도 내림차순 좌→우**. 풀 순서는 고정 | 정렬은 **표시 전용**이다 |
+
+**그래서 이렇게 된다**
+
+- **게이트는 `BoutGraph.RegisterAction` 한 곳이다.** `action.SourceSlot` 이 봉인이면 거부.
+  **타겟 경로는 무수정** — edge 가 봉인 슬롯을 가리키는 것이 정상이다.
+  타겟까지 막아야 했으면 `PlayerActionInput`·`BoutGraph`·`CombatExecutor`·UI 를 전부 손봐야 했다
+- **`_slotRuntimeMap` = 풀 전체가 규칙으로 확인됐다.** 봉인 슬롯이 **공격 대상이 될 수 있으므로**
+  신원 조회가 반드시 된다 (2026-08-21 에 `BattleRuntime.cs:54` 를 풀로 판단한 근거가 사후에 맞았다)
+- **봉인 슬롯을 때리면 항상 일방 공격이다.** 카드를 못 내니 액션이 없고, 액션이 없으면 합이 성립할 수
+  없다. 빈 슬롯 때리기와 같은 경로라 **새로 짤 코드가 0**이다.
+  즉 봉인의 효과는 "슬롯 하나를 잃음" + "**막을 수 없는 표적 하나를 상대에게 줌**" 두 개다
+- **한 필드가 두 축을 겸하고 있었다.** 이것이 "2번만 봉인" 에서 깨진 이유다:
+
+  | 축 | 무엇이 바꾸나 | 타입 | 사는 곳 |
+  |---|---|---|---|
+  | 슬롯을 **몇 개** 가졌나 | 감정 레벨 | 개수 | `_speedSlots.Count` / `SetSpeedSlotCount` |
+  | 그중 **이번 턴에 쓰나** | 봉인 | 플래그 | `SpeedSlotRuntime.IsSealed` |
+
+**표시 순서 — 두 규칙이 합쳐진다 (파생. 직접 관측한 것이 아니다)**
+
+```
+[봉인 슬롯들] → [비봉인, 속도 내림차순]
+```
+봉인은 속도 정렬의 **예외**다. 봉인 슬롯엔 속도가 없거나 의미가 없으므로 속도로 정렬하면
+오히려 오른쪽 끝으로 가야 하는데 실제로는 맨 왼쪽이다.
+
+- **정렬 기준은 `ActionPriority.CompareTo` 와 같아야 한다** — 속도 내림 → `CharacterId` 오름 →
+  `SlotIndex` 오름. 다르면 **동점에서 화면이 실행 순서를 거짓말한다.**
+  2026-08-05 에 행동 순서가 통째로 뒤집혀 있던 것이 오래 안 보였던 이유가 "화면에 실행 순서가
+  안 나온다" 였다. 정렬을 같은 기준으로 맞추면 그 계열 버그가 눈에 보이게 된다
+- **`SlotIndex` 를 다시 부여하면 안 된다.** "가장 빠른 슬롯이 0번" 은 **화면 위치**를 말하는 것이고
+  슬롯의 신원이 아니다. `SpeedSlot` 은 `BoutGraph.edges` / `_slotRuntimeMap` / `interceptCandidates` 의
+  **키**라서, 매 턴 번호를 다시 매기면 등록된 액션과 합이 통째로 미아가 된다.
+  `SlotDebugItem.Bind` 가 `SpeedSlotRuntime` **객체**를 받으므로 신원은 객체가 나른다 — 표시 순서는
+  마음대로 바꿔도 안전하다
+- 지금 `SlotDebugPanel` 은 **양 진영을 한 목록**에 평탄하게 그린다. 원작 규칙은 캐릭터별 행 안에서의
+  정렬이므로, 디버그 패널을 전체 정렬할지 캐릭터별로 정렬할지는 별개 선택이다.
+  전체 정렬하면 그 목록이 곧 **bout 실행 순서**가 되어 디버그 가치가 올라간다
+
+**봉인 슬롯이 속도를 굴리는지는 관측할 수 없다 — 그래서 규칙 질문이 아니라 코드 결정이다.**
+봉인 슬롯의 `Speed` 를 읽는 코드가 하나도 없다: 액션이 없어 `ActionPriority` 에 안 들어가고,
+합 판정에도 안 쓰이고, 화면엔 숫자가 안 보인다.
+**안 굴리는 쪽을 권한다** — 깨진 슬롯에 속도가 없는 게 자연스럽고, 봉인 대상 선정("가장 빠른 슬롯")에서
+이미 봉인된 슬롯이 후보로 되돌아오는 것도 같이 막힌다.
+
+**아직 안 정해진 것**
+- 봉인의 **발동 조건과 지속시간**. "가장 빠른 슬롯이 계속 잠긴다" 는 관측이 (a) 같은 슬롯이 계속
+  잠겨 있는 것인지 (b) 매번 그때의 최속을 새로 잠그는 것인지 가르지 않는다
+- 감정 레벨이 **내려가는** 경우가 있나. 있으면 "풀은 4인데 이번 턴엔 3" 이 되살아나 개수 축이
+  다시 필요해진다. 없으면 `_speedSlots.Count` 가 곧 슬롯 수다
+
+**⚠ 새로 생긴 슬롯은 그 턴에 속도가 0이다 (2026-08-21 발견).**
+`BattleManager.StartTurn` 이 `RollSpeedDice()` → `TurnStartEvent`(→ `SpeedSlotPassive`) 순인데
+슬롯이 느는 것은 뒤쪽이다. `SpeedSlotRuntime` 생성자는 `Speed` 를 굴리지 않으므로(`Roll()` 만 굴린다)
+그 슬롯은 `Speed = 0` 인 채로 한 턴을 보낸다. **위 `_slotRuntimeMap` 크래시를 고치면 그다음에 만날 증상.**
+
+~~**⚠ `SetSpeedSlotCount` 는 절대값 setter라 효과끼리 합성이 안 된다 (2026-08-21 발견).**~~
+✔ **해소 (2026-08-22).** `_activeSpeedSlotCount` 를 지우면서 몸통이 `while` 하나만 남아
+**단조(monotone)** 가 됐고, 이름도 `EnsureSpeedSlotCount` 로 따라갔다.
+이제 여러 효과가 불러도 **큰 값이 이기고** 매 턴 작은 값을 다시 불러도 안 깎인다.
+**줄이는 일을 아예 못 하는 것이 안전장치가 됐다.** 봉인은 개수가 아니라 `IsSealed` 플래그로 가므로
+축이 겹치지도 않는다 — 걱정했던 "다음 턴 시작에 조용히 풀린다" 는 구조적으로 못 일어난다.
 
 **주의**: `Bout.cs` 때 세운 기준("참조 0건만으로 데드 코드 판단 말 것")의 **반대 방향** 사례들이다.
 그때는 지워야 할 것이 남아 있었고, 이번엔 불러야 할 것이 안 불렸다. 분류할 때 둘을 섞지 말 것.

@@ -51,7 +51,7 @@ public class BattleRuntime : IEventSink
         {
             var runtime = new CharacterRuntime(state, this, Rng);
             _characters[state.CharacterId] = runtime;
-            foreach (var slot in runtime.SpeedSlots)
+            foreach (var slot in runtime.SpeedSlotPool)
                 _slotRuntimeMap[slot.Slot] = slot;
         }
         _boutGraph = new BoutGraph(new Dictionary<SpeedSlot, ActionInstance>(), _slotRuntimeMap);
@@ -64,7 +64,7 @@ public class BattleRuntime : IEventSink
     public void RollSpeedDice()
     {
         foreach (var character in _characters.Values)
-            foreach (var slot in character.SpeedSlots)
+            foreach (var slot in character.SpeedSlotPool)
                 slot.Roll(Rng);
     }
 
