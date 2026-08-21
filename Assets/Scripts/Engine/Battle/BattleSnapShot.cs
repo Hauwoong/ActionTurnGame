@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 
 // BattleSnapShot은 BattleRuntime에 넘기는 불변 입력 뭉치
-// 총 3계층(CharacterData(청사진) -> CharacterState(스냅샷) -> CharacterRuntime(가변))에서의 스냅샷 계층의 경계 역할
+// 총 4계층에서 스냅샷 계층의 경계 역할:
+// CharacterData(SO 청사진, Engine 밖) -> CharacterModel(순수 청사진) -> CharacterState(스냅샷) -> CharacterRuntime(가변)
 // Seed + CharacterStates가 전투 하나를 완전히 결정한다.
 public class BattleSnapShot
 {
@@ -13,7 +14,7 @@ public class BattleSnapShot
     public IReadOnlyList<CharacterState> CharacterStates => _characterStates;
 
     /// <summary>
-    /// 양 진영 CharacterData 를 CharacterState 스냅샷 리스트로 굳힌다. 아군→적군 순으로 CharacterId 부여.
+    /// 양 진영 CharacterModel을 CharacterState 스냅샷 리스트로 굳힌다. 아군→적군 순으로 CharacterId 부여.
     /// </summary>
     /// <param name="allies">아군 진영 청사진</param>
     /// <param name="enemies">적군 진영 청사진</param>

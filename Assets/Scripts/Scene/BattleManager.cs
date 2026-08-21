@@ -32,10 +32,11 @@ public class BattleManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Character(Scene Component) -> CharacterData(Asset)로 즉시 평가 + null 검증해서 List로 실체화 하는 역할을 한다.
+    /// Character(Scene Component) -> CharacterModel(순수 청사진)로 즉시 평가 + null 검증해서 List로 실체화 하는 역할을 한다.
+    /// SO -> 모델 변환은 CharacterData.ToModel()이 하고, 여기는 그 결과를 모으는 자리다.
     /// </summary>
     /// <param name="characters">데이터 추출할 캐릭터</param>
-    /// <returns>등록된 캐릭터 데이터 List</returns>
+    /// <returns>등록된 캐릭터 모델 List</returns>
     IEnumerable<CharacterModel> ExtractData(IEnumerable<Character> characters)
     {
         int index = 0;

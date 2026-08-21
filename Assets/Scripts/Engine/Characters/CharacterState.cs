@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 
-// 불변 스냅샷 계층 CharacterData(청사진)로 한 번 빌드되고 CharacterRuntime(가변)이 시작값으로 읽는다.
+// 불변 스냅샷 계층. CharacterModel(순수 청사진)에 스탯 수정 패시브를 적용해 한 번 얼리고.
+// CharacterRuntime(가변)이 시작값으로 읽는다. 패시브 적용은 CharacterStateBuilder가 맡는다.
 public sealed class CharacterState
 {
     public int CharacterId { get; }
