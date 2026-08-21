@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 // 전투의 가변 심장이자 이벤트 허브. 이벤트는 Apply(this)로 이 객체로 되불러 상태를 바꾼다.
-public class BattleRuntime : IEventSink, ISlotLookup
+public class BattleRuntime : IEventSink, ISpeedLookup
 {
     // ──────────── 결정성(RNG) ────────────
     private readonly int _seed;
@@ -74,6 +74,8 @@ public class BattleRuntime : IEventSink, ISlotLookup
 
     public SpeedSlotRuntime GetSlotRuntime(SpeedSlot slot)
         => GetCharacterRuntime(slot.CharacterId).SpeedSlotPool[slot.SlotIndex];
+
+    public int GetSpeed(SpeedSlot slot) => GetSlotRuntime(slot).Speed;
 
     // ──────────── 주사위 ────────────
     /// <summary>
