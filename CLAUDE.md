@@ -1,17 +1,19 @@
 # CLAUDE.md — Library of Ruina 리팩토링 프로젝트
 
-## 다음 작업 (2026-08-20 갱신)
+## 다음 작업 (2026-08-21 갱신)
 
-### ▶ 다음 시작 지점 — **4번 4단계 (Engine asmdef + No Engine References)**
+### ▶ 다음 시작 지점 — **주석 일괄 작업**
+
+✔ **4번(Engine → Data 의존 끊기)이 통째로 끝났다 (2026-08-21, 플레이 검증).**
+asmdef 로 게이트가 섰고 **이제 컴파일러가 규칙을 지킨다.** 자세한 것은 아래 4번 항목.
+
+**따라서 "엔진이 일단락되면 주석 작업" 의 그 조건이 충족됐다** (사용자 결정, 2026-08-05,
+2026-08-20 재확인). 아래 "거짓이 된 주석" 목록과 "그때 같이 넣을 것" 목록이 그 재료다.
 
 **2026-08-06 에 1~2번(`BoutStart`·`BoutEndLog` 합 여부 / `DamageLog`·`StaggerLog` 공격자)과
 `IsOffensive` 를 끝냈고, 2026-08-19 에 6번 잔재 정리도 끝냈다.**
-남은 큰 덩어리는 **아래 3번(`CharacterModel`) 하나**이고, 그 밖에는
-8번 3·5번 항목(적 AI 와 함께) / 3-3 훅 순회 정도가 남아 있다.
-
-✔ **3단계·2단계 모두 완료 (2026-08-20, 플레이 검증).**
-**`Engine/` 안의 SO 참조가 0건이다** — `CharacterData`/`CardData`/`PassiveData` 가 나오는 곳은
-이제 주석뿐이다. 남은 것은 **4단계(asmdef 로 기계 검증)** 하나. 자세한 것은 아래 4번 항목.
+주석 작업 뒤에 남는 것은 **8번 3·5번 항목(적 AI 와 함께)** / **3-3 훅 순회** /
+**5번 드로우 장수 변수화** / **10번 UI(전투 해석 연출)** 이고, 큰 덩어리는 없다.
 
 2026-08-05~06 세션에서 끝난 것: **3-1.10 (1~5단계 전부)**, **3-1.12**, **3-1.11 + `UnopposedLog` 배선**,
 **3-1.13 (힘/패시브가 `Counter` 를 안 올려주던 것) + `IsOffensive` 까지 완결**,
@@ -27,20 +29,24 @@
 3. ~~**4번 2단계 — `CharacterModel` 신설**~~ — ✔ **완료 (2026-08-20, 플레이 검증).**
    3단계를 먼저 한 덕에 기계적인 작업이 됐다. 아래 4번 항목 참고
 
-**엔진이 일단락되면 주석 작업**(사용자 결정: 한꺼번에 단다). 그때 넣을 것은 아래 목록 참고 —
-`CombatExecutor.cs:162` / `DicePool.cs:81` 의 "여기 `Attack` 만인 건 저장 규칙 때문"도 그때 같이.
+주석 작업에 넣을 것은 아래 두 목록이다. `CombatExecutor.cs:162` / `DicePool.cs:81` 의
+"여기 `Attack` 만인 건 저장 규칙 때문"도 그때 같이.
 
-**주석은 엔진이 끝난 뒤 한꺼번에 단다** (사용자 결정, 2026-08-05, 2026-08-20 재확인).
-
-**⚠ 먼저 볼 것 — 4번 2단계로 거짓이 된 주석들 (2026-08-20).** 안 달린 게 아니라 **틀렸다.**
-`CharacterState` 는 이제 카드·패시브 변환을 하지 않는다(그 일은 `CharacterData.ToModel()` 로 갔다):
-- `CharacterState.cs:3~4` 파일 머리 — "`CharacterData`(청사진)로 빌드", "`CardData` → `CardModel` 치환"
-- `CharacterState.cs:26~27` XML — 같은 내용. 새 설명은 "**패시브를 적용해 얼린다**" 가 맞다
-- `BattleSnapShot.cs:16` — "양 진영 `CharacterData` 를 …" → `CharacterModel`
-- `BattleManager.cs:34` XML — "`Character` → `CharacterData`(Asset) 로 즉시 평가" → `CharacterModel`
-- `CharacterStateBuilder.cs` `<param>` — "청사진" 이 이제 모델을 가리킨다
-- **"3계층" 이라고 적힌 곳 전부** (`BattleSnapShot.cs:4`, 이 문서 개요) — 4계층이 됐다:
+**⚠ 먼저 볼 것 — 거짓이 된 주석들 (2026-08-21 실측으로 갱신).** 안 달린 게 아니라 **틀렸다.**
+`CharacterState` 는 이제 카드·패시브 변환을 하지 않는다(그 일은 `CharacterData.ToModel()` 로 갔다).
+**남은 것은 3파일 4줄이다:**
+- `CharacterState.cs:3` 파일 머리 — "`CharacterData`(청사진)로 한 번 빌드되고".
+  새 설명은 "**모델을 받아 패시브를 적용해 얼린다**" 가 맞다
+- `BattleSnapShot.cs:4` — "**총 3계층(`CharacterData` → `CharacterState` → `CharacterRuntime`)**".
+  계층 수도 첫 타입도 틀렸다. **4계층**이다:
   `CharacterData`(SO 청사진) → `CharacterModel`(순수 청사진) → `CharacterState`(스냅샷) → `CharacterRuntime`(가변)
+- `BattleSnapShot.cs:16` — "양 진영 `CharacterData` 를 …" → `CharacterModel`
+- `BattleManager.cs:34` XML — "`Character` → `CharacterData`(Asset) 로 즉시 평가" → `CharacterModel`.
+  **`Engine/` 밖(Scene)이라 asmdef 게이트에 안 걸린다** — 컴파일러가 안 잡아주는 유일한 항목
+
+- ~~`CharacterState.cs:26~27` XML~~ — **이미 고쳐져 있다**(2026-08-20 작업 중 같이 손댐).
+  `CharacterStateBuilder.cs` `<param>` 의 "청사진" 도 지금은 모델을 가리켜 **거짓이 아니다**.
+  **목록을 만든 뒤 손댄 것이 목록에 반영되지 않았다 — 목록도 코드처럼 썩는다**
 
 그때 같이 넣을 것:
 - `EndBout` 위 — "**멱등이어야 한다**"(합에서 방어자가 곧 `TargetId` 라 `BoutEndEvent` 가
@@ -336,6 +342,20 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
   실제로 `Evade`/`Counter` 가 `_dices: []` 인 채로 커밋될 뻔했다(검증은 통과한 상태에서)
 
 ### 완료 (이번 세션)
+- **4번 4단계 — Engine asmdef + No Engine References (2026-08-21, 플레이 검증)**.
+  DEVLOG `2026-08-21` 참고. 설계 근거는 4번 항목의 "4단계" 절.
+  **이것으로 4번(Engine → Data 의존 끊기)이 통째로 끝났다.**
+  - `LOR.Engine.asmdef` 신설. `noEngineReferences: true` / `autoReferenced: true` / `references: []`
+  - **게이트가 둘이다** — `Engine` → `UnityEngine` 은 체크박스가, `Engine` → `Data`/`Scene`/`UI` 는
+    **어셈블리 분리 그 자체**가 막는다(반대 방향이 순환 참조가 되어 Unity 가 거부).
+    둘째가 이 항목의 원래 제목이고, 공짜로 딸려왔다
+  - **검증을 `rsp` 파일로 했다** — `LOR.Engine` 의 `UnityEngine` 참조 0건 /
+    `Assembly-CSharp` 는 134건. **같은 grep 이 대조군을 겸해서** "참조 없음" 과
+    "grep 이 안 걸림" 이 갈렸다. 위양성 경로가 없는 관측을 **고르는 단계에서** 확보한 첫 사례
+  - `internal` 이 Engine 에 0건이라 `CS0122` 가 안 났고, `namespace` 가 0개(전부 global)인 것도
+    문제가 안 됐다(어셈블리 경계와 네임스페이스는 별개)
+  - **덤으로 발견**: `Engine/Events/DamageEvent.cs:2` 의 `using System.Runtime.InteropServices;` 가
+    **안 쓰인다**(파일 38줄에 `StructLayout`/`Marshal`/`DllImport` 0건). 주석 작업 때 같이 지울 것
 - **`DamageLog` / `StaggerLog` 에 공격자 (2026-08-06, 플레이 검증)**.
   DEVLOG `2026-08-06 (후속 4)` 참고.
   - `DamageLog` → `{AttackerId, TargetId, Amount}`. 호출부 1개(`DamageEvent.cs:22`)
@@ -788,10 +808,11 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
     `AddStack` 이 public 이라 UI 가 부를 수 있다(`SpeedSlots` 도 동일). 막으려면 읽기 전용 view 타입이
     필요한데, 그건 `SpeedSlots` 까지 같이 바꿔야 의미가 있다.
 
-### 4. Engine → Data 의존 끊기 — 구 2번 (1·2·3단계 완료, **4단계만 남음**)
+### 4. Engine → Data 의존 끊기 — 구 2번 — ✔ **완료 (2026-08-21). 1~4단계 전부**
 
-**`Engine/` 안의 SO 참조가 0건이다 (2026-08-20).** `CharacterData`/`CardData`/`PassiveData` 가
-나오는 곳은 주석뿐이고, 그 주석들은 지금 **거짓**이다(위 "거짓이 된 주석" 목록).
+**`Engine/` 안의 SO 참조가 0건이고, 이제 그 0건을 컴파일러가 지킨다.**
+`CharacterData`/`CardData`/`PassiveData` 가 나오는 곳은 주석뿐이고, 그중 일부는 아직
+**거짓**이다(위 "거짓이 된 주석" 목록 — 주석 일괄 작업 때 처리).
 
 - ~~`CharacterData` ← `CharacterState`, `CharacterStateBuilder`, `BattleSnapShot`~~ — ✔ **2단계로 해소**
 - ~~`PassiveData` ← `CharacterState`, `PassiveFactory`~~ — ✔ **3단계로 해소**
@@ -819,20 +840,49 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
   3단계의 `is IStatModifierPassive` 처럼 조용히 false 가 되는 경로가 없었다.
   유일한 조용한 위험이 위의 `int` 인자 순서였고, named argument 로 덮었다
 
-#### 4단계 (남음) — Engine asmdef + **No Engine References**
+#### 4단계 — ✔ **완료·플레이 검증 완료 (2026-08-21)**. 아래는 설계 근거 기록
 
-지금은 "SO 참조 0건" 이 `grep` 으로만 지켜진다. asmdef 를 세우면 **컴파일러가 지킨다.**
-`Engine/` 에 asmdef 를 만들고 Unity 참조를 끊으면, 누가 실수로 `using UnityEngine` 이나
-SO 타입을 들이는 순간 빌드가 깨진다. **오늘 한 것을 기계가 지켜주게 만드는 단계**라
-지금이 제일 싸다 — 참조가 0인 상태에서 켜는 것과 나중에 켜는 것은 난이도가 다르다.
+`Assets/Scripts/Engine/LOR.Engine.asmdef` 신설.
+`noEngineReferences: true` / `autoReferenced: true` / `references: []`.
+`Engine/` 115개 파일이 `LOR.Engine.dll` 로 갈라져 나오고, 나머지(`Data`/`Scene`/`UI`)는
+`Assembly-CSharp` 에 남는다.
 
-진행 계획:
-- **2단계**: `CharacterModel` 신설 + `CharacterData.ToModel()`. `CharacterState`/`Builder`/`BattleSnapShot` 이
-  순수 모델을 받게. `CharacterData` 는 이미 private 필드 + 프로퍼티 구조라 직렬화 마이그레이션 불필요.
-  (~~`CharacterState.Source` 도 이때 삭제~~ — 2026-07-26 에 이미 지워졌다)
-- **3단계**: `PassiveModel`(추상 + 타입별 서브클래스) 신설, `IStatModifierPassive` 구현을 모델 쪽으로 이사,
-  `PassiveFactory` 가 모델을 받게. SO 는 `ToModel()` 만 갖는 껍데기로.
-- **4단계**: Engine asmdef 신설 + **No Engine References** 켜서 기계 검증.
+**게이트가 둘이다. 하나는 체크박스로, 하나는 공짜로 딸려온다:**
+
+| 막는 것 | 수단 |
+|---|---|
+| `Engine` → `UnityEngine` | **No Engine References** 체크박스 |
+| `Engine` → `Data`/`Scene`/`UI` | **어셈블리 분리 그 자체** — 아래 |
+
+- **둘째가 이 항목의 제목이다.** `Assembly-CSharp` 가 `LOR.Engine` 을 참조하므로
+  (`autoReferenced: true`) 반대 방향은 **순환 참조**가 되고 Unity 가 아예 거부한다.
+  즉 `Engine/` 은 `CharacterData` 를 **쓰고 싶어도 쓸 방법이 없다**
+- **`Auto Referenced` 를 켜두는 진짜 이유가 이것이다.** 끄면 `Data`/`Scene`/`UI` 가 Engine
+  타입을 못 봐 프로젝트가 통째로 안 도는데, 그건 증상이다. 켜야 화살표가 한 방향으로
+  **자동** 고정되고, 손으로 걸면 반대로 걸 여지가 생긴다
+- **`internal` 이 Engine 에 0건이라 `CS0122` 가 안 났다.** 어셈블리가 갈리면 `internal` 범위가
+  바뀐다 — 다음에 다른 폴더를 가를 때 먼저 세어볼 것
+- **`Engine/` 에 `namespace` 선언이 0개(전부 global)인데 문제가 안 된다.** 어셈블리만 갈리고
+  이름은 안 갈리기 때문이다. 어셈블리 경계와 네임스페이스는 별개다
+
+**검증은 "컴파일 통과" 가 아니라 `rsp` 파일로 했다** (`Library/Bee/artifacts/*.dag/*.rsp`):
+
+| 어셈블리 | `UnityEngine` 참조 |
+|---|---|
+| `LOR.Engine` | **0건** (135개 참조가 전부 .NET BCL) |
+| `Assembly-CSharp` | **134건** |
+
+**이 관측은 대조군이 공짜로 딸려 있다** — 같은 `grep` 이 한쪽에서 134건을 잡으므로
+"참조가 없는 것" 과 "`grep` 이 안 걸린 것" 이 갈린다. 브레이크포인트가 두 번 거짓말한 뒤
+세운 기준("관측 지점은 두 가설을 갈라주는가로 고른다")을 관측 지점 **고르는 단계**에서 만족한 첫 사례.
+
+**덤 — 엔진이 자기 안에서 완결된다.** `DeterministicRng` 가 `Engine/Support/IRng.cs` 에 있고
+진입점 `BattleSnapShot(IEnumerable<CharacterModel>, IEnumerable<CharacterModel>, int seed)` 가
+받는 것도 순수 타입 + `int` 시드뿐이다. **`LOR.Engine.dll` 은 Unity 없이 콘솔 앱에서 돈다** —
+"리플레이 = 시드 + 입력열" 이 말뿐이 아니라 실제로 성립한다.
+- **단 아직 아무도 안 돌려봤다.** 9번 전수조사의 "만들어놓고 배선 0건" 과 같은 자리다.
+  실제로 돌리면 지금 **플레이 + 출혈 카운터 + 브레이크포인트**로 하는 검증들이 `Assert` 몇 줄이 된다
+  (출혈 스택 = 굴림 카운터가 그대로 단언문이 된다). 별건으로 남겨둔다
 
 #### 3단계 — ✔ **완료·플레이 검증 완료 (2026-08-20)**. 아래는 설계 근거 기록
 
@@ -1239,8 +1289,13 @@ Unity / C# 카드 + 주사위 전투 시스템 (LOR 스타일).
 4계층: `CharacterData`(SO 청사진) → `CharacterModel`(순수 청사진) → `CharacterState`(스냅샷) →
 `CharacterRuntime`(가변). `CharacterModel` 은 2026-08-20 에 생겼다 — Engine 이 SO 를 안 보게 하는 관문.
 
-**목표: Unity 에 최대한 의존하지 않는 자체 전투 엔진.**
-`Engine/` 에는 `using UnityEngine` 이 한 줄도 없다. 남은 누수는 위 "다음 작업 4".
+**목표: Unity 에 최대한 의존하지 않는 자체 전투 엔진.** — ✔ **달성 (2026-08-21).**
+`Engine/` 은 `LOR.Engine.asmdef`(`noEngineReferences: true`)로 갈린 별도 어셈블리라
+**`using UnityEngine` 도 SO 타입도 컴파일러가 막는다.** `DeterministicRng` 까지 Engine 안에 있어
+`LOR.Engine.dll` 은 Unity 없이 콘솔에서 돈다(아직 실제로 돌려보진 않았다). 자세한 것은 "다음 작업 4".
+
+**단 "순수" 는 의존성 의미다. 부작용이 없다는 뜻이 아니다** — `CharacterRuntime` 은 가변이고
+`Event.Apply` 가 상태를 바꾼다. 순수 계산은 `CombatExecutor` 한 곳으로 격리돼 있다.
 
 ## 현재 상태 (2026-07-22)
 
@@ -1271,7 +1326,9 @@ Assets/
 └── Prefabs/      Card.prefab, SlotItem.prefab
 ```
 
-폴더가 의존 방향을 나타낸다. `Engine` → `Data` 참조가 남아 있는 것이 "다음 작업 2".
+폴더가 의존 방향을 나타낸다. **2026-08-21 부터는 `Engine/` 이 asmdef 로 갈린 별도 어셈블리라
+그 방향을 컴파일러가 강제한다** — `Engine` → `Data`/`Scene`/`UI` 는 순환 참조가 되어 불가능하다.
+나머지 셋은 `Assembly-CSharp` 에 함께 남아 있고 그들 사이에는 경계가 없다.
 
 ## 구조 요약
 

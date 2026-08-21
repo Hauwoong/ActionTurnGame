@@ -5504,3 +5504,59 @@ ResolveUnopposedDice 와 BoutStartEvent(action, null, ...) 경로는 진작 구�
   "CardData -> CardModel 치환" 은 이제 거짓이다. 안 달린 주석은 없는 것뿐이지만 거짓인
   주석은 사람을 틀린 곳으로 보낸다. 주석 일괄 작업을 미루기로 한 이상 목록에 따로
   "거짓이 된 주석" 절을 만들어 우선순위를 갈라뒀다
+
+## 2026-08-21 — asmdef: grep 이 지키던 규칙을 컴파일러에게 넘기다
+
+### 문제
+
+- 어제 2·3단계로 Engine/ 안의 SO 참조가 0건이 됐지만, 그 0건은 grep 으로만 지켜졌다.
+  규칙이 사람 손에 있으면 이 프로젝트가 반복해서 겪은 병이 그대로 재발한다 —
+  "enum 이 늘면 조용히 틀린다"(3-1.13 의 힘이 Counter 를 빼먹은 것), "짝인데 한쪽만"(통산 세 번)
+- Unity 는 기본적으로 Assets/ 의 모든 .cs 를 Assembly-CSharp.dll 하나로 뭉친다.
+  Engine/ Data/ Scene/ UI/ 로 폴더를 갈라놨어도 컴파일러에게는 한 덩어리이고,
+  폴더 구분은 사람이 보라고 있는 것일 뿐이다
+
+### 고민
+
+- 켜는 시점. 참조가 0인 지금이 제일 싸다 — 위반이 남아 있으면 게이트를 켜는 순간 에러가
+  한꺼번에 터지고, 그걸 고치는 일과 게이트를 세우는 일이 섞여서 원인을 못 가른다
+- Auto Referenced 를 어떻게 둘 것인가. 끄면 Data/Scene/UI 가 Engine 타입을 못 봐서 프로젝트가
+  통째로 안 돈다 — 인데 그건 증상이고, 진짜 이유는 방향이다. 켜야 화살표가
+  Assembly-CSharp -> LOR.Engine 한 방향으로 자동 고정된다. 손으로 걸면 반대로 걸 여지가 생긴다
+- internal 접근성. 어셈블리가 갈리면 internal 의 범위가 바뀌어 CS0122 가 날 수 있다.
+  미리 세어보니 Engine 안 internal 이 0건이라 해당 없었다
+
+### 해결
+
+- Assets/Scripts/Engine/LOR.Engine.asmdef 신설.
+  noEngineReferences: true / autoReferenced: true / references: []
+- 게이트가 둘이 됐다. 하나는 체크박스로, 하나는 공짜로 딸려왔다:
+  - Engine -> UnityEngine 차단 = No Engine References
+  - Engine -> Data/Scene/UI 차단 = 어셈블리 분리 그 자체. Assembly-CSharp 가 LOR.Engine 을
+    참조하므로 반대 방향은 순환 참조가 되고 Unity 가 아예 거부한다.
+    CLAUDE.md 4번 항목의 제목("Engine -> Data 의존 끊기")이 실은 이쪽이다
+- 검증은 "컴파일 통과" 가 아니라 rsp 파일로 했다.
+  LOR.Engine.rsp 의 UnityEngine 참조 0건 / Assembly-CSharp.rsp 는 134건.
+  LOR.Engine 이 참조하는 135개는 전부 .NET BCL(System.*) 이다
+- 플레이 검증 통과
+
+### 배운 점
+
+- **대조군이 공짜로 딸려 온 첫 사례다.** "LOR.Engine 에 UnityEngine 이 0건" 만으로는
+  참조가 없는 것과 grep 이 안 걸린 것이 구분되지 않는데, 같은 grep 이 Assembly-CSharp 에서
+  134건을 잡았다. 두 숫자가 한 줄에 같이 나와서 위양성 경로가 없다.
+  브레이크포인트가 두 번 거짓말한 뒤 세운 기준 — "관측 지점은 값이 보이는가가 아니라
+  두 가설을 갈라주는가로 고른다" — 이 이번엔 관측 지점을 고르는 단계에서 이미 만족됐다
+- **규칙을 컴파일러에게 넘기는 수단이 하나 늘었다.** 3단계에서 PassiveModel 을 abstract 로
+  만들어 `_ => throw` 를 없앤 것과 같은 종류이고, 규모만 어셈블리 단위로 커진 것이다.
+  "조용히 틀리는" 규칙을 만나면 물어볼 것은 "주석을 달까" 가 아니라
+  "이걸 컴파일 에러로 만들 수 있나" 다
+- **"할 수 있다" 와 "해봤다" 는 다르다.** DeterministicRng 도 Engine 안에 있고 진입점
+  BattleSnapShot 이 받는 것도 CharacterModel + int 시드뿐이라, LOR.Engine.dll 은 이제
+  콘솔 앱에서 그대로 돌아갈 것이다 — 아직 아무도 안 돌려봤다.
+  9번 전수조사의 "만들어놓고 배선 0건" 과 같은 자리다. 실제로 돌리면 지금 플레이 + 출혈
+  카운터 + 브레이크포인트로 하는 검증들이 Assert 몇 줄이 된다
+- **문서가 코드보다 더 헐어 있었다.** CLAUDE.md 의 "거짓이 된 주석" 목록이 6항목인데
+  실제로 남은 것은 3파일 4줄(Engine 안은 2파일 3줄)이었다 — CharacterState.cs 의 XML 과
+  CharacterStateBuilder 의 param 은 어제 이미 고쳐져 있었다.
+  목록을 만든 뒤에 손댄 것이 목록에 반영되지 않았다. 목록도 코드처럼 썩는다
