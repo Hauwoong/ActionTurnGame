@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 public class CharacterRuntime : IEventSink
 {
+    // ──────────── 상태(필드) ────────────
     private readonly CharacterState _state;
     private readonly IEventSink _eventSink;
     private readonly DicePool _dicePool = new();
@@ -27,6 +28,7 @@ public class CharacterRuntime : IEventSink
     private int _staggeredTurnsRemaining = 0;
     private readonly CardResolver _cardResolver = new();
 
+    // ──────────── 조회(프로퍼티) ────────────
     public int CharacterId => _state.CharacterId;
     public Team Team => _state.Team;
     public int BaseSpeedSlotCount => _state.SpeedSlotCount;
@@ -52,6 +54,7 @@ public class CharacterRuntime : IEventSink
     public IReadOnlyList<SpeedSlotRuntime> SpeedSlotPool => _speedSlots;
     public IReadOnlyList<StatusEffectRuntime> StatusEffects => _statusEffects;
 
+    // ──────────── 생성자 ────────────
     public CharacterRuntime(CharacterState state, IEventSink eventSink, IRng rng)
     {
         _state = state;
@@ -78,7 +81,10 @@ public class CharacterRuntime : IEventSink
         }
     }
 
+    // ──────────── 이벤트 ────────────
     public void EnqueueEvent(ICombatEvent ev) => _eventSink.EnqueueEvent(ev);
+
+    // ──────────── HP · 죽음 ────────────
     public void ChangeMaxHp(int amount)
     {
         _maxHp += amount;
@@ -88,36 +94,6 @@ public class CharacterRuntime : IEventSink
         if (_currentHp > _maxHp) _currentHp = _maxHp;
         if (_currentHp < 0) _currentHp = 0;
     }
-
-    public void ChangeMaxStagger(int amount)
-    {
-        _maxStagger += amount;
-        _currentStagger += amount;
-
-        if(_maxStagger <= 1) _maxStagger = 1;
-        if (_currentStagger > _maxStagger) _currentStagger = _maxStagger;
-        if (_currentStagger < 0) _currentStagger = 0;
-    }
-
-    public void ChangeMaxEnergy(int amount)
-    {
-        _maxEnergy += amount;
-        _currentEnergy += amount;
-
-        if(_maxEnergy <= 1) _maxEnergy = 1;
-        if (_currentEnergy > _maxEnergy) _currentEnergy = _maxEnergy;
-        if (_currentEnergy < 0) _currentEnergy = 0;
-    }
-
-    public void RecoverEnergy(int amount)
-    {
-        _currentEnergy += amount;
-        if (_currentEnergy > _maxEnergy)
-        {
-            _currentEnergy = _maxEnergy;
-        }
-    }
-
     public void TakeDamage(int amount)
     {
         if (_isDead) return;
@@ -130,6 +106,17 @@ public class CharacterRuntime : IEventSink
     public void Die()
     {
         _isDead = true;
+    }
+
+    // ──────────── 스태거 ────────────
+    public void ChangeMaxStagger(int amount)
+    {
+        _maxStagger += amount;
+        _currentStagger += amount;
+
+        if(_maxStagger <= 1) _maxStagger = 1;
+        if (_currentStagger > _maxStagger) _currentStagger = _maxStagger;
+        if (_currentStagger < 0) _currentStagger = 0;
     }
     public void TakeStagger(int amount)
     {
@@ -145,6 +132,11 @@ public class CharacterRuntime : IEventSink
         _isStaggered = true;
         _staggeredTurnsRemaining = 2;
     }
+    public void ExitStagger()
+    {
+        _isStaggered = false;
+        _currentStagger = _state.MaxStagger; // 게이지 전부 회복
+    }
     public void RecoverStagger(int amount)
     {
         _currentStagger += amount;
@@ -154,6 +146,32 @@ public class CharacterRuntime : IEventSink
         if (_currentStagger > 0 && _isStaggered)
             _isStaggered = false;
     }
+
+    // ──────────── 에너지(빛) ────────────
+    public void ChangeMaxEnergy(int amount)
+    {
+        _maxEnergy += amount;
+        _currentEnergy += amount;
+
+        if(_maxEnergy <= 1) _maxEnergy = 1;
+        if (_currentEnergy > _maxEnergy) _currentEnergy = _maxEnergy;
+        if (_currentEnergy < 0) _currentEnergy = 0;
+    }
+    public void RecoverEnergy(int amount)
+    {
+        _currentEnergy += amount;
+        if (_currentEnergy > _maxEnergy)
+        {
+            _currentEnergy = _maxEnergy;
+        }
+    }
+    public void UseEnergy(int amount)
+    {
+        _currentEnergy -= amount;
+        if (_currentEnergy < 0) _currentEnergy = 0;
+    }
+
+    // ──────────── 감정 ────────────
     public void GainEmotionStack(int stack) // 나중에 긍정 감정 & 부정 감정 섞이면 로직 고쳐야 함
     {
         _emotionStack += stack;
@@ -161,7 +179,6 @@ public class CharacterRuntime : IEventSink
         if (_emotionStack >= _state.MaxEmotionStack)
         _emotionStack = _state.MaxEmotionStack;
     }
-
     public void EmotionLevelUp()
     {
         if (_emotionStack < _state.MaxEmotionStack) return;
@@ -170,6 +187,8 @@ public class CharacterRuntime : IEventSink
         _emotionLevel++;
         _emotionStack = 0;
     }
+
+    // ──────────── 속도 슬롯 ────────────
     public void EnsureSpeedSlotCount(int count)
     {
         while (_speedSlots.Count < count)
@@ -178,18 +197,10 @@ public class CharacterRuntime : IEventSink
             _speedSlots.Add(new SpeedSlotRuntime(slot, _state.MinSpeed, _state.MaxSpeed));
         }
     }
-    public void ExitStagger()
-    {
-        _isStaggered = false;
-        _currentStagger = _state.MaxStagger; // 게이지 전부 회복
-    }
+
+    // ──────────── 카드 · 액션 ────────────
     public bool CanUseAction(ActionInstance action)
     => _cardResolver.CanUse(action.Card, this);
-    public void UseEnergy(int amount)
-    {
-        _currentEnergy -= amount;
-        if (_currentEnergy < 0) _currentEnergy = 0;
-    }
     public void UseAction(ActionInstance action)
     {
         if (!CanUseAction(action)) return;
@@ -205,6 +216,8 @@ public class CharacterRuntime : IEventSink
 
         _dicePool.Inject(entries);
     }
+
+    // ──────────── 주사위 ────────────
     public DiceEntry? Peek() => _dicePool.Peek();
     public void Advance(AdvanceType type) => _dicePool.Advance(type);
     public void EndBoutDice() => _dicePool.EndBout();
@@ -218,6 +231,8 @@ public class CharacterRuntime : IEventSink
 
         return null;
     }
+
+    // ──────────── 상태이상 ────────────
     public int AddStatus(StatusEffectType type, int stack, bool delayed = false)
     {
         if (!_effectMap.TryGetValue(type, out var effect) || effect.IsExpired)
@@ -234,6 +249,7 @@ public class CharacterRuntime : IEventSink
         return delayed ? effect.PendingStack : effect.Stack;
     }
 
+    // ──────────── Trigger 훅 ────────────
     public void TriggerTurnStart()
     {
         var ctx = new TurnStartContext(this);
@@ -253,41 +269,6 @@ public class CharacterRuntime : IEventSink
         foreach (var passive in _passives)
             passive.OnTurnStart(ctx);
     }
-
-    public void TriggerBeforeDamage(IDamageContext ctx)
-    {
-        EnsureSorted();
-
-        var effects = _statusEffects.ToArray();
-        foreach (var effect in effects)
-        {
-            if (effect.IsExpired) continue;
-            effect.OnBeforeDamage(ctx);
-        }
-
-        FlushExpired();
-
-        foreach (var passive in _passives)
-            passive.OnBeforeDamage(ctx);
-    }
-
-    public void TriggerAfterDamage(IDamageContext ctx)
-    {
-        EnsureSorted();
-
-        var effects = _statusEffects.ToArray();
-        foreach (var effect in effects)
-        {
-            if (effect.IsExpired) continue;
-            effect.OnAfterDamage(ctx);
-        }
-            
-        FlushExpired();
-
-        foreach (var passive in _passives)
-            passive.OnAfterDamage(ctx);
-    }
-
     public int TriggerModifyRoll(DiceRuntime dice)
     {
         var ctx = new DiceRollContext(this, dice);
@@ -308,7 +289,6 @@ public class CharacterRuntime : IEventSink
 
         return Math.Max(1, ctx.ModifiedRoll);
     }
-
     public void TriggerDiceRoll()
     {
         EnsureSorted();
@@ -322,7 +302,70 @@ public class CharacterRuntime : IEventSink
 
         FlushExpired();
     }
+    public void TriggerBeforeDamage(IDamageContext ctx)
+    {
+        EnsureSorted();
 
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
+            effect.OnBeforeDamage(ctx);
+        }
+
+        FlushExpired();
+
+        foreach (var passive in _passives)
+            passive.OnBeforeDamage(ctx);
+    }
+    public void TriggerAfterDamage(IDamageContext ctx)
+    {
+        EnsureSorted();
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
+            effect.OnAfterDamage(ctx);
+        }
+            
+        FlushExpired();
+
+        foreach (var passive in _passives)
+            passive.OnAfterDamage(ctx);
+    }
+    public void TriggerBeforeStagger(StaggerContext ctx)
+    {
+        EnsureSorted();
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
+            effect.OnBeforeStagger(ctx);
+        }
+
+        FlushExpired();
+
+        foreach (var passive in _passives)
+            passive.OnBeforeStagger(ctx);
+    }
+    public void TriggerAfterStagger(StaggerContext ctx)
+    {
+        EnsureSorted();
+
+        var effects = _statusEffects.ToArray();
+        foreach (var effect in effects)
+        {
+            if (effect.IsExpired) continue;
+            effect.OnAfterStagger(ctx);
+        }
+
+        FlushExpired();
+
+        foreach (var passive in _passives)
+            passive.OnAfterStagger(ctx);
+    }
     public void TriggerTurnEnd()
     {
         EnsureSorted();
@@ -348,47 +391,14 @@ public class CharacterRuntime : IEventSink
                 EnqueueEvent(new StaggerExitEvent(CharacterId));
         }
     }
-    public void TriggerBeforeStagger(StaggerContext ctx)
-    {
-        EnsureSorted();
 
-        var effects = _statusEffects.ToArray();
-        foreach (var effect in effects)
-        {
-            if (effect.IsExpired) continue;
-            effect.OnBeforeStagger(ctx);
-        }
-
-        FlushExpired();
-
-        foreach (var passive in _passives)
-            passive.OnBeforeStagger(ctx);
-    }
-
-    public void TriggerAfterStagger(StaggerContext ctx)
-    {
-        EnsureSorted();
-
-        var effects = _statusEffects.ToArray();
-        foreach (var effect in effects)
-        {
-            if (effect.IsExpired) continue;
-            effect.OnAfterStagger(ctx);
-        }
-
-        FlushExpired();
-
-        foreach (var passive in _passives)
-            passive.OnAfterStagger(ctx);
-    }
-
+    // ──────────── private 헬퍼 ────────────
     void EnsureSorted()
     {
         if (!_dirty) return;
         _statusEffects.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         _dirty = false;
     }
-
     void FlushExpired()
     {
         for (int i = _statusEffects.Count - 1; i >= 0; i--)
