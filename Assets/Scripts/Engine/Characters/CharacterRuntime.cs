@@ -23,9 +23,7 @@ public class CharacterRuntime : IEventSink
     private bool _isDead = false;
     private bool _isStaggered = false;
     private int _emotionLevel;
-    private int _MaxEmotionLevel;
     private int _emotionStack;
-    private int _maxEmotionStack;
     private int _activeSpeedSlotCount;
     private int _staggeredTurnsRemaining = 0;
     private readonly CardResolver _cardResolver = new();
@@ -169,6 +167,7 @@ public class CharacterRuntime : IEventSink
     public void EmotionLevelUp()
     {
         if (_emotionStack < _state.MaxEmotionStack) return;
+        if (_emotionLevel >= _state.MaxEmotionLevel) return;
 
         _emotionLevel++;
         _emotionStack = 0;

@@ -2,13 +2,64 @@
 
 ## 다음 작업 (2026-08-21 갱신)
 
-### ▶ 다음 시작 지점 — **주석 일괄 작업**
+### ▶ 다음 시작 지점 — **`CharacterRuntime` 3단계 작업의 2단계** (아래 "재개 절차")
 
 ✔ **4번(Engine → Data 의존 끊기)이 통째로 끝났다 (2026-08-21, 플레이 검증).**
 asmdef 로 게이트가 섰고 **이제 컴파일러가 규칙을 지킨다.** 자세한 것은 아래 4번 항목.
 
-**따라서 "엔진이 일단락되면 주석 작업" 의 그 조건이 충족됐다** (사용자 결정, 2026-08-05,
-2026-08-20 재확인). 아래 "거짓이 된 주석" 목록과 "그때 같이 넣을 것" 목록이 그 재료다.
+**그래서 "엔진이 일단락되면 주석 작업" 조건이 충족됐고, 주석 작업을 시작했다 (2026-08-21).**
+
+#### 주석 작업 진행 상황
+
+| | 대상 | 상태 |
+|---|---|---|
+| 1 | **거짓이 된 주석 4줄** (`CharacterState`/`BattleSnapShot`×2/`BattleManager`) | ✔ 완료 |
+| 2 | **`DicePool.cs`** — 클래스 요약 + 메서드 9개 `///` + 불변량 3건 | ✔ 완료 |
+| 3 | **`CombatExecutor.ResolveUnopposedDice`** — 저장 규칙 짝 주석 + 죽음 가드 근거 | ✔ 완료 |
+| 4 | **`CharacterRuntime.cs`** — 아래 재개 절차 | **진행 중 (1/4)** |
+
+**1~3 으로 CLAUDE.md 의 "안 달린 주석" 목록이 전부 소진됐다.**
+`CombatExecutor.cs:162` / `DicePool.cs:81` 의 "여기 `Attack` 만인 건 저장 규칙 때문" 도 들어갔다.
+
+#### ▶▶ 재개 절차 — `CharacterRuntime.cs` (419줄, 메서드 39개)
+
+**각 단계를 따로 커밋한다.** 3단계의 diff 가 "순수 이동" 이어야 대조가 의미를 갖기 때문이다.
+
+1. ✔ **완료** — `EmotionLevelUp` 상한 가드 + 죽은 필드 2개(`_MaxEmotionLevel`/`_maxEmotionStack`) 삭제
+2. **← 여기부터.** `_activeSpeedSlotCount` **B안 배선**. 형태와 소비처 4곳의 차이는 9번 항목의
+   "`_activeSpeedSlotCount` — 배선한다" 절에 전부 적어뒀다. 요약:
+   - `SpeedSlots` → **`SpeedSlotPool`** 개명 + **`ActiveSpeedSlotCount`** 프로퍼티 신설
+   - 컴파일 에러 3곳을 하나씩 판단: `BattleRuntime.cs:54`=풀 전체 /
+     `BattleRuntime.cs:67`(`RollSpeedDice`)=활성분 / `SlotDebugPanel.cs:68`=활성분
+   - **뒤 둘은 짝이다.** 하나만 고치면 속도가 안 굴려진 슬롯이 UI 에 뜨거나 그 반대가 된다
+   - **검증은 회귀뿐** — `_activeSpeedSlotCount == _speedSlots.Count` 라 동작 변화가 0이어야 한다
+3. **카테고리 재정렬** (순수 이동, 주석 금지). 배너는 `BattleRuntime` 스타일
+   (`// ──────────── 이름 ────────────`). 목표 순서:
+   상태(필드) → 조회(프로퍼티) → 생성자 → 이벤트 → HP·죽음 → 스태거 → 에너지(빛) → 감정 →
+   속도 슬롯 → 카드·액션 → 주사위 → 상태이상 → Trigger 훅 → private 헬퍼
+   - **실제로 옮겨지는 건 셋뿐이다**: `ExitStagger`(스태거 그룹으로) /
+     `SetSpeedSlotCount`(감정 구간에서 빼냄) / `UseEnergy`(`CanUseAction`·`UseAction` 사이에서 빼냄)
+   - **Trigger 8개는 파이프라인 순서로**: `TurnStart → ModifyRoll → DiceRoll → BeforeDamage →
+     AfterDamage → BeforeStagger → AfterStagger → TurnEnd`. 제일 큰 이득은 `TurnEnd` 가 한복판에서 끝으로 가는 것
+   - **검증: 이동 전후로 메서드 39개, 이름이 전부 일치해야 한다.** 이동 전 목록(정렬):
+     `AddStatus` `Advance` `CanUseAction` `ChangeMaxEnergy` `ChangeMaxHp` `ChangeMaxStagger`
+     `CharacterRuntime`(생성자) `CreateSpeedSlots` `DestroyRemainingDice` `Die` `DiscardRemainingDice`
+     `EmotionLevelUp` `EndBoutDice` `EnqueueEvent` `EnsureSorted` `EnterStagger` `ExitStagger`
+     `FlushExpired` `GainEmotionStack` `GetDiceInfo` `Peek` `RecoverEnergy` `RecoverStagger`
+     `ResetDiceForNextTurn` `SetSpeedSlotCount` `ShouldDie` `ShouldEnterStagger` `TakeDamage`
+     `TakeStagger` `TriggerAfterDamage` `TriggerAfterStagger` `TriggerBeforeDamage`
+     `TriggerBeforeStagger` `TriggerDiceRoll` `TriggerModifyRoll` `TriggerTurnEnd` `TriggerTurnStart`
+     `UseAction` `UseEnergy`
+     - **2단계에서 `SpeedSlots` 개명이 먼저 들어가면 이 목록은 안 바뀐다**(프로퍼티라 메서드가 아니다)
+4. **메서드 39개 `///` 주석.** 카테고리 순서대로
+
+#### 주석 작업에서 반복된 것 — 다음에 먼저 볼 것
+
+- **오타가 하필 타입·메서드 이름에 난다.** 이번에 `Chracter`×3 / `Infect`(→`Inject`) /
+  `envade`(→`Evade`) / `멱동`(→`멱등`) 이 났다. **`CharacterData` 를 grep 해도 그 줄들이 안 잡힌다** —
+  오늘 "거짓이 된 주석 목록이 헐어 있었다" 를 발견한 방법이 바로 grep 이었다
+- **목록을 표로 나누면 표 하나를 통째로 건너뛴다.** 식별자 오타표는 다 고치고 용어 오타표는
+  하나도 안 고쳐진 적이 있다. "짝인데 한쪽만" 의 문서판
 
 **2026-08-06 에 1~2번(`BoutStart`·`BoutEndLog` 합 여부 / `DamageLog`·`StaggerLog` 공격자)과
 `IsOffensive` 를 끝냈고, 2026-08-19 에 6번 잔재 정리도 끝냈다.**
@@ -505,8 +556,13 @@ Enemy 가 `Strike` 로 Ally 일방 공격(저장분 소모) 순서.
   - `duration` 배선: 생성자 인자 + `public const int Permanent = -1`. **`TickTurnEnd`(비-virtual 래퍼)**가
     Duration 감소를 독점하고 `OnTurnEnd` 는 `protected` 로 내려 우회를 컴파일 에러로 만듦.
     값은 Bleed/Burn = `Permanent`(스택 소모형), Strength/Paralysis = `1`(턴 카운트형).
-  - `Refresh()` + `readonly _baseDuration`. **단 현재 규칙에선 영구 no-op** — duration 이 1이나 Permanent 뿐이라
-    값이 안 바뀐다. 원작에 "N턴 지속" 버프가 없으므로 앞으로도 안 바뀔 가능성이 높다(데드 코드 정리 후보).
+  - ~~`Refresh()` + `readonly _baseDuration`. 단 현재 규칙에선 영구 no-op … 데드 코드 정리 후보~~ —
+    **2026-08-21 실측 정정. 이 줄은 틀렸다.**
+    - **`Refresh()` 는 존재하지 않는다.** `StatusEffectRuntime` 에 그런 메서드가 없다
+      (만들지 않았거나 이후 지워졌고, 어느 쪽이든 문서만 남았다). **정리할 데드 코드가 없다**
+    - **`_baseDuration` 은 살아 있고 no-op 도 아니다.** `TickTurnEnd`(`StatusEffectRuntime.cs:53`)의
+      `Duration = _baseDuration` 재장전이 유일한 독자이고, **3-2 Delay 의 대기분 승격이 이 줄에 의존한다**.
+      지웠으면 그게 깨졌다
   - `StatusAddEvent` / `StatusAddLog` 신설. `AddStatus` 가 **결과 스택**을 반환해 로그에 실음(EnergyRecover B안과 동일).
 - **3-1 검증 완료 (2026-07-26)** — DEVLOG `2026-07-26` 참고. `BattleManager` 의 임시 `DebugAdd*` 3개로
   진입점을 뚫어 6개 항목 전부 통과: 출혈 5→2→1(재진입 경로에서 증발 없음) / 힘 굴림 +3 /
@@ -1158,13 +1214,48 @@ SO 참조가 0이 된다. 첫 제출에서 리스트 복사 쪽만 바뀌고 `Ap
 | `DicePool.Add` | 호출자 0건, 적재가 `Inject` 로 되어 있어 **주사위 역순** (수정 완료) |
 | `CharacterRuntime.ResetDiceForNextTurn` | 호출자 0건, 턴 끝 정리가 통째로 안 돎 (수정 완료) |
 | `CharacterRuntime._diceById` | 쓰기 전용. 읽는 곳 0건 (→ **3-1.12 에서 용도 확정: 불변 속성 조회용 대장**) |
-| `CharacterRuntime._activeSpeedSlotCount` | 쓰기 전용. 감정 레벨이 슬롯 수를 못 올림 |
+| `CharacterRuntime._activeSpeedSlotCount` | 쓰기 전용. **→ 2026-08-21 배선하기로 결정(B안). 아래 참고** |
 | `PlayerActionInput.CancelSlot` | 호출자 0건 — 우클릭 취소 입력이 없다 |
 | `UseCardEvent` | 생산자 0건 — **카드가 손에서 안 빠진다** |
 | `BoutGraph.interceptCandidates` | UI 표시(개수)만 있고 Tab 순환 미구현 |
 | `DiceRuntime.Use()` / `DiceState.Used` | **여덟 번째 건 (2026-08-05).** `ToAdvanceEvent` 가 `Reuse` 에 null 을 반환해 이벤트가 안 나가고, 그 아래 `Advance(Reuse)` / `Use()` / `Used` / `DestroyUsed()` 가 전부 도달 불가. → 3-1.10 **5단계** |
 
 엔진을 두껍게 만들고 배선을 나중으로 미룬 시기의 흔적으로 보인다.
+
+#### `_activeSpeedSlotCount` — 배선한다 (2026-08-21 사용자 결정, B안)
+
+**사용자 확인: 나중에 슬롯을 봉인하는 효과를 만든다.** 따라서 "풀 + 활성 개수" 구조가 실제로 필요하다.
+
+**옛 설명이 부정확했다** — "감정 레벨이 슬롯 수를 못 올림" 은 틀렸다. `SetSpeedSlotCount` 의
+`while (_speedSlots.Count < count)` 가 리스트를 실제로 늘린다. **못 하는 것은 줄이는 쪽이다.**
+`_speedSlots` 는 파괴·재생성 없는 **풀**이고 `_activeSpeedSlotCount` 가 "그중 이번 턴에 쓰는 개수" 인데,
+소비처가 전부 리스트 전체를 순회해서 그 개념이 실재하지 않는다.
+
+**소비처 4곳이 원하는 것이 서로 다르다. "전부 활성분으로" 가 아니다:**
+
+| 소비처 | 원하는 것 |
+|---|---|
+| `BattleRuntime.cs:55` (`_slotRuntimeMap` 채우기) | **풀 전체** — 봉인 슬롯도 신원 조회는 돼야 한다 |
+| `BattleRuntime.cs:67` (`RollSpeedDice`) | **활성분만** — 봉인된 슬롯에 속도를 굴리면 안 된다 |
+| `SlotDebugPanel.cs:68` (UI) | **활성분만** |
+| `CombatExecutor.cs:30` (`graph.SlotRuntime[slot].Speed`) | map 경유라 첫 줄에 의존 |
+
+**형태**: `SpeedSlots` → **`SpeedSlotPool`** 로 개명(전체 풀) + **`ActiveSpeedSlotCount`** 프로퍼티 신설.
+소비처 2·3은 `for (int i = 0; i < ActiveSpeedSlotCount; i++)` 인덱스 순회(할당 0).
+- **개명이 이 안의 절반이다.** 이름을 두면 나중에 `foreach (var slot in SpeedSlots)` 가
+  봉인 슬롯까지 **조용히** 포함시킨다. 개명하면 컴파일러가 기존 3곳을 전부 에러로 띄워
+  "여긴 풀인가 활성분인가" 를 하나씩 다시 묻게 만든다 — `DiceEntry` 대신 `DiceInfo` 를 내보낸 것과 같은 수단
+- 접은 대안: `SpeedSlots` 를 활성분 view 로 두고 풀을 `SpeedSlotPool` 로. 읽기는 낫지만
+  view 타입이나 LINQ 가 필요해 더 비싸다
+
+**⚠ 별건으로 딸린 버그 — `_slotRuntimeMap` 이 갱신되지 않는다.**
+`BattleRuntime` 생성자에서 **딱 한 번** 채우는데 `SpeedSlotPassive` 는 `OnTurnStart` 에서 슬롯을 늘린다.
+**전투 시작 후 늘어난 슬롯은 map 에 영영 안 들어가고** `CombatExecutor.cs:30` 의
+`graph.SlotRuntime[slot]` 이 그 슬롯을 못 찾는다.
+- `_activeSpeedSlotCount` 배선과 **무관하다.** 따로 고쳐야 한다
+- 지금은 안 터진다(`SpeedSlotPassive` 를 쓰는 캐릭터가 0명). 고치려면 "언제 다시 동기화하나"
+  (턴 시작 훅과 `RollSpeedDice` 의 순서)를 정해야 하는데 **검증할 방법이 없다** —
+  **봉인 효과나 감정 슬롯을 실제로 만들 때 같이 할 것**
 
 **주의**: `Bout.cs` 때 세운 기준("참조 0건만으로 데드 코드 판단 말 것")의 **반대 방향** 사례들이다.
 그때는 지워야 할 것이 남아 있었고, 이번엔 불러야 할 것이 안 불렸다. 분류할 때 둘을 섞지 말 것.
