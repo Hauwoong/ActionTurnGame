@@ -10,6 +10,7 @@ public class SlotDebugPanel : MonoBehaviour
 
     private BattleRuntime _runtime;
     private readonly List<SlotDebugItem> _items = new();
+    private readonly List<SpeedSlotRuntime> _sorted = new();
 
     private void OnEnable()
     {
@@ -58,19 +59,33 @@ public class SlotDebugPanel : MonoBehaviour
     }
     private void OnBoutEnd(BoutEndLog log) => Refresh();
 
+    private static int CompareBySpeed(SpeedSlotRuntime a, SpeedSlotRuntime b)
+    {
+        int speedCompare = b.Speed.CompareTo(a.Speed);
+        if (speedCompare != 0) return speedCompare;
+
+        int characterCompare = a.Slot.CharacterId.CompareTo(b.Slot.CharacterId);
+        if (characterCompare != 0) return characterCompare;
+
+        return a.Slot.SlotIndex.CompareTo(b.Slot.SlotIndex);
+    }
+
     private void Refresh()
     {
         Clear();
+
         if (_runtime == null) return;
 
         foreach (var character in _runtime.Characters.Values)
+            _sorted.AddRange(character.SpeedSlotPool);
+
+        _sorted.Sort(CompareBySpeed);
+
+        foreach (var slot in _sorted)
         {
-            foreach (var slot in character.SpeedSlotPool)
-            {
-                var item = Instantiate(itemPrefab, container);
-                item.Bind(slot, _runtime.BoutGraph, input);
-                _items.Add(item);
-            }
+            var item = Instantiate(itemPrefab, container);
+            item.Bind(slot, _runtime.BoutGraph, input);
+            _items.Add(item);
         }
     }
 
@@ -79,5 +94,6 @@ public class SlotDebugPanel : MonoBehaviour
         foreach (var item in _items)
             Destroy(item.gameObject);
         _items.Clear();
+        _sorted.Clear();
     }
 }
