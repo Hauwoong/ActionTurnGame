@@ -77,8 +77,6 @@ crashlytics-build.properties
 .plastic/
 .vsconfig
 # Claude 작업 맥락 - private 레포(claude-workspace)에서 관리 (2026-09-02)
-# 설계 문서가 public 에 올라가지 않도록 추적 해제함. 파일 자체는 로컬에 그대로 있다.
+# CLAUDE.md 만 비공개. DEVLOG 는 public 유지 (2026-09-02 정정)
 CLAUDE.md
-DEVLOG.txt
-DEVLOG_Summary.txt
 .claude/
